@@ -1,0 +1,32 @@
+# Node / Electron
+node_modules/
+out/
+dist/
+dist-electron/
+release/
+*.log
+npm-debug.log*
+*.tsbuildinfo
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Go
+vegad/vegad
+vegad/bin/
+*.exe
+
+# Arch packaging
+packaging/*/pkg/
+packaging/*/src/
+packaging/*/*.pkg.tar.*
+packaging/*/*.pkg.tar.*.sig
+
+# Editors / OS
+.DS_Store
+.vscode/
+*.swp
+
+# Env
+.env
+.env.local

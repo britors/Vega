@@ -1,0 +1,42 @@
+# Maintainer: Lyra OS <team@lyraos.org>
+#
+# Local-development PKGBUILD. It packages the current monorepo checkout by
+# default; set VEGA_SOURCE_DIR to package another checkout.
+
+pkgname=vega
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Centro de controle do Lyra OS"
+arch=('x86_64')
+url="https://lyraos.org/vega"
+license=('GPL-3.0-only')
+depends=('electron31' 'vegad')
+makedepends=('npm')
+source=()
+sha256sums=()
+
+_srcroot="${VEGA_SOURCE_DIR:-$startdir/../..}"
+
+build() {
+  cd "$_srcroot/vega"
+  npm ci
+  npm run build
+}
+
+package() {
+  cd "$_srcroot"
+
+  install -dm755 "$pkgdir/usr/lib/vega"
+  cp -r vega/out/* "$pkgdir/usr/lib/vega/"
+
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/vega" <<'WRAPPER'
+#!/bin/sh
+exec electron31 /usr/lib/vega/main/index.js "$@"
+WRAPPER
+
+  install -Dm644 packaging/vega/vega.desktop \
+    "$pkgdir/usr/share/applications/vega.desktop"
+  install -Dm644 packaging/vega/vega.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/vega.svg"
+
+}
