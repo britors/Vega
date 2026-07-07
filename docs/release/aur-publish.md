@@ -5,7 +5,7 @@ instalações Arch-like baseadas em `systemd`.
 
 ## Pacotes
 
-- `vega`
+- `lyra-vega`
 - `vegad`
 
 ## Pré-requisitos
@@ -25,7 +25,7 @@ instalações Arch-like baseadas em `systemd`.
 
 ## Fluxo de publicação
 
-1. Enviar `vega` e `vegad` para o AUR
+1. Enviar `lyra-vega` e `vegad` para o AUR
 2. Confirmar geração de `.SRCINFO`
 3. Validar instalação limpa em chroot Arch
 4. Validar upgrade in-place sem perder estado do usuário

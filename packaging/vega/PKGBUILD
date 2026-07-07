@@ -1,9 +1,10 @@
 # Maintainer: Lyra OS <team@lyraos.org>
 #
-# AUR-oriented PKGBUILD. It defaults to the tagged Vega source, but can
-# be pointed at another checkout/source via VEGA_SOURCE_URL and VEGA_SOURCE_DIR.
+# AUR-oriented PKGBUILD for the `lyra-vega` package base. It defaults to the
+# tagged Vega source, but can be pointed at another checkout/source via
+# VEGA_SOURCE_URL and VEGA_SOURCE_DIR.
 
-pkgname=vega
+pkgname=lyra-vega
 pkgver=0.0
 pkgrel=1
 pkgdesc="Centro de controle do Lyra OS"
@@ -15,8 +16,8 @@ optdepends=(
   'flatpak: origem Flathub para o módulo Software'
   'restic: motor do módulo Backup'
 )
-provides=('lyrae')
-conflicts=('lyrae')
+provides=('vega' 'lyrae')
+conflicts=('vega' 'lyrae')
 makedepends=('npm')
 _source_url_default="git+https://github.com/britors/Vega.git#branch=main"
 source=("Vega::${VEGA_SOURCE_URL:-${_source_url_default}}")
@@ -46,12 +47,12 @@ build() {
 package() {
   cd "$_srcroot"
 
-  install -dm755 "$pkgdir/usr/lib/vega"
-  cp -r vega/out/* "$pkgdir/usr/lib/vega/"
+  install -dm755 "$pkgdir/usr/lib/lyra-vega"
+  cp -r vega/out/* "$pkgdir/usr/lib/lyra-vega/"
 
   install -Dm755 /dev/stdin "$pkgdir/usr/bin/vega" <<'WRAPPER'
 #!/bin/sh
-exec electron31 /usr/lib/vega/main/index.js "$@"
+exec electron31 /usr/lib/lyra-vega/main/index.js "$@"
 WRAPPER
 
   install -Dm644 packaging/vega/vega.desktop \
