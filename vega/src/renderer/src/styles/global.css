@@ -63,27 +63,41 @@ body {
 
 .window-chrome__controls {
   display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
   -webkit-app-region: no-drag;
 }
 
 .window-control {
-  width: 46px;
-  height: 42px;
-  border: none;
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 28px;
+  border-radius: 6px;
+  border: 0.5px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
   color: var(--lyra-text-muted);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
 }
 
 .window-control:hover {
-  background: var(--lyra-surface-raised);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--lyra-text);
+  border-color: var(--lyra-border);
 }
 
 .window-control--close:hover {
   background: var(--lyra-danger);
   color: #fff;
+  border-color: var(--lyra-danger);
 }
 
 .app-shell {
