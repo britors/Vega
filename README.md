@@ -68,6 +68,9 @@ Depois atualize o banco do repositório local no ambiente de build:
 repo-add ~/.local/share/lyra-repo/lyra.db.tar.gz ~/.local/share/lyra-repo/*.pkg.tar.zst
 ```
 
+Para publicar no AUR, siga o checklist em
+[`docs/release/aur-publish.md`](docs/release/aur-publish.md).
+
 ## Validação
 
 O roteiro reproduzível de smoke test está em

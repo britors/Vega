@@ -4,6 +4,8 @@ out/
 dist/
 dist-electron/
 release/
+!docs/release/
+!docs/release/**
 *.log
 npm-debug.log*
 *.tsbuildinfo
