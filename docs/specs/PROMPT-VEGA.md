@@ -33,7 +33,7 @@
 | Daemon privilegiado | `vegad` (renomeado de `lyraed`) |
 | Nome D-Bus | `org.lyraos.Vega1` (system bus) |
 | Licença | GPLv3 |
-| Canal | Repositório `lyra` (pacotes `vega` e `vegad`) — componente de sistema, **não** vai ao AUR |
+| Canal | AUR (pacotes `vega` e `vegad`) — componente de sistema distribuído pelo repositório comunitário |
 | Ícone | Estrela de quatro pontas do logo Lyra, em degradê oficial |
 | Idioma | pt-BR (i18n pronta para en-US) |
 
@@ -163,15 +163,15 @@ Funcionalidades:
 
 ## 5. Empacotamento e Integração
 
-### 5.1 Pacotes (repositório `lyra`)
+### 5.1 Pacotes (AUR)
 
 | Pacote | Conteúdo |
 |---|---|
 | `vega` | UI Electron (`/usr/lib/vega/`, wrapper `/usr/bin/vega`, desktop entry, ícones hicolor) |
 | `vegad` | binário Go (`/usr/lib/vega/vegad`), `vegad.service`, conf D-Bus (`/usr/share/dbus-1/system.d/org.lyraos.Vega1.conf`), policies polkit, sysusers.d (`vega-build`) |
 
-- `vega` depende de `vegad`; ambos entram no meta-pacote `lyra-desktop`
-- **Transições do rename:** pacotes `lyrae`/`lyraed` viram transitional packages (provides/replaces) por um ciclo de release; nome D-Bus antigo não é mantido
+- `vega` depende de `vegad`; ambos podem ser publicados como pacotes AUR e consumidos pelo meta-pacote `lyra-desktop`
+- **Transições do rename:** pacotes `lyrae`/`lyraed` viram transitional packages (provides/replaces) por um ciclo de release no AUR; nome D-Bus antigo não é mantido
 
 ### 5.2 Alterações em cascata nos prompts anteriores
 
