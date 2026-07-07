@@ -77,8 +77,9 @@ export default function Hardware(): JSX.Element {
 
       {loading && <EmptyState title="Carregando hardware..." />}
 
-      {inventory && (
-        <div className="card" style={{ display: 'grid', gap: 10 }}>
+      <div className="card" style={{ display: 'grid', gap: 10 }}>
+        <h2 style={{ margin: 0, fontSize: '1rem' }}>Inventário</h2>
+        {inventory ? (
           <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 10 }}>
             <span style={{ color: 'var(--lyra-text-muted)' }}>CPU</span>
             <strong style={{ fontWeight: 500 }}>{inventory.cpu}</strong>
@@ -89,11 +90,16 @@ export default function Hardware(): JSX.Element {
             <span style={{ color: 'var(--lyra-text-muted)' }}>Firmware</span>
             <strong style={{ fontWeight: 500 }}>{firmwareStatus}</strong>
           </div>
-        </div>
-      )}
+        ) : (
+          <EmptyState title="Nenhum inventário carregado" message="O daemon não respondeu com dados de hardware." />
+        )}
+      </div>
 
       <div className="card" style={{ display: 'grid', gap: 12 }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Troca de driver NVIDIA</h2>
+        <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.85rem' }}>
+          {selectedDriver} será aplicado após confirmação.
+        </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <select
             className="sidebar__search"
@@ -117,7 +123,7 @@ export default function Hardware(): JSX.Element {
               cursor: 'pointer'
             }}
           >
-            Aplicar
+            {busy ? 'Aplicando...' : 'Aplicar'}
           </button>
         </div>
       </div>

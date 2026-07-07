@@ -88,27 +88,30 @@ export default function Kernel(): JSX.Element {
       <div className="card" style={{ display: 'grid', gap: 10 }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Kernels instalados</h2>
         {kernels.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--lyra-text-muted)' }}>Nenhum kernel listado.</p>
+          <EmptyState title="Nenhum kernel listado" message="O sistema ainda não reportou kernels instalados." />
         ) : (
-          kernels.map((kernel) => (
-            <div key={kernel} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-              <span>{kernel}</span>
-              <button
-                onClick={() => remove(kernel)}
-                disabled={busy}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 'var(--lyra-radius-sm)',
-                  border: '1px solid var(--lyra-border)',
-                  background: 'transparent',
-                  color: 'var(--lyra-danger)',
-                  cursor: 'pointer'
-                }}
-              >
-                Remover
-              </button>
-            </div>
-          ))
+          kernels.map((kernel) => {
+            const isBusy = busy
+            return (
+              <div key={kernel} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+                <span>{kernel}</span>
+                <button
+                  onClick={() => remove(kernel)}
+                  disabled={isBusy}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 'var(--lyra-radius-sm)',
+                    border: '1px solid var(--lyra-border)',
+                    background: 'transparent',
+                    color: 'var(--lyra-danger)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isBusy ? 'Processando...' : 'Remover'}
+                </button>
+              </div>
+            )
+          })
         )}
       </div>
 
@@ -129,7 +132,7 @@ export default function Kernel(): JSX.Element {
               cursor: 'pointer'
             }}
           >
-            Instalar {kernel}
+            {busy ? 'Processando...' : `Instalar ${kernel}`}
           </button>
         ))}
       </div>

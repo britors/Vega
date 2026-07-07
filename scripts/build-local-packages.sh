@@ -16,7 +16,7 @@ for package in "${packages[@]}"; do
   echo "Buildando $package a partir de $repo_root"
   (
     cd "$pkgbuild_dir"
-    VEGA_SOURCE_DIR="$repo_root" makepkg -f --noconfirm --nodeps
+    VEGA_SOURCE_DIR="$repo_root" VEGA_SOURCE_URL="file://$repo_root" makepkg -f --noconfirm --nodeps
   )
 
   pkgfile="$(find "$pkgbuild_dir" -maxdepth 1 -name "$package-[0-9]*.pkg.tar.zst" -printf '%T@ %p\n' \

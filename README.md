@@ -68,6 +68,16 @@ Depois atualize o banco do repositório local no ambiente de build:
 repo-add ~/.local/share/lyra-repo/lyra.db.tar.gz ~/.local/share/lyra-repo/*.pkg.tar.zst
 ```
 
+## Validação
+
+O roteiro reproduzível de smoke test está em
+[`docs/validation/vega-end-to-end.md`](docs/validation/vega-end-to-end.md).
+Para rodar os checks automatizados deste checkout, use:
+
+```
+./scripts/qa-smoke.sh
+```
+
 ## Nomes D-Bus e polkit
 
 - Bus name: `org.lyraos.Vega1` (system bus)
@@ -77,10 +87,10 @@ repo-add ~/.local/share/lyra-repo/lyra.db.tar.gz ~/.local/share/lyra-repo/*.pkg.
 
 ## Pendências conhecidas
 
-- **Software**: `Search`, `ListRepos`, `ListUpdates`, `Install`, `Remove`, `UpdateAll` e `ClearCache` rodam de verdade (shell out para `pacman`/`flatpak`, sem libalpm direto ainda — ver comentário em `vegad/internal/dbusserver/pacman.go`). Progresso reportado é por estágio (regex sobre a saída do comando), não byte-exato. Instalações Pacman criam snapshots Snapper pré/pós quando `snapper` está disponível.
+- **Software**: `Search`, `ListRepos`, `ListUpdates`, `Install`, `Remove`, `UpdateAll`, `SetRepoEnabled` e `ClearCache` rodam de verdade (shell out para `pacman`/`flatpak`, sem libalpm direto ainda — ver comentário em `vegad/internal/dbusserver/pacman.go`). A busca já inclui AUR local quando `VEGA_AUR_SOURCE_ROOT` está definido, e a UI deduplica resultados por app/origem. Progresso reportado é por estágio (regex sobre a saída do comando), não byte-exato. Instalações Pacman criam snapshots Snapper pré/pós quando `snapper` está disponível.
 - **Pontos de Restauração**: lista snapshots, cria snapshot manual, faz rollback e ajusta retenção via Snapper quando o binário está instalado
-- **Backup**: cria configurações locais em `/etc/vega/backup` por padrão, executa `restic` para backup e restauração, e lista snapshots do repositório
+- **Backup**: cria configurações locais em `/etc/vega/backup` por padrão, executa `restic` para backup e restauração, agenda serviços/timers systemd para `daily`/`weekly`, e lista snapshots do repositório
 - AUR ainda não tem busca na UI, mas o daemon já aceita o caminho de instalação isolada via `VEGA_AUR_SOURCE_ROOT` e executa `makepkg` como `vega-build` dentro de `systemd-run`
 - Hardware, Kernel, Rede/Firewall e Usuários já têm backend básico e telas iniciais; ainda faltam integrações mais profundas e o módulo de Serviços continua fora da navegação do MVP
-- PKGBUILDs em `packaging/*/PKGBUILD` empacotam o checkout local; quando o repositório oficial existir, publicar PKGBUILDs finais apontando para a tag de release
+- PKGBUILDs em `packaging/*/PKGBUILD` usam a fonte versionada do Vega por padrão e aceitam `VEGA_SOURCE_URL`/`VEGA_SOURCE_DIR` para builds locais
 - `vegad` implementa `org.freedesktop.DBus.Introspectable` via reflection (`introspect.Methods`, ver `server.go`) — necessário para clientes como `dbus-next` (usado pela UI) que fazem introspecção antes de chamar métodos; `busctl`/`gdbus call` funcionam mesmo sem isso, então esse gap só aparece testando com o mesmo cliente D-Bus que a UI usa

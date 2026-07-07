@@ -29,14 +29,22 @@ export function installDemoVegaApi(): void {
     rollbackSnapshot: async () => {},
     setRetentionPolicy: async () => {},
     listBackupConfigs: async () => [
-      { id: 'home', paths: ['~/Documentos', '~/Imagens'], destination: '/backup/restic', frequency: 'daily' }
+      {
+        id: 'home',
+        paths: ['~/Documentos', '~/Imagens'],
+        destination: '/backup/restic',
+        destinationUUID: '',
+        frequency: 'daily'
+      }
     ],
     createBackupConfig: async () => 'home',
     runBackupNow: async () => 1,
     listBackupSnapshots: async () => [
       { id: 'a1b2c3', timestamp: Math.floor(Date.now() / 1000) - 7200, fileCount: 124, sizeBytes: 15_728_640 }
     ],
+    listBackupSnapshotPaths: async () => ['~/Documentos', '~/Imagens', '~/Vídeos'],
     restoreBackupSnapshot: async () => 1,
+    restoreBackupItems: async () => 2,
     deleteBackupConfig: async () => {},
     windowMinimize: async () => {},
     windowToggleMaximize: async () => ({ maximized: false }),
@@ -44,7 +52,9 @@ export function installDemoVegaApi(): void {
     windowIsMaximized: async () => false,
     onWindowState: noop,
     onTransactionProgress: noop,
-    onTransactionFinished: noop
+    onTransactionFinished: noop,
+    onBackupTransactionProgress: noop,
+    onBackupTransactionFinished: noop
   }
 
   window.vega = api

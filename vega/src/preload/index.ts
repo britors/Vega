@@ -5,6 +5,8 @@ import type {
   SnapshotInfo,
   BackupConfig,
   BackupSnapshotInfo,
+  BackupTransactionProgress,
+  BackupTransactionFinished,
   TransactionProgress,
   TransactionFinished
 } from '../main/dbusClient'
@@ -27,8 +29,12 @@ const api = {
   runBackupNow: (configId: string): Promise<number> => ipcRenderer.invoke('vega:runBackupNow', configId),
   listBackupSnapshots: (configId: string): Promise<BackupSnapshotInfo[]> =>
     ipcRenderer.invoke('vega:listBackupSnapshots', configId),
+  listBackupSnapshotPaths: (configId: string, snapshotId: string): Promise<string[]> =>
+    ipcRenderer.invoke('vega:listBackupSnapshotPaths', configId, snapshotId),
   restoreBackupSnapshot: (snapshotId: string, targetPath: string, mode: string): Promise<number> =>
     ipcRenderer.invoke('vega:restoreBackupSnapshot', snapshotId, targetPath, mode),
+  restoreBackupItems: (snapshotId: string, targetPath: string, mode: string, paths: string[]): Promise<number> =>
+    ipcRenderer.invoke('vega:restoreBackupItems', snapshotId, targetPath, mode, paths),
   deleteBackupConfig: (configId: string): Promise<void> => ipcRenderer.invoke('vega:deleteBackupConfig', configId),
   hardwareInventory: (): Promise<{ cpu: string; gpu: string; ramText: string }> =>
     ipcRenderer.invoke('vega:hardwareInventory'),
@@ -72,6 +78,16 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, evt: TransactionFinished): void => cb(evt)
     ipcRenderer.on('vega:transaction-finished', listener)
     return () => ipcRenderer.removeListener('vega:transaction-finished', listener)
+  },
+  onBackupTransactionProgress: (cb: (evt: BackupTransactionProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, evt: BackupTransactionProgress): void => cb(evt)
+    ipcRenderer.on('vega:backup-transaction-progress', listener)
+    return () => ipcRenderer.removeListener('vega:backup-transaction-progress', listener)
+  },
+  onBackupTransactionFinished: (cb: (evt: BackupTransactionFinished) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, evt: BackupTransactionFinished): void => cb(evt)
+    ipcRenderer.on('vega:backup-transaction-finished', listener)
+    return () => ipcRenderer.removeListener('vega:backup-transaction-finished', listener)
   }
 }
 

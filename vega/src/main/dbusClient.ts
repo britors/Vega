@@ -29,6 +29,24 @@ export interface TransactionFinished {
   message: string
 }
 
+export interface BackupTransactionProgress {
+  transactionId: number
+  percent: number
+  message: string
+}
+
+export interface BackupTransactionFinished {
+  transactionId: number
+  success: boolean
+  message: string
+}
+
+export interface BackupAlertEvent {
+  configId: string
+  consecutiveFailures: number
+  message: string
+}
+
 export interface SnapshotInfo {
   id: number
   timestamp: number
@@ -66,6 +84,7 @@ export interface BackupConfig {
   id: string
   paths: string[]
   destination: string
+  destinationUUID: string
   frequency: string
 }
 
@@ -74,6 +93,10 @@ export interface BackupSnapshotInfo {
   timestamp: number
   fileCount: number
   sizeBytes: number
+}
+
+export interface BackupItem {
+  path: string
 }
 
 /**
@@ -88,6 +111,7 @@ export interface BackupSnapshotInfo {
 export class VegaClient extends EventEmitter {
   private bus: MessageBus | null = null
   private softwareIface: ClientInterface | null = null
+  private backupIface: ClientInterface | null = null
 
   async connect(): Promise<void> {
     const bus = systemBus()
@@ -124,6 +148,47 @@ export class VegaClient extends EventEmitter {
       )
     } catch (err) {
       console.warn('vegad Software interface unavailable:', (err as Error).message)
+    }
+
+    try {
+      this.backupIface = await this.getInterface('Backup')
+      this.backupIface.on('BackupProgress', (transactionId: number, percent: number, message: string) => {
+        this.emit('backup-transaction-progress', {
+          transactionId,
+          percent,
+          message
+        } satisfies BackupTransactionProgress)
+      })
+      this.backupIface.on('BackupFinished', (transactionId: number, success: boolean, message: string) => {
+        this.emit('backup-transaction-finished', {
+          transactionId,
+          success,
+          message
+        } satisfies BackupTransactionFinished)
+      })
+      this.backupIface.on('RestoreProgress', (transactionId: number, percent: number, message: string) => {
+        this.emit('backup-transaction-progress', {
+          transactionId,
+          percent,
+          message
+        } satisfies BackupTransactionProgress)
+      })
+      this.backupIface.on('RestoreFinished', (transactionId: number, success: boolean, message: string) => {
+        this.emit('backup-transaction-finished', {
+          transactionId,
+          success,
+          message
+        } satisfies BackupTransactionFinished)
+      })
+      this.backupIface.on('BackupAlert', (configId: string, consecutiveFailures: number, message: string) => {
+        this.emit('backup-alert', {
+          configId,
+          consecutiveFailures,
+          message
+        } satisfies BackupAlertEvent)
+      })
+    } catch (err) {
+      console.warn('vegad Backup interface unavailable:', (err as Error).message)
     }
   }
 
@@ -233,13 +298,19 @@ export class VegaClient extends EventEmitter {
 
   async listBackupConfigs(): Promise<BackupConfig[]> {
     const iface = await this.getInterface('Backup')
-    const rows: [string, string[], string, string][] = await iface.ListConfigs()
-    return rows.map(([id, paths, destination, frequency]) => ({ id, paths, destination, frequency }))
+    const rows: [string, string[], string, string, string][] = await iface.ListConfigs()
+    return rows.map(([id, paths, destination, destinationUUID, frequency]) => ({
+      id,
+      paths,
+      destination,
+      destinationUUID,
+      frequency
+    }))
   }
 
   async createBackupConfig(config: BackupConfig): Promise<string> {
     const iface = await this.getInterface('Backup')
-    return iface.CreateConfig([config.id, config.paths, config.destination, config.frequency])
+    return iface.CreateConfig([config.id, config.paths, config.destination, config.destinationUUID, config.frequency])
   }
 
   async runBackupNow(configId: string): Promise<number> {
@@ -258,9 +329,19 @@ export class VegaClient extends EventEmitter {
     }))
   }
 
+  async listBackupSnapshotPaths(configId: string, snapshotId: string): Promise<string[]> {
+    const iface = await this.getInterface('Backup')
+    return iface.ListSnapshotPaths(configId, snapshotId)
+  }
+
   async restoreBackupSnapshot(snapshotId: string, targetPath: string, mode: string): Promise<number> {
     const iface = await this.getInterface('Backup')
     return iface.RestoreSnapshot(snapshotId, targetPath, mode)
+  }
+
+  async restoreBackupItems(snapshotId: string, targetPath: string, mode: string, paths: string[]): Promise<number> {
+    const iface = await this.getInterface('Backup')
+    return iface.RestoreItems(snapshotId, targetPath, mode, paths)
   }
 
   async deleteBackupConfig(configId: string): Promise<void> {
@@ -364,5 +445,6 @@ export class VegaClient extends EventEmitter {
     this.bus?.disconnect()
     this.bus = null
     this.softwareIface = null
+    this.backupIface = null
   }
 }

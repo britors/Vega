@@ -1,9 +1,12 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Notification } from 'electron'
 import { join } from 'node:path'
 import {
   VegaClient,
   type TransactionProgress,
   type TransactionFinished,
+  type BackupTransactionProgress,
+  type BackupTransactionFinished,
+  type BackupAlertEvent,
   type BackupConfig
 } from './dbusClient'
 
@@ -65,6 +68,21 @@ app.whenReady().then(async () => {
   vegaClient.on('transaction-finished', (evt: TransactionFinished) => {
     mainWindow?.webContents.send('vega:transaction-finished', evt)
   })
+  vegaClient.on('backup-transaction-progress', (evt: BackupTransactionProgress) => {
+    mainWindow?.webContents.send('vega:backup-transaction-progress', evt)
+  })
+  vegaClient.on('backup-transaction-finished', (evt: BackupTransactionFinished) => {
+    mainWindow?.webContents.send('vega:backup-transaction-finished', evt)
+  })
+  vegaClient.on('backup-alert', (evt: BackupAlertEvent) => {
+    mainWindow?.webContents.send('vega:backup-alert', evt)
+    if (Notification.isSupported()) {
+      new Notification({
+        title: 'Backup com falhas consecutivas',
+        body: `${evt.configId}: ${evt.consecutiveFailures} falhas seguidas. ${evt.message}`
+      }).show()
+    }
+  })
 
   ipcMain.handle('vega:ping', () => vegaClient.ping())
   ipcMain.handle('vega:search', (_event, query: string) => vegaClient.search(query))
@@ -82,10 +100,18 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:createBackupConfig', (_event, config: BackupConfig) => vegaClient.createBackupConfig(config))
   ipcMain.handle('vega:runBackupNow', (_event, configId: string) => vegaClient.runBackupNow(configId))
   ipcMain.handle('vega:listBackupSnapshots', (_event, configId: string) => vegaClient.listBackupSnapshots(configId))
+  ipcMain.handle('vega:listBackupSnapshotPaths', (_event, configId: string, snapshotId: string) =>
+    vegaClient.listBackupSnapshotPaths(configId, snapshotId)
+  )
   ipcMain.handle(
     'vega:restoreBackupSnapshot',
     (_event, snapshotId: string, targetPath: string, mode: string) =>
       vegaClient.restoreBackupSnapshot(snapshotId, targetPath, mode)
+  )
+  ipcMain.handle(
+    'vega:restoreBackupItems',
+    (_event, snapshotId: string, targetPath: string, mode: string, paths: string[]) =>
+      vegaClient.restoreBackupItems(snapshotId, targetPath, mode, paths)
   )
   ipcMain.handle('vega:deleteBackupConfig', (_event, configId: string) => vegaClient.deleteBackupConfig(configId))
   ipcMain.handle('vega:hardwareInventory', () => vegaClient.hardwareInventory())

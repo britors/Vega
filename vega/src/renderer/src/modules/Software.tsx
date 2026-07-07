@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import EmptyState from '../components/EmptyState'
 import { useDialogs } from '../components/dialogs/useDialogs'
 
@@ -38,10 +38,46 @@ interface TransactionFinishedEvent {
 
 const originLabel: Record<string, string> = {
   official: 'Oficial',
-  flathub: 'Flathub'
+  flathub: 'Flathub',
+  aur: 'Comunidade'
 }
 
 type Tab = 'search' | 'updates'
+
+type GroupedPackage = {
+  key: string
+  title: string
+  description: string
+  items: PackageRef[]
+}
+
+function packageKey(pkg: PackageRef): string {
+  return (pkg.name || pkg.id).trim().toLowerCase()
+}
+
+function preferredPackage(items: PackageRef[]): PackageRef {
+  const order = ['official', 'flathub', 'aur']
+  return [...items].sort((a, b) => order.indexOf(a.origin) - order.indexOf(b.origin))[0] ?? items[0]
+}
+
+function groupPackages(items: PackageRef[] | null): GroupedPackage[] {
+  if (!items) return []
+  const groups = new Map<string, PackageRef[]>()
+  for (const pkg of items) {
+    const key = packageKey(pkg)
+    groups.set(key, [...(groups.get(key) ?? []), pkg])
+  }
+
+  return [...groups.entries()].map(([key, values]) => {
+    const primary = preferredPackage(values)
+    return {
+      key,
+      title: primary.name || primary.id,
+      description: primary.description,
+      items: values
+    }
+  })
+}
 
 export default function Software(): JSX.Element {
   const dialogs = useDialogs()
@@ -58,6 +94,7 @@ export default function Software(): JSX.Element {
 
   const [transactions, setTransactions] = useState<Record<number, Transaction>>({})
   const labelForTx = useRef<Map<number, string>>(new Map())
+  const [selectedOrigins, setSelectedOrigins] = useState<Record<string, string>>({})
 
   useEffect(() => {
     window.vega.ping().then(setStatus)
@@ -199,6 +236,12 @@ export default function Software(): JSX.Element {
 
   const activeList = tab === 'search' ? results : updates
   const listLoading = tab === 'search' ? searching : loadingUpdates
+  const groupedList = useMemo(() => groupPackages(activeList), [activeList])
+
+  function selectedPackageForGroup(group: GroupedPackage): PackageRef {
+    const desired = selectedOrigins[group.key]
+    return group.items.find((item) => item.origin === desired) ?? preferredPackage(group.items)
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -341,7 +384,7 @@ export default function Software(): JSX.Element {
       )}
 
       {tab === 'search' && activeList === null && !error && (
-        <EmptyState title="Busca de pacotes" message="Digite um termo e busque nas origens Oficial e Flathub." />
+        <EmptyState title="Busca de pacotes" message="Digite um termo e busque nas origens Oficial, Flathub e Comunidade." />
       )}
 
       {tab === 'updates' && listLoading && activeList === null && (
@@ -355,36 +398,77 @@ export default function Software(): JSX.Element {
         />
       )}
 
-      {activeList !== null && activeList.length > 0 && (
+      {groupedList.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {activeList.map((pkg) => (
-            <div
-              key={`${pkg.origin}:${pkg.id}`}
-              className="card"
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px' }}
-            >
-              <div>
-                <div style={{ fontWeight: 600 }}>{pkg.name || pkg.id}</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)' }}>{pkg.description}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="status-pill">{originLabel[pkg.origin] ?? pkg.origin}</span>
-                {tab === 'search' &&
-                  (pkg.installed ? (
-                    <button
-                      onClick={() => handleRemove(pkg)}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: 'var(--lyra-radius-sm)',
-                        border: '1px solid var(--lyra-border)',
-                        background: 'transparent',
-                        color: 'var(--lyra-danger)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Remover
-                    </button>
-                  ) : (
+          {groupedList.map((group) => {
+            const pkg = selectedPackageForGroup(group)
+            return (
+              <div
+                key={group.key}
+                className="card"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px' }}
+              >
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>{group.title}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)' }}>{group.description}</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    {group.items.map((item) => (
+                      <button
+                        key={`${group.key}:${item.origin}`}
+                        onClick={() =>
+                          setSelectedOrigins((prev) => ({
+                            ...prev,
+                            [group.key]: item.origin
+                          }))
+                        }
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 999,
+                          border: item.origin === pkg.origin ? 'none' : '1px solid var(--lyra-border)',
+                          background: item.origin === pkg.origin ? 'var(--lyra-gradient)' : 'transparent',
+                          color: item.origin === pkg.origin ? '#fff' : 'var(--lyra-text-muted)',
+                          cursor: 'pointer',
+                          fontSize: '0.78rem'
+                        }}
+                      >
+                        {originLabel[item.origin] ?? item.origin}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="status-pill">{originLabel[pkg.origin] ?? pkg.origin}</span>
+                  {tab === 'search' &&
+                    (pkg.installed ? (
+                      <button
+                        onClick={() => handleRemove(pkg)}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 'var(--lyra-radius-sm)',
+                          border: '1px solid var(--lyra-border)',
+                          background: 'transparent',
+                          color: 'var(--lyra-danger)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Remover
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleInstall(pkg)}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 'var(--lyra-radius-sm)',
+                          border: 'none',
+                          background: 'var(--lyra-gradient)',
+                          color: '#fff',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Instalar
+                      </button>
+                    ))}
+                  {tab === 'updates' && (
                     <button
                       onClick={() => handleInstall(pkg)}
                       style={{
@@ -396,27 +480,13 @@ export default function Software(): JSX.Element {
                         cursor: 'pointer'
                       }}
                     >
-                      Instalar
+                      Atualizar
                     </button>
-                  ))}
-                {tab === 'updates' && (
-                  <button
-                    onClick={() => handleInstall(pkg)}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: 'var(--lyra-radius-sm)',
-                      border: 'none',
-                      background: 'var(--lyra-gradient)',
-                      color: '#fff',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Atualizar
-                  </button>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

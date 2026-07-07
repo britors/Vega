@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import EmptyState from '../components/EmptyState'
+import { useDialogs } from '../components/dialogs/useDialogs'
 
 interface FirewallServiceInfo {
   name: string
@@ -8,6 +9,7 @@ interface FirewallServiceInfo {
 }
 
 export default function Network(): JSX.Element {
+  const dialogs = useDialogs()
   const [enabled, setEnabled] = useState(false)
   const [activeZone, setActiveZone] = useState('')
   const [services, setServices] = useState<FirewallServiceInfo[]>([])
@@ -41,6 +43,13 @@ export default function Network(): JSX.Element {
   }, [])
 
   async function toggleService(service: FirewallServiceInfo): Promise<void> {
+    const ok = await dialogs.confirm({
+      title: service.enabled ? 'Desativar serviço' : 'Ativar serviço',
+      message: `${service.enabled ? 'Desativar' : 'Ativar'} ${service.label} (${service.name}) no firewall?`,
+      variant: 'warning',
+      confirmLabel: service.enabled ? 'Desativar' : 'Ativar'
+    })
+    if (!ok) return
     setBusy(true)
     setError(null)
     try {
@@ -84,7 +93,7 @@ export default function Network(): JSX.Element {
       <div className="card" style={{ display: 'grid', gap: 10 }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Serviços</h2>
         {services.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--lyra-text-muted)' }}>Nenhum serviço listado.</p>
+          <EmptyState title="Nenhum serviço listado" message="O firewalld não retornou serviços disponíveis." />
         ) : (
           services.map((service) => (
             <div key={service.name} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
@@ -104,7 +113,7 @@ export default function Network(): JSX.Element {
                   cursor: 'pointer'
                 }}
               >
-                {service.enabled ? 'Desativar' : 'Ativar'}
+                {busy ? 'Processando...' : service.enabled ? 'Desativar' : 'Ativar'}
               </button>
             </div>
           ))

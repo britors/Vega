@@ -34,6 +34,13 @@ export default function Users(): JSX.Element {
   }, [])
 
   async function createUser(): Promise<void> {
+    const ok = await dialogs.confirm({
+      title: 'Criar usuário',
+      message: `Criar ${username.trim()} como ${isAdmin ? 'administrador' : 'usuário comum'}?`,
+      variant: 'warning',
+      confirmLabel: 'Criar'
+    })
+    if (!ok) return
     setBusy(true)
     setError(null)
     try {
@@ -132,7 +139,7 @@ export default function Users(): JSX.Element {
       <div className="card" style={{ display: 'grid', gap: 10 }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Usuários</h2>
         {users.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--lyra-text-muted)' }}>Nenhum usuário listado.</p>
+          <EmptyState title="Nenhum usuário listado" message="Ainda não há contas cadastradas." />
         ) : (
           users.map((user) => (
             <div key={user.username} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
@@ -155,7 +162,7 @@ export default function Users(): JSX.Element {
                     cursor: 'pointer'
                   }}
                 >
-                  {user.isAdmin ? 'Remover admin' : 'Tornar admin'}
+                  {busy ? 'Processando...' : user.isAdmin ? 'Remover admin' : 'Tornar admin'}
                 </button>
                 <button
                   onClick={() => removeUser(user)}
@@ -169,7 +176,7 @@ export default function Users(): JSX.Element {
                     cursor: 'pointer'
                   }}
                 >
-                  Remover
+                  {busy ? 'Processando...' : 'Remover'}
                 </button>
               </div>
             </div>
