@@ -274,10 +274,12 @@ export class VegaClient extends EventEmitter {
 
   async listSnapshots(): Promise<SnapshotInfo[]> {
     const iface = await this.getInterface('Snapshots')
-    const rows: [number, number, string, string][] = await iface.ListSnapshots()
+    // timestamp is D-Bus type 'x' (int64) — dbus-next hands those back as
+    // BigInt, not number, regardless of this array's declared type.
+    const rows: [number, bigint, string, string][] = await iface.ListSnapshots()
     return rows.map(([id, timestamp, trigger, description]) => ({
       id,
-      timestamp,
+      timestamp: Number(timestamp),
       trigger,
       description
     }))
@@ -327,10 +329,12 @@ export class VegaClient extends EventEmitter {
 
   async listBackupSnapshots(configId: string): Promise<BackupSnapshotInfo[]> {
     const iface = await this.getInterface('Backup')
-    const rows: [string, number, bigint, bigint][] = await iface.ListSnapshots(configId)
+    // timestamp is D-Bus type 'x' (int64) — dbus-next hands those back as
+    // BigInt, not number, regardless of this array's declared type.
+    const rows: [string, bigint, bigint, bigint][] = await iface.ListSnapshots(configId)
     return rows.map(([id, timestamp, fileCount, sizeBytes]) => ({
       id,
-      timestamp,
+      timestamp: Number(timestamp),
       fileCount: Number(fileCount),
       sizeBytes: Number(sizeBytes)
     }))
