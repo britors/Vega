@@ -64,7 +64,7 @@ export default function Backup(): JSX.Element {
   const [paths, setPaths] = useState('~/Documentos,~/Imagens')
   const [destination, setDestination] = useState('/backup/restic')
   const [destinationUUID, setDestinationUUID] = useState('')
-  const [frequency, setFrequency] = useState('manual')
+  const [frequency, setFrequency] = useState('daily')
   const [restoreTarget, setRestoreTarget] = useState('~/Restaurado')
   const [restoreMode, setRestoreMode] = useState('separate-folder')
 

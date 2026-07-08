@@ -16,10 +16,11 @@ for package in "${packages[@]}"; do
   echo "Buildando $package a partir de $repo_root"
   (
     cd "$pkgbuild_dir"
-    VEGA_SOURCE_DIR="$repo_root" VEGA_SOURCE_URL="file://$repo_root" makepkg -f --noconfirm --nodeps
+    VEGA_SOURCE_DIR="$repo_root" VEGA_SOURCE_URL="git+file://$repo_root" makepkg -f --noconfirm --nodeps
   )
 
-  pkgfile="$(find "$pkgbuild_dir" -maxdepth 1 -name "$package-[0-9]*.pkg.tar.zst" -printf '%T@ %p\n' \
+  pkgname="$(source "$pkgbuild_dir/PKGBUILD"; echo "$pkgname")"
+  pkgfile="$(find "$pkgbuild_dir" -maxdepth 1 -name "$pkgname-[0-9]*.pkg.tar.zst" -printf '%T@ %p\n' \
     | sort -rn | head -1 | cut -d' ' -f2-)"
 
   if [[ -z "$pkgfile" ]]; then

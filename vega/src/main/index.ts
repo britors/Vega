@@ -7,7 +7,8 @@ import {
   type BackupTransactionProgress,
   type BackupTransactionFinished,
   type BackupAlertEvent,
-  type BackupConfig
+  type BackupConfig,
+  type UpdatesAvailableEvent
 } from './dbusClient'
 
 const vegaClient = new VegaClient()
@@ -80,6 +81,18 @@ app.whenReady().then(async () => {
       new Notification({
         title: 'Backup com falhas consecutivas',
         body: `${evt.configId}: ${evt.consecutiveFailures} falhas seguidas. ${evt.message}`
+      }).show()
+    }
+  })
+  vegaClient.on('updates-available', (evt: UpdatesAvailableEvent) => {
+    mainWindow?.webContents.send('vega:updates-available', evt)
+    if (Notification.isSupported()) {
+      new Notification({
+        title: 'Atualizações disponíveis',
+        body:
+          evt.count === 1
+            ? '1 pacote com atualização pendente.'
+            : `${evt.count} pacotes com atualização pendente.`
       }).show()
     }
   })

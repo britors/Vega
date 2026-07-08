@@ -47,6 +47,10 @@ export interface BackupAlertEvent {
   message: string
 }
 
+export interface UpdatesAvailableEvent {
+  count: number
+}
+
 export interface SnapshotInfo {
   id: number
   timestamp: number
@@ -146,6 +150,9 @@ export class VegaClient extends EventEmitter {
           this.emit('transaction-finished', { transactionId, success, message } satisfies TransactionFinished)
         }
       )
+      this.softwareIface.on('UpdatesAvailable', (count: number) => {
+        this.emit('updates-available', { count } satisfies UpdatesAvailableEvent)
+      })
     } catch (err) {
       console.warn('vegad Software interface unavailable:', (err as Error).message)
     }
