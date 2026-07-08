@@ -23,6 +23,18 @@ instalações Arch-like baseadas em `systemd`.
 - as dependências opcionais continuam opcionais
 - os pacotes transitórios `lyrae` e `lyraed` permanecem cobertos por `provides`/`conflicts`
 
+## Versionamento
+
+Desde a `v1.0.0`, `pkgver` é fixo (não mais calculado via `pkgver()`/VCS) e o
+`source` de cada PKGBUILD aponta para `#tag=v${pkgver}` no GitHub, não para
+`#branch=main`. Ou seja, commits em `main` não mudam mais a versão sozinhos.
+Para lançar uma nova versão:
+
+1. Dar `git tag vX.Y.Z` no commit desejado e `git push origin vX.Y.Z`
+2. Atualizar `pkgver=X.Y.Z` (e resetar `pkgrel=1`) nos dois PKGBUILDs
+3. Se for só uma correção de empacotamento sem mudar o código (mesma tag),
+   basta subir `pkgrel`
+
 ## Fluxo de publicação
 
 1. Enviar `lyra-vega` e `vegad` para o AUR
