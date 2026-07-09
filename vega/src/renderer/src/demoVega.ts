@@ -18,6 +18,7 @@ export function installDemoVegaApi(): void {
     ],
     listUpdates: async () => [],
     install: async () => 1,
+    getAurPkgbuild: async () => '# demo\npkgname=exemplo\npkgver=1.0.0',
     remove: async () => 2,
     updateAll: async () => 3,
     clearCache: async () => 4,
@@ -27,6 +28,7 @@ export function installDemoVegaApi(): void {
     createSnapshot: async () => 42,
     diffPackages: async () => ['- pacote antigo', '+ pacote novo'],
     rollbackSnapshot: async () => {},
+    deleteSnapshot: async () => {},
     setRetentionPolicy: async () => {},
     listBackupConfigs: async () => [
       {

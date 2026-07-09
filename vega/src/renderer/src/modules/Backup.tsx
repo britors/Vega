@@ -403,7 +403,7 @@ export default function Backup(): JSX.Element {
             onClick={createConfig}
             disabled={busy || paths.trim() === '' || destination.trim() === ''}
             style={{
-              padding: '0 16px',
+              padding: '6px 14px',
               borderRadius: 'var(--lyra-radius-sm)',
               border: 'none',
               background: 'var(--lyra-gradient)',

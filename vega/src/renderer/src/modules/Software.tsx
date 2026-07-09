@@ -42,7 +42,32 @@ const originLabel: Record<string, string> = {
   aur: 'Comunidade'
 }
 
-type Tab = 'search' | 'updates'
+type Tab = 'search' | 'updates' | 'recommended'
+
+interface RecommendedApp {
+  label: string
+  query: string
+  matchIds: string[]
+}
+
+// Curated one-click picks — matchIds narrows each search to the specific
+// package(s) that are actually this app (searching "chrome" also surfaces
+// unrelated chrome-* packages, etc.), across whichever origin has it.
+const RECOMMENDED_APPS: RecommendedApp[] = [
+  { label: 'Firefox', query: 'firefox', matchIds: ['firefox'] },
+  { label: 'Google Chrome', query: 'chrome', matchIds: ['com.google.Chrome', 'google-chrome'] },
+  { label: 'LibreOffice', query: 'libreoffice', matchIds: ['libreoffice-fresh', 'libreoffice-still'] },
+  { label: 'VLC', query: 'vlc', matchIds: ['vlc'] },
+  { label: 'Audacity', query: 'audacity', matchIds: ['audacity', 'org.audacityteam.Audacity'] },
+  { label: 'GIMP', query: 'gimp', matchIds: ['gimp', 'org.gimp.GIMP'] },
+  { label: 'Thunderbird', query: 'thunderbird', matchIds: ['thunderbird'] },
+  { label: 'Okular', query: 'okular', matchIds: ['okular', 'org.kde.okular'] },
+  { label: 'Kdenlive', query: 'kdenlive', matchIds: ['kdenlive', 'org.kde.kdenlive'] },
+  { label: 'Bitwarden', query: 'bitwarden', matchIds: ['bitwarden', 'com.bitwarden.desktop'] },
+  { label: 'Steam', query: 'steam', matchIds: ['steam', 'com.valvesoftware.Steam'] },
+  { label: 'Proton (GE)', query: 'proton-ge', matchIds: ['proton-ge-custom-bin', 'proton-ge-custom'] },
+  { label: 'VirtualBox', query: 'virtualbox', matchIds: ['virtualbox'] }
+]
 
 type GroupedPackage = {
   key: string
@@ -92,6 +117,9 @@ export default function Software(): JSX.Element {
   const [updates, setUpdates] = useState<PackageRef[] | null>(null)
   const [loadingUpdates, setLoadingUpdates] = useState(false)
 
+  const [recommended, setRecommended] = useState<(PackageRef | null)[] | null>(null)
+  const [loadingRecommended, setLoadingRecommended] = useState(false)
+
   const [transactions, setTransactions] = useState<Record<number, Transaction>>({})
   const labelForTx = useRef<Map<number, string>>(new Map())
   const [selectedOrigins, setSelectedOrigins] = useState<Record<string, string>>({})
@@ -127,6 +155,7 @@ export default function Software(): JSX.Element {
       // Refresh whichever list is showing once a transaction settles.
       if (tab === 'search' && query.trim()) runSearchQuery(query.trim())
       if (tab === 'updates') loadUpdates()
+      if (tab === 'recommended') loadRecommended()
     })
 
     return () => {
@@ -174,10 +203,53 @@ export default function Software(): JSX.Element {
     if (tab === 'updates' && updates === null && !loadingUpdates) {
       loadUpdates()
     }
+    if (tab === 'recommended' && recommended === null && !loadingRecommended) {
+      loadRecommended()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab])
 
+  async function loadRecommended(): Promise<void> {
+    setLoadingRecommended(true)
+    setError(null)
+    try {
+      const matches = await Promise.all(
+        RECOMMENDED_APPS.map(async (app) => {
+          const rows: PackageRef[] = await window.vega.search(app.query)
+          const candidates = rows.filter((row: PackageRef) => app.matchIds.includes(row.id))
+          if (candidates.length === 0) return null
+          return preferredPackage(candidates)
+        })
+      )
+      setRecommended(matches)
+    } catch (err) {
+      setError((err as Error).message)
+      setRecommended(null)
+    } finally {
+      setLoadingRecommended(false)
+    }
+  }
+
   async function handleInstall(pkg: PackageRef): Promise<void> {
+    if (pkg.origin === 'aur') {
+      let pkgbuild = ''
+      try {
+        pkgbuild = await window.vega.getAurPkgbuild(pkg.id)
+      } catch (err) {
+        setError((err as Error).message)
+        return
+      }
+      const ok = await dialogs.confirm({
+        title: `Instalar ${pkg.name || pkg.id} (Comunidade)`,
+        message:
+          'Pacotes da Comunidade (AUR) não são verificados pelo Lyra OS. Revise o script de build (PKGBUILD) abaixo antes de continuar.',
+        code: pkgbuild,
+        variant: 'warning',
+        confirmLabel: 'Instalar'
+      })
+      if (!ok) return
+    }
+
     const txId = await window.vega.install(pkg.origin, pkg.id)
     labelForTx.current.set(txId, `Instalando ${pkg.name || pkg.id}`)
     setTransactions((prev) => ({
@@ -234,7 +306,7 @@ export default function Software(): JSX.Element {
     }))
   }
 
-  const activeList = tab === 'search' ? results : updates
+  const activeList = tab === 'search' ? results : tab === 'updates' ? updates : null
   const listLoading = tab === 'search' ? searching : loadingUpdates
   const groupedList = useMemo(() => groupPackages(activeList), [activeList])
 
@@ -316,6 +388,13 @@ export default function Software(): JSX.Element {
           style={{ width: 'auto' }}
         >
           Atualizações{updates && updates.length > 0 ? ` (${updates.length})` : ''}
+        </button>
+        <button
+          onClick={() => setTab('recommended')}
+          className={`sidebar__item ${tab === 'recommended' ? 'sidebar__item--active' : ''}`}
+          style={{ width: 'auto' }}
+        >
+          Recomendados
         </button>
         <div style={{ flex: 1 }} />
         {tab === 'updates' && (
@@ -483,6 +562,65 @@ export default function Software(): JSX.Element {
                       Atualizar
                     </button>
                   )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {tab === 'recommended' && loadingRecommended && recommended === null && (
+        <EmptyState title="Carregando recomendações..." message="" />
+      )}
+
+      {tab === 'recommended' && recommended && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {RECOMMENDED_APPS.map((app, index) => {
+            const pkg = recommended[index]
+            return (
+              <div
+                key={app.label}
+                className="card"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px' }}
+              >
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>{app.label}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)' }}>
+                    {pkg ? pkg.description || pkg.id : 'Indisponível neste sistema'}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {pkg && <span className="status-pill">{originLabel[pkg.origin] ?? pkg.origin}</span>}
+                  {pkg &&
+                    (pkg.installed ? (
+                      <button
+                        onClick={() => handleRemove(pkg)}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 'var(--lyra-radius-sm)',
+                          border: '1px solid var(--lyra-border)',
+                          background: 'transparent',
+                          color: 'var(--lyra-danger)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Remover
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleInstall(pkg)}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 'var(--lyra-radius-sm)',
+                          border: 'none',
+                          background: 'var(--lyra-gradient)',
+                          color: '#fff',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Instalar
+                      </button>
+                    ))}
                 </div>
               </div>
             )

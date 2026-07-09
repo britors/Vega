@@ -257,6 +257,11 @@ export class VegaClient extends EventEmitter {
     return iface.Install(origin, id)
   }
 
+  async getAurPkgbuild(id: string): Promise<string> {
+    const iface = await this.software()
+    return iface.GetAurPkgbuild(id)
+  }
+
   async remove(origin: string, id: string): Promise<number> {
     const iface = await this.software()
     return iface.Remove(origin, id)
@@ -298,6 +303,11 @@ export class VegaClient extends EventEmitter {
   async rollbackSnapshot(snapshotId: number): Promise<void> {
     const iface = await this.getInterface('Snapshots')
     await iface.Rollback(snapshotId)
+  }
+
+  async deleteSnapshot(snapshotId: number): Promise<void> {
+    const iface = await this.getInterface('Snapshots')
+    await iface.DeleteSnapshot(snapshotId)
   }
 
   async setRetentionPolicy(keepCount: number): Promise<void> {

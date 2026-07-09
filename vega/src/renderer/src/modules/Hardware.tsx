@@ -115,7 +115,7 @@ export default function Hardware(): JSX.Element {
             onClick={applyDriver}
             disabled={busy}
             style={{
-              padding: '0 16px',
+              padding: '6px 14px',
               borderRadius: 'var(--lyra-radius-sm)',
               border: 'none',
               background: 'var(--lyra-gradient)',

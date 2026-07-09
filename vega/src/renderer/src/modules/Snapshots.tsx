@@ -23,7 +23,6 @@ export default function Snapshots(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [description, setDescription] = useState('')
-  const [diffText, setDiffText] = useState<string[] | null>(null)
   const [retention, setRetention] = useState('10')
   const [working, setWorking] = useState(false)
 
@@ -61,14 +60,21 @@ export default function Snapshots(): JSX.Element {
     }
   }
 
-  async function showDiff(snapshotId: number): Promise<void> {
+  async function deleteSnapshot(snapshotId: number): Promise<void> {
+    const ok = await dialogs.confirm({
+      title: 'Excluir ponto de restauração',
+      message: `Excluir o snapshot #${snapshotId}? Essa ação não pode ser desfeita.`,
+      variant: 'danger',
+      confirmLabel: 'Excluir'
+    })
+    if (!ok) return
     setWorking(true)
     setError(null)
     try {
-      setDiffText(await window.vega.diffPackages(snapshotId))
+      await window.vega.deleteSnapshot(snapshotId)
+      await loadSnapshots()
     } catch (err) {
       setError((err as Error).message)
-      setDiffText(null)
     } finally {
       setWorking(false)
     }
@@ -134,7 +140,7 @@ export default function Snapshots(): JSX.Element {
           onClick={createSnapshot}
           disabled={working || description.trim() === ''}
           style={{
-            padding: '0 16px',
+            padding: '6px 14px',
             borderRadius: 'var(--lyra-radius-sm)',
             border: 'none',
             background: 'var(--lyra-gradient)',
@@ -161,7 +167,7 @@ export default function Snapshots(): JSX.Element {
           onClick={saveRetention}
           disabled={working}
           style={{
-            padding: '0 16px',
+            padding: '6px 14px',
             borderRadius: 'var(--lyra-radius-sm)',
             border: '1px solid var(--lyra-border)',
             background: 'transparent',
@@ -202,18 +208,18 @@ export default function Snapshots(): JSX.Element {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
-                  onClick={() => showDiff(snapshot.id)}
+                  onClick={() => deleteSnapshot(snapshot.id)}
                   disabled={working}
                   style={{
                     padding: '6px 14px',
                     borderRadius: 'var(--lyra-radius-sm)',
                     border: '1px solid var(--lyra-border)',
                     background: 'transparent',
-                    color: 'var(--lyra-text-muted)',
+                    color: 'var(--lyra-danger)',
                     cursor: 'pointer'
                   }}
                 >
-                  Ver diff
+                  Excluir
                 </button>
                 <button
                   onClick={() => rollback(snapshot.id)}
@@ -232,23 +238,6 @@ export default function Snapshots(): JSX.Element {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {diffText && (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: '1rem' }}>Diferenças</h2>
-          <pre
-            style={{
-              margin: 0,
-              whiteSpace: 'pre-wrap',
-              fontFamily: 'inherit',
-              fontSize: '0.9rem',
-              color: 'var(--lyra-text-muted)'
-            }}
-          >
-            {diffText.join('\n')}
-          </pre>
         </div>
       )}
     </div>

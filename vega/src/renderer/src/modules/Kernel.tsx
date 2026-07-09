@@ -118,23 +118,26 @@ export default function Kernel(): JSX.Element {
       <div className="card" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <span style={{ color: 'var(--lyra-text-muted)' }}>Disponíveis</span>
         <div style={{ flex: 1 }} />
-        {['linux-zen', 'linux-lts'].map((kernel) => (
-          <button
-            key={kernel}
-            onClick={() => install(kernel)}
-            disabled={busy}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 'var(--lyra-radius-sm)',
-              border: 'none',
-              background: 'var(--lyra-gradient)',
-              color: '#fff',
-              cursor: 'pointer'
-            }}
-          >
-            {busy ? 'Processando...' : `Instalar ${kernel}`}
-          </button>
-        ))}
+        {['linux-zen', 'linux-lts'].map((kernel) => {
+          const isInstalled = kernels.includes(kernel)
+          return (
+            <button
+              key={kernel}
+              onClick={() => install(kernel)}
+              disabled={busy || isInstalled}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 'var(--lyra-radius-sm)',
+                border: 'none',
+                background: isInstalled ? 'var(--lyra-surface-raised)' : 'var(--lyra-gradient)',
+                color: isInstalled ? 'var(--lyra-text-muted)' : '#fff',
+                cursor: isInstalled ? 'default' : 'pointer'
+              }}
+            >
+              {isInstalled ? `${kernel} instalado` : busy ? 'Processando...' : `Instalar ${kernel}`}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

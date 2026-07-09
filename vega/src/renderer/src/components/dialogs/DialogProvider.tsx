@@ -11,6 +11,7 @@ interface DialogButton {
 interface DialogRequest {
   title: string
   message: string
+  code?: string
   variant?: DialogVariant
   buttons: DialogButton[]
 }
@@ -34,23 +35,32 @@ export function DialogProvider({ children }: { children: ReactNode }): JSX.Eleme
 
   const api = useMemo<DialogContextValue>(
     () => ({
-      alert: async ({ title, message, variant = 'info' }) => {
+      alert: async ({ title, message, code, variant = 'info' }) => {
         await new Promise<void>((resolve) => {
           setResolver(() => () => resolve())
           setRequest({
             title,
             message,
+            code,
             variant,
             buttons: [{ label: 'OK', value: 'ok', primary: true }]
           })
         })
       },
-      confirm: async ({ title, message, variant = 'warning', confirmLabel = 'Confirmar', cancelLabel = 'Cancelar' }) => {
+      confirm: async ({
+        title,
+        message,
+        code,
+        variant = 'warning',
+        confirmLabel = 'Confirmar',
+        cancelLabel = 'Cancelar'
+      }) => {
         return await new Promise<boolean>((resolve) => {
           setResolver(() => resolve)
           setRequest({
             title,
             message,
+            code,
             variant,
             buttons: [
               { label: cancelLabel, value: 'cancel' },
@@ -78,6 +88,7 @@ export function DialogProvider({ children }: { children: ReactNode }): JSX.Eleme
           <div className={`dialog dialog--${request.variant ?? 'info'}`} role="dialog" aria-modal="true">
             <h2 className="dialog__title">{request.title}</h2>
             <p className="dialog__message">{request.message}</p>
+            {request.code && <pre className="dialog__code">{request.code}</pre>}
             <div className="dialog__actions">
               {request.buttons.map((button) => (
                 <button

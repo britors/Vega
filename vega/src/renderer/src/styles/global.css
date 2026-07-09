@@ -245,6 +245,22 @@ body {
   line-height: 1.5;
 }
 
+.dialog__code {
+  margin: 12px 0 0;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border-radius: var(--lyra-radius-sm);
+  border: 1px solid var(--lyra-border);
+  background: var(--lyra-surface-raised);
+  color: var(--lyra-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .dialog__actions {
   display: flex;
   justify-content: flex-end;
