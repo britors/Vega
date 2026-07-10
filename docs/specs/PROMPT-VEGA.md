@@ -205,6 +205,7 @@ Este documento implica as seguintes correções nos specs já emitidos (aplicar 
 - Interface web/remota do Vega (estilo Cockpit)
 - Vega em modo TUI (YaST ncurses) — avaliar demanda
 - Loja com avaliações/comentários de apps
+- Virtualização (libvirt/KVM) (YaST tem; GNOME Boxes/virt-manager cobrem — issue #19)
 
 ---
 
