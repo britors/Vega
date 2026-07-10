@@ -124,6 +124,15 @@ export default function Software(): JSX.Element {
   const labelForTx = useRef<Map<number, string>>(new Map())
   const [selectedOrigins, setSelectedOrigins] = useState<Record<string, string>>({})
 
+  const tabRef = useRef(tab)
+  useEffect(() => {
+    tabRef.current = tab
+  }, [tab])
+  const queryRef = useRef(query)
+  useEffect(() => {
+    queryRef.current = query
+  }, [query])
+
   useEffect(() => {
     window.vega.ping().then(setStatus)
 
@@ -152,10 +161,12 @@ export default function Software(): JSX.Element {
           success: evt.success
         }
       }))
-      // Refresh whichever list is showing once a transaction settles.
-      if (tab === 'search' && query.trim()) runSearchQuery(query.trim())
-      if (tab === 'updates') loadUpdates()
-      if (tab === 'recommended') loadRecommended()
+      // Refresh whichever list is showing once a transaction settles. Reads
+      // via refs, not the closed-over tab/query state, since this handler
+      // is registered once on mount and would otherwise see stale values.
+      if (tabRef.current === 'search' && queryRef.current.trim()) runSearchQuery(queryRef.current.trim())
+      if (tabRef.current === 'updates') loadUpdates()
+      if (tabRef.current === 'recommended') loadRecommended()
     })
 
     return () => {
