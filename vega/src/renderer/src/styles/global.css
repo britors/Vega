@@ -167,9 +167,46 @@ body {
   color: var(--lyra-text);
 }
 
+.sidebar__panel {
+  margin-bottom: 6px;
+}
+
+.sidebar__panel-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--lyra-radius-sm);
+  background: transparent;
+  color: var(--lyra-text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.sidebar__panel-trigger:hover {
+  background: var(--lyra-surface);
+  color: var(--lyra-text);
+}
+
+.sidebar__panel-chevron {
+  font-size: 1rem;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.14s ease;
+}
+
+.sidebar__panel-chevron--open {
+  transform: rotate(90deg);
+}
+
 .sidebar__nav {
   list-style: none;
-  margin: 0;
+  margin: 2px 0 8px;
   padding: 0;
   display: flex;
   flex-direction: column;

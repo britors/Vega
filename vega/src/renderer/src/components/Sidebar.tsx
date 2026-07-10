@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { modules } from '../modules/registry'
 
 interface SidebarProps {
@@ -14,6 +14,11 @@ const sectionLabels: Record<string, string> = {
 
 export default function Sidebar({ activeId, onSelect }: SidebarProps): JSX.Element {
   const [query, setQuery] = useState('')
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    principal: true,
+    sistema: true,
+    outros: false
+  })
 
   const grouped = useMemo(() => {
     const filtered = modules.filter((m) => m.label.toLowerCase().includes(query.toLowerCase()))
@@ -24,6 +29,22 @@ export default function Sidebar({ activeId, onSelect }: SidebarProps): JSX.Eleme
     }
     return groups
   }, [query])
+
+  useEffect(() => {
+    if (query.trim()) {
+      setExpanded((current) => ({
+        ...current,
+        ...Object.fromEntries(Object.keys(grouped).map((section) => [section, true]))
+      }))
+      return
+    }
+    const active = modules.find((mod) => mod.id === activeId)
+    if (active) setExpanded((current) => ({ ...current, [active.section]: true }))
+  }, [activeId, grouped, query])
+
+  function toggleSection(section: string): void {
+    setExpanded((current) => ({ ...current, [section]: !current[section] }))
+  }
 
   return (
     <nav className="sidebar">
@@ -37,34 +58,32 @@ export default function Sidebar({ activeId, onSelect }: SidebarProps): JSX.Eleme
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      {Object.entries(grouped).map(([section, items]) => (
-        <div key={section} style={{ marginBottom: 12 }}>
-          <div
-            style={{
-              fontSize: '0.72rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              color: 'var(--lyra-text-muted)',
-              padding: '8px 12px 4px'
-            }}
-          >
-            {sectionLabels[section] ?? section}
+      {Object.entries(grouped).map(([section, items]) => {
+        const open = Boolean(expanded[section])
+        return (
+          <div className="sidebar__panel" key={section}>
+            <button className="sidebar__panel-trigger" onClick={() => toggleSection(section)} aria-expanded={open}>
+              <span>{sectionLabels[section] ?? section}</span>
+              <span className={`sidebar__panel-chevron ${open ? 'sidebar__panel-chevron--open' : ''}`}>›</span>
+            </button>
+            {open && (
+              <ul className="sidebar__nav">
+                {items.map((mod) => (
+                  <li key={mod.id}>
+                    <button
+                      className={`sidebar__item ${activeId === mod.id ? 'sidebar__item--active' : ''}`}
+                      onClick={() => onSelect(mod.id)}
+                    >
+                      {mod.star && <span className="sidebar__item--star">★</span>}
+                      {mod.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          <ul className="sidebar__nav">
-            {items.map((mod) => (
-              <li key={mod.id}>
-                <button
-                  className={`sidebar__item ${activeId === mod.id ? 'sidebar__item--active' : ''}`}
-                  onClick={() => onSelect(mod.id)}
-                >
-                  {mod.star && <span className="sidebar__item--star">★</span>}
-                  {mod.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+        )
+      })}
     </nav>
   )
 }

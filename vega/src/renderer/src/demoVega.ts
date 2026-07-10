@@ -142,6 +142,72 @@ export function installDemoVegaApi(): void {
     importVPN: async () => {},
     getProxy: async () => ({ http: '', https: '', socks: '', no: 'localhost,127.0.0.1' }),
     setProxy: async () => {},
+    bluetoothStatus: async () => ({
+      available: true,
+      powered: true,
+      discoverable: false,
+      pairable: true,
+      scanning: false,
+      controller: '00:11:22:33:44:55',
+      controllerName: 'Adaptador Bluetooth demo',
+      transferAvailable: true,
+      receiverActive: false,
+      receivePath: ''
+    }),
+    listBluetoothDevices: async () => [
+      {
+        address: 'AA:BB:CC:DD:EE:FF',
+        name: 'Fone demo',
+        alias: 'Fone demo',
+        icon: 'audio-headset',
+        paired: true,
+        trusted: true,
+        connected: false,
+        blocked: false,
+        rssi: -52
+      }
+    ],
+    setBluetoothPowered: async () => {},
+    setBluetoothDiscoverable: async () => {},
+    setBluetoothPairable: async () => {},
+    setBluetoothScanning: async () => {},
+    pairBluetoothDevice: async () => {},
+    trustBluetoothDevice: async () => {},
+    connectBluetoothDevice: async () => {},
+    disconnectBluetoothDevice: async () => {},
+    removeBluetoothDevice: async () => {},
+    sendBluetoothFile: async () => {},
+    startBluetoothFileReceiver: async () => {},
+    chooseBluetoothFile: async () => '',
+    chooseBluetoothReceiveDirectory: async () => '',
+    listDisplays: async () => [
+      {
+        name: 'eDP-1',
+        connected: true,
+        primary: true,
+        enabled: true,
+        width: 1920,
+        height: 1080,
+        x: 0,
+        y: 0,
+        currentMode: '1920x1080@60',
+        modes: [
+          { id: '1920x1080@60', width: 1920, height: 1080, refreshRate: 60, current: true, preferred: true },
+          { id: '1280x720@60', width: 1280, height: 720, refreshRate: 60, current: false, preferred: false }
+        ]
+      }
+    ],
+    applyDisplayConfig: async () => {},
+    listWallpapers: async () => [
+      {
+        id: 'demo-wallpaper',
+        name: 'Wallpaper demo',
+        path: '/usr/share/backgrounds/demo.jpg',
+        uri: '',
+        source: 'Demo'
+      }
+    ],
+    applyWallpaper: async () => 'Demo',
     listStorageVolumes: async () => [
       {
         name: 'nvme0n1p2',

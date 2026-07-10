@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, Notification } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Notification, dialog, type OpenDialogOptions } from 'electron'
 import { join } from 'node:path'
 import {
   VegaClient,
@@ -11,6 +11,13 @@ import {
   type UpdatesAvailableEvent,
   type ProxyConfig
 } from './dbusClient'
+import {
+  applyDisplayConfig,
+  applyWallpaper,
+  listDisplays,
+  listWallpapers,
+  type DisplayConfig
+} from './sessionSettings'
 
 const vegaClient = new VegaClient()
 let mainWindow: BrowserWindow | null = null
@@ -170,6 +177,51 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:importVPN', (_event, path: string) => vegaClient.importVPN(path))
   ipcMain.handle('vega:getProxy', () => vegaClient.getProxy())
   ipcMain.handle('vega:setProxy', (_event, config: ProxyConfig) => vegaClient.setProxy(config))
+  ipcMain.handle('vega:bluetoothStatus', () => vegaClient.bluetoothStatus())
+  ipcMain.handle('vega:listBluetoothDevices', () => vegaClient.listBluetoothDevices())
+  ipcMain.handle('vega:setBluetoothPowered', (_event, powered: boolean) => vegaClient.setBluetoothPowered(powered))
+  ipcMain.handle('vega:setBluetoothDiscoverable', (_event, discoverable: boolean) =>
+    vegaClient.setBluetoothDiscoverable(discoverable)
+  )
+  ipcMain.handle('vega:setBluetoothPairable', (_event, pairable: boolean) => vegaClient.setBluetoothPairable(pairable))
+  ipcMain.handle('vega:setBluetoothScanning', (_event, scanning: boolean) => vegaClient.setBluetoothScanning(scanning))
+  ipcMain.handle('vega:pairBluetoothDevice', (_event, address: string) => vegaClient.pairBluetoothDevice(address))
+  ipcMain.handle('vega:trustBluetoothDevice', (_event, address: string, trusted: boolean) =>
+    vegaClient.trustBluetoothDevice(address, trusted)
+  )
+  ipcMain.handle('vega:connectBluetoothDevice', (_event, address: string) =>
+    vegaClient.connectBluetoothDevice(address)
+  )
+  ipcMain.handle('vega:disconnectBluetoothDevice', (_event, address: string) =>
+    vegaClient.disconnectBluetoothDevice(address)
+  )
+  ipcMain.handle('vega:removeBluetoothDevice', (_event, address: string) => vegaClient.removeBluetoothDevice(address))
+  ipcMain.handle('vega:sendBluetoothFile', (_event, address: string, path: string) =>
+    vegaClient.sendBluetoothFile(address, path)
+  )
+  ipcMain.handle('vega:startBluetoothFileReceiver', (_event, directory: string) =>
+    vegaClient.startBluetoothFileReceiver(directory)
+  )
+  ipcMain.handle('vega:chooseBluetoothFile', async () => {
+    const options: OpenDialogOptions = {
+      title: 'Selecionar arquivo para enviar por Bluetooth',
+      properties: ['openFile']
+    }
+    const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options)
+    return result.canceled ? '' : result.filePaths[0] ?? ''
+  })
+  ipcMain.handle('vega:chooseBluetoothReceiveDirectory', async () => {
+    const options: OpenDialogOptions = {
+      title: 'Selecionar pasta para receber arquivos Bluetooth',
+      properties: ['openDirectory', 'createDirectory']
+    }
+    const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options)
+    return result.canceled ? '' : result.filePaths[0] ?? ''
+  })
+  ipcMain.handle('vega:listDisplays', () => listDisplays())
+  ipcMain.handle('vega:applyDisplayConfig', (_event, config: DisplayConfig) => applyDisplayConfig(config))
+  ipcMain.handle('vega:listWallpapers', () => listWallpapers())
+  ipcMain.handle('vega:applyWallpaper', (_event, path: string) => applyWallpaper(path))
   ipcMain.handle('vega:listStorageVolumes', () => vegaClient.listStorageVolumes())
   ipcMain.handle('vega:mountVolume', (_event, path: string) => vegaClient.mountVolume(path))
   ipcMain.handle('vega:unmountVolume', (_event, path: string) => vegaClient.unmountVolume(path))

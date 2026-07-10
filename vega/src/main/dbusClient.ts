@@ -139,6 +139,31 @@ export interface WifiNetworkInfo {
   device: string
 }
 
+export interface BluetoothStatus {
+  available: boolean
+  powered: boolean
+  discoverable: boolean
+  pairable: boolean
+  scanning: boolean
+  controller: string
+  controllerName: string
+  transferAvailable: boolean
+  receiverActive: boolean
+  receivePath: string
+}
+
+export interface BluetoothDeviceInfo {
+  address: string
+  name: string
+  alias: string
+  icon: string
+  paired: boolean
+  trusted: boolean
+  connected: boolean
+  blocked: boolean
+  rssi: number
+}
+
 export interface ProxyConfig {
   http: string
   https: string
@@ -676,6 +701,106 @@ export class VegaClient extends EventEmitter {
   async setProxy(config: ProxyConfig): Promise<void> {
     const iface = await this.getInterface('Network')
     await iface.SetProxy(config.http, config.https, config.socks, config.no)
+  }
+
+  async bluetoothStatus(): Promise<BluetoothStatus> {
+    const iface = await this.getInterface('Bluetooth')
+    const [
+      available,
+      powered,
+      discoverable,
+      pairable,
+      scanning,
+      controller,
+      controllerName,
+      transferAvailable,
+      receiverActive,
+      receivePath
+    ]: [boolean, boolean, boolean, boolean, boolean, string, string, boolean, boolean, string] = await iface.Status()
+    return {
+      available,
+      powered,
+      discoverable,
+      pairable,
+      scanning,
+      controller,
+      controllerName,
+      transferAvailable,
+      receiverActive,
+      receivePath
+    }
+  }
+
+  async listBluetoothDevices(): Promise<BluetoothDeviceInfo[]> {
+    const iface = await this.getInterface('Bluetooth')
+    const rows: [string, string, string, string, boolean, boolean, boolean, boolean, number][] =
+      await iface.ListDevices()
+    return rows.map(([address, name, alias, icon, paired, trusted, connected, blocked, rssi]) => ({
+      address,
+      name,
+      alias,
+      icon,
+      paired,
+      trusted,
+      connected,
+      blocked,
+      rssi
+    }))
+  }
+
+  async setBluetoothPowered(powered: boolean): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.SetPowered(powered)
+  }
+
+  async setBluetoothDiscoverable(discoverable: boolean): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.SetDiscoverable(discoverable)
+  }
+
+  async setBluetoothPairable(pairable: boolean): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.SetPairable(pairable)
+  }
+
+  async setBluetoothScanning(scanning: boolean): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.SetScanning(scanning)
+  }
+
+  async pairBluetoothDevice(address: string): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.Pair(address)
+  }
+
+  async trustBluetoothDevice(address: string, trusted: boolean): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.Trust(address, trusted)
+  }
+
+  async connectBluetoothDevice(address: string): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.Connect(address)
+  }
+
+  async disconnectBluetoothDevice(address: string): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.Disconnect(address)
+  }
+
+  async removeBluetoothDevice(address: string): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.Remove(address)
+  }
+
+  async sendBluetoothFile(address: string, path: string): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.SendFile(address, path)
+  }
+
+  async startBluetoothFileReceiver(directory: string): Promise<void> {
+    const iface = await this.getInterface('Bluetooth')
+    await iface.StartFileReceiver(directory)
   }
 
   async listStorageVolumes(): Promise<StorageVolumeInfo[]> {

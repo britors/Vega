@@ -10,6 +10,8 @@ Instalados automaticamente por `depends=()` ao rodar `yay -S lyra-vega`:
   - `dbus`
   - `polkit`
   - `pacman`
+  - `bluez`
+  - `bluez-obex`
 
 ## Requisitos de sistema (além dos pacotes)
 

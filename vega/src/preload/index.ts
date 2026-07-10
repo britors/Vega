@@ -10,8 +10,11 @@ import type {
   BackupTransactionFinished,
   TransactionProgress,
   TransactionFinished,
+  BluetoothStatus,
+  BluetoothDeviceInfo,
   ProxyConfig
 } from '../main/dbusClient'
+import type { DisplayConfig, DisplayOutputInfo, WallpaperInfo } from '../main/sessionSettings'
 
 const api = {
   ping: (): Promise<VegaSystemInfo> => ipcRenderer.invoke('vega:ping'),
@@ -95,6 +98,35 @@ const api = {
   importVPN: (path: string): Promise<void> => ipcRenderer.invoke('vega:importVPN', path),
   getProxy: (): Promise<ProxyConfig> => ipcRenderer.invoke('vega:getProxy'),
   setProxy: (config: ProxyConfig): Promise<void> => ipcRenderer.invoke('vega:setProxy', config),
+  bluetoothStatus: (): Promise<BluetoothStatus> => ipcRenderer.invoke('vega:bluetoothStatus'),
+  listBluetoothDevices: (): Promise<BluetoothDeviceInfo[]> => ipcRenderer.invoke('vega:listBluetoothDevices'),
+  setBluetoothPowered: (powered: boolean): Promise<void> => ipcRenderer.invoke('vega:setBluetoothPowered', powered),
+  setBluetoothDiscoverable: (discoverable: boolean): Promise<void> =>
+    ipcRenderer.invoke('vega:setBluetoothDiscoverable', discoverable),
+  setBluetoothPairable: (pairable: boolean): Promise<void> =>
+    ipcRenderer.invoke('vega:setBluetoothPairable', pairable),
+  setBluetoothScanning: (scanning: boolean): Promise<void> =>
+    ipcRenderer.invoke('vega:setBluetoothScanning', scanning),
+  pairBluetoothDevice: (address: string): Promise<void> => ipcRenderer.invoke('vega:pairBluetoothDevice', address),
+  trustBluetoothDevice: (address: string, trusted: boolean): Promise<void> =>
+    ipcRenderer.invoke('vega:trustBluetoothDevice', address, trusted),
+  connectBluetoothDevice: (address: string): Promise<void> =>
+    ipcRenderer.invoke('vega:connectBluetoothDevice', address),
+  disconnectBluetoothDevice: (address: string): Promise<void> =>
+    ipcRenderer.invoke('vega:disconnectBluetoothDevice', address),
+  removeBluetoothDevice: (address: string): Promise<void> =>
+    ipcRenderer.invoke('vega:removeBluetoothDevice', address),
+  sendBluetoothFile: (address: string, path: string): Promise<void> =>
+    ipcRenderer.invoke('vega:sendBluetoothFile', address, path),
+  startBluetoothFileReceiver: (directory: string): Promise<void> =>
+    ipcRenderer.invoke('vega:startBluetoothFileReceiver', directory),
+  chooseBluetoothFile: (): Promise<string> => ipcRenderer.invoke('vega:chooseBluetoothFile'),
+  chooseBluetoothReceiveDirectory: (): Promise<string> =>
+    ipcRenderer.invoke('vega:chooseBluetoothReceiveDirectory'),
+  listDisplays: (): Promise<DisplayOutputInfo[]> => ipcRenderer.invoke('vega:listDisplays'),
+  applyDisplayConfig: (config: DisplayConfig): Promise<void> => ipcRenderer.invoke('vega:applyDisplayConfig', config),
+  listWallpapers: (): Promise<WallpaperInfo[]> => ipcRenderer.invoke('vega:listWallpapers'),
+  applyWallpaper: (path: string): Promise<string> => ipcRenderer.invoke('vega:applyWallpaper', path),
   listStorageVolumes: (): Promise<
     {
       name: string
