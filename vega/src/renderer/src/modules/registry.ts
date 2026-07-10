@@ -5,6 +5,9 @@ import Backup from './Backup'
 import Hardware from './Hardware'
 import Kernel from './Kernel'
 import Network from './Network'
+import DateTimeLocale from './DateTimeLocale'
+import Storage from './Storage'
+import SystemMonitor from './SystemMonitor'
 import Users from './Users'
 import Services from './Services'
 import Logs from './Logs'
@@ -28,6 +31,9 @@ export const modules: VegaModule[] = [
   { id: 'hardware', label: 'Hardware', section: 'sistema', Component: Hardware },
   { id: 'kernel', label: 'Kernel', section: 'sistema', Component: Kernel },
   { id: 'network', label: 'Rede e Firewall', section: 'sistema', Component: Network },
+  { id: 'datetime', label: 'Data, Hora e Idioma', section: 'sistema', Component: DateTimeLocale },
+  { id: 'storage', label: 'Armazenamento', section: 'sistema', Component: Storage },
+  { id: 'monitor', label: 'Monitor de Sistema', section: 'sistema', Component: SystemMonitor },
   { id: 'users', label: 'Usuários', section: 'sistema', Component: Users },
   { id: 'services', label: 'Serviços', section: 'sistema', Component: Services },
   { id: 'logs', label: 'Log do Sistema', section: 'sistema', Component: Logs },

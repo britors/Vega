@@ -8,7 +8,8 @@ import {
   type BackupTransactionFinished,
   type BackupAlertEvent,
   type BackupConfig,
-  type UpdatesAvailableEvent
+  type UpdatesAvailableEvent,
+  type ProxyConfig
 } from './dbusClient'
 
 const vegaClient = new VegaClient()
@@ -109,6 +110,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:remove', (_event, origin: string, id: string) => vegaClient.remove(origin, id))
   ipcMain.handle('vega:updateAll', () => vegaClient.updateAll())
   ipcMain.handle('vega:clearCache', () => vegaClient.clearCache())
+  ipcMain.handle('vega:optimizeMirrors', () => vegaClient.optimizeMirrors())
   ipcMain.handle('vega:listSnapshots', () => vegaClient.listSnapshots())
   ipcMain.handle('vega:createSnapshot', (_event, description: string) => vegaClient.createSnapshot(description))
   ipcMain.handle('vega:diffPackages', (_event, snapshotId: number) => vegaClient.diffPackages(snapshotId))
@@ -139,12 +141,40 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:kernelListInstalled', () => vegaClient.kernelListInstalled())
   ipcMain.handle('vega:kernelInstall', (_event, kernel: string) => vegaClient.kernelInstall(kernel))
   ipcMain.handle('vega:kernelRemove', (_event, kernel: string) => vegaClient.kernelRemove(kernel))
+  ipcMain.handle('vega:bootStatus', () => vegaClient.bootStatus())
+  ipcMain.handle('vega:listBootEntries', () => vegaClient.listBootEntries())
+  ipcMain.handle('vega:applyBootConfig', (_event, defaultEntry: string, timeout: number, cmdline: string) =>
+    vegaClient.applyBootConfig(defaultEntry, timeout, cmdline)
+  )
   ipcMain.handle('vega:firewallStatus', () => vegaClient.firewallStatus())
   ipcMain.handle('vega:firewallListServices', () => vegaClient.firewallListServices())
   ipcMain.handle(
     'vega:firewallSetServiceEnabled',
     (_event, name: string, enabled: boolean) => vegaClient.firewallSetServiceEnabled(name, enabled)
   )
+  ipcMain.handle('vega:dateTimeStatus', () => vegaClient.dateTimeStatus())
+  ipcMain.handle('vega:listTimezones', () => vegaClient.listTimezones())
+  ipcMain.handle('vega:listLocales', () => vegaClient.listLocales())
+  ipcMain.handle('vega:listKeymaps', () => vegaClient.listKeymaps())
+  ipcMain.handle('vega:applyDateTimeLocale', (_event, timezone: string, ntp: boolean, locale: string, keymap: string) =>
+    vegaClient.applyDateTimeLocale(timezone, ntp, locale, keymap)
+  )
+  ipcMain.handle('vega:listNetworkInterfaces', () => vegaClient.listNetworkInterfaces())
+  ipcMain.handle('vega:listWifi', () => vegaClient.listWifi())
+  ipcMain.handle('vega:connectWifi', (_event, ssid: string, password: string) => vegaClient.connectWifi(ssid, password))
+  ipcMain.handle('vega:disconnectNetwork', (_event, device: string) => vegaClient.disconnectNetwork(device))
+  ipcMain.handle('vega:setStaticIPv4', (_event, connection: string, address: string, gateway: string, dns: string) =>
+    vegaClient.setStaticIPv4(connection, address, gateway, dns)
+  )
+  ipcMain.handle('vega:importVPN', (_event, path: string) => vegaClient.importVPN(path))
+  ipcMain.handle('vega:getProxy', () => vegaClient.getProxy())
+  ipcMain.handle('vega:setProxy', (_event, config: ProxyConfig) => vegaClient.setProxy(config))
+  ipcMain.handle('vega:listStorageVolumes', () => vegaClient.listStorageVolumes())
+  ipcMain.handle('vega:mountVolume', (_event, path: string) => vegaClient.mountVolume(path))
+  ipcMain.handle('vega:unmountVolume', (_event, path: string) => vegaClient.unmountVolume(path))
+  ipcMain.handle('vega:systemMetrics', () => vegaClient.systemMetrics())
+  ipcMain.handle('vega:listProcesses', () => vegaClient.listProcesses())
+  ipcMain.handle('vega:killProcess', (_event, pid: number) => vegaClient.killProcess(pid))
   ipcMain.handle('vega:listUsers', () => vegaClient.listUsers())
   ipcMain.handle('vega:createUser', (_event, username: string, isAdmin: boolean) => vegaClient.createUser(username, isAdmin))
   ipcMain.handle('vega:removeUser', (_event, username: string) => vegaClient.removeUser(username))

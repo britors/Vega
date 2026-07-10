@@ -9,7 +9,8 @@ import type {
   BackupTransactionProgress,
   BackupTransactionFinished,
   TransactionProgress,
-  TransactionFinished
+  TransactionFinished,
+  ProxyConfig
 } from '../main/dbusClient'
 
 const api = {
@@ -24,6 +25,7 @@ const api = {
   remove: (origin: string, id: string): Promise<number> => ipcRenderer.invoke('vega:remove', origin, id),
   updateAll: (): Promise<number> => ipcRenderer.invoke('vega:updateAll'),
   clearCache: (): Promise<number> => ipcRenderer.invoke('vega:clearCache'),
+  optimizeMirrors: (): Promise<number> => ipcRenderer.invoke('vega:optimizeMirrors'),
   listSnapshots: (): Promise<SnapshotInfo[]> => ipcRenderer.invoke('vega:listSnapshots'),
   createSnapshot: (description: string): Promise<number> => ipcRenderer.invoke('vega:createSnapshot', description),
   diffPackages: (snapshotId: number): Promise<string[]> => ipcRenderer.invoke('vega:diffPackages', snapshotId),
@@ -49,11 +51,83 @@ const api = {
   kernelListInstalled: (): Promise<string[]> => ipcRenderer.invoke('vega:kernelListInstalled'),
   kernelInstall: (kernel: string): Promise<number> => ipcRenderer.invoke('vega:kernelInstall', kernel),
   kernelRemove: (kernel: string): Promise<void> => ipcRenderer.invoke('vega:kernelRemove', kernel),
+  bootStatus: (): Promise<{ loader: string; defaultEntry: string; timeout: number; cmdline: string }> =>
+    ipcRenderer.invoke('vega:bootStatus'),
+  listBootEntries: (): Promise<string[]> => ipcRenderer.invoke('vega:listBootEntries'),
+  applyBootConfig: (defaultEntry: string, timeout: number, cmdline: string): Promise<void> =>
+    ipcRenderer.invoke('vega:applyBootConfig', defaultEntry, timeout, cmdline),
   firewallStatus: (): Promise<{ enabled: boolean; activeZone: string }> => ipcRenderer.invoke('vega:firewallStatus'),
   firewallListServices: (): Promise<{ name: string; label: string; enabled: boolean }[]> =>
     ipcRenderer.invoke('vega:firewallListServices'),
   firewallSetServiceEnabled: (name: string, enabled: boolean): Promise<void> =>
     ipcRenderer.invoke('vega:firewallSetServiceEnabled', name, enabled),
+  dateTimeStatus: (): Promise<{ timezone: string; ntp: boolean; locale: string; keymap: string }> =>
+    ipcRenderer.invoke('vega:dateTimeStatus'),
+  listTimezones: (): Promise<string[]> => ipcRenderer.invoke('vega:listTimezones'),
+  listLocales: (): Promise<string[]> => ipcRenderer.invoke('vega:listLocales'),
+  listKeymaps: (): Promise<string[]> => ipcRenderer.invoke('vega:listKeymaps'),
+  applyDateTimeLocale: (timezone: string, ntp: boolean, locale: string, keymap: string): Promise<void> =>
+    ipcRenderer.invoke('vega:applyDateTimeLocale', timezone, ntp, locale, keymap),
+  listNetworkInterfaces: (): Promise<
+    {
+      name: string
+      type: string
+      state: string
+      ipv4: string
+      ipv6: string
+      gateway: string
+      dns: string
+      mac: string
+      speed: string
+      ssid: string
+      signal: number
+      device: string
+      autoconf: boolean
+    }[]
+  > => ipcRenderer.invoke('vega:listNetworkInterfaces'),
+  listWifi: (): Promise<{ ssid: string; security: string; signal: number; active: boolean; device: string }[]> =>
+    ipcRenderer.invoke('vega:listWifi'),
+  connectWifi: (ssid: string, password: string): Promise<void> => ipcRenderer.invoke('vega:connectWifi', ssid, password),
+  disconnectNetwork: (device: string): Promise<void> => ipcRenderer.invoke('vega:disconnectNetwork', device),
+  setStaticIPv4: (connection: string, address: string, gateway: string, dns: string): Promise<void> =>
+    ipcRenderer.invoke('vega:setStaticIPv4', connection, address, gateway, dns),
+  importVPN: (path: string): Promise<void> => ipcRenderer.invoke('vega:importVPN', path),
+  getProxy: (): Promise<ProxyConfig> => ipcRenderer.invoke('vega:getProxy'),
+  setProxy: (config: ProxyConfig): Promise<void> => ipcRenderer.invoke('vega:setProxy', config),
+  listStorageVolumes: (): Promise<
+    {
+      name: string
+      path: string
+      type: string
+      fsType: string
+      size: string
+      used: string
+      avail: string
+      usePercent: number
+      mountpoint: string
+      model: string
+      removable: boolean
+      canMount: boolean
+      canUnmount: boolean
+    }[]
+  > => ipcRenderer.invoke('vega:listStorageVolumes'),
+  mountVolume: (path: string): Promise<void> => ipcRenderer.invoke('vega:mountVolume', path),
+  unmountVolume: (path: string): Promise<void> => ipcRenderer.invoke('vega:unmountVolume', path),
+  systemMetrics: (): Promise<{
+    cpuPercent: number
+    memUsed: number
+    memTotal: number
+    swapUsed: number
+    swapTotal: number
+    diskReadBytes: number
+    diskWriteBytes: number
+    netRxBytes: number
+    netTxBytes: number
+  }> => ipcRenderer.invoke('vega:systemMetrics'),
+  listProcesses: (): Promise<
+    { pid: number; name: string; user: string; cpuPercent: number; memory: number; state: string }[]
+  > => ipcRenderer.invoke('vega:listProcesses'),
+  killProcess: (pid: number): Promise<void> => ipcRenderer.invoke('vega:killProcess', pid),
   listUsers: (): Promise<{ username: string; isAdmin: boolean }[]> => ipcRenderer.invoke('vega:listUsers'),
   createUser: (username: string, isAdmin: boolean): Promise<void> => ipcRenderer.invoke('vega:createUser', username, isAdmin),
   removeUser: (username: string): Promise<void> => ipcRenderer.invoke('vega:removeUser', username),

@@ -5,6 +5,8 @@ import { useDialogs } from '../components/dialogs/useDialogs'
 export default function Kernel(): JSX.Element {
   const dialogs = useDialogs()
   const [kernels, setKernels] = useState<string[]>([])
+  const [boot, setBoot] = useState({ loader: '', defaultEntry: '', timeout: 5, cmdline: '' })
+  const [bootEntries, setBootEntries] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -13,7 +15,14 @@ export default function Kernel(): JSX.Element {
     setLoading(true)
     setError(null)
     try {
-      setKernels(await window.vega.kernelListInstalled())
+      const [nextKernels, nextBoot, nextEntries] = await Promise.all([
+        window.vega.kernelListInstalled(),
+        window.vega.bootStatus(),
+        window.vega.listBootEntries()
+      ])
+      setKernels(nextKernels)
+      setBoot(nextBoot)
+      setBootEntries(nextEntries)
     } catch (err) {
       setError((err as Error).message)
       setKernels([])
@@ -60,6 +69,26 @@ export default function Kernel(): JSX.Element {
     setError(null)
     try {
       await window.vega.kernelRemove(kernel)
+      await refresh()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function applyBoot(): Promise<void> {
+    const ok = await dialogs.confirm({
+      title: 'Alterar bootloader',
+      message: `Aplicar entrada padrão "${boot.defaultEntry || 'padrão atual'}", timeout ${boot.timeout}s e novos parâmetros de kernel? Um snapshot será criado antes da mudança quando possível.`,
+      variant: 'danger',
+      confirmLabel: 'Aplicar'
+    })
+    if (!ok) return
+    setBusy(true)
+    setError(null)
+    try {
+      await window.vega.applyBootConfig(boot.defaultEntry, boot.timeout, boot.cmdline)
       await refresh()
     } catch (err) {
       setError((err as Error).message)
@@ -138,6 +167,54 @@ export default function Kernel(): JSX.Element {
             </button>
           )
         })}
+      </div>
+
+      <div className="card" style={{ display: 'grid', gap: 12 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1rem' }}>Bootloader</h2>
+          <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
+            Detectado: {boot.loader || 'não detectado'}
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+          <label>
+            <div style={{ marginBottom: 6, color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>Entrada padrão</div>
+            <select
+              value={boot.defaultEntry}
+              onChange={(event) => setBoot({ ...boot, defaultEntry: event.target.value })}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--lyra-radius-sm)', border: '1px solid var(--lyra-border)', background: 'var(--lyra-surface-raised)', color: 'var(--lyra-text)' }}
+            >
+              {[boot.defaultEntry, ...bootEntries.filter((entry) => entry !== boot.defaultEntry)].filter(Boolean).map((entry) => (
+                <option key={entry} value={entry}>{entry}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <div style={{ marginBottom: 6, color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>Timeout</div>
+            <input
+              type="number"
+              min={0}
+              value={boot.timeout}
+              onChange={(event) => setBoot({ ...boot, timeout: Number(event.target.value) })}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--lyra-radius-sm)', border: '1px solid var(--lyra-border)', background: 'var(--lyra-surface-raised)', color: 'var(--lyra-text)' }}
+            />
+          </label>
+        </div>
+        <label>
+          <div style={{ marginBottom: 6, color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>Parâmetros de kernel</div>
+          <input
+            value={boot.cmdline}
+            onChange={(event) => setBoot({ ...boot, cmdline: event.target.value })}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--lyra-radius-sm)', border: '1px solid var(--lyra-border)', background: 'var(--lyra-surface-raised)', color: 'var(--lyra-text)' }}
+          />
+        </label>
+        <button
+          onClick={applyBoot}
+          disabled={busy || !boot.loader || boot.loader === 'não detectado'}
+          style={{ justifySelf: 'end', padding: '8px 16px', border: 'none', borderRadius: 'var(--lyra-radius-sm)', background: 'var(--lyra-gradient)', color: '#fff' }}
+        >
+          {busy ? 'Aplicando...' : 'Aplicar bootloader'}
+        </button>
       </div>
     </div>
   )
