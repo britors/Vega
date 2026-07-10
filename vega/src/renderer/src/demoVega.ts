@@ -61,6 +61,11 @@ export function installDemoVegaApi(): void {
     setServiceEnabled: async () => {},
     setServiceRunning: async () => {},
     restartService: async () => {},
+    queryLogs: async (unit: string) => [
+      '2026-07-10T10:00:00-03:00 demo systemd[1]: Exemplo de linha de log.',
+      `2026-07-10T10:00:01-03:00 demo ${unit || 'vegad'}[1234]: Outra linha de exemplo.`
+    ],
+    listLogUnits: async () => ['vegad.service', 'NetworkManager.service', 'sshd.service'],
     createBackupConfig: async () => 'home',
     runBackupNow: async () => 1,
     listBackupSnapshots: async () => [

@@ -508,6 +508,16 @@ export class VegaClient extends EventEmitter {
     await iface.SetServiceEnabled(name, enabled)
   }
 
+  async queryLogs(unit: string, priority: string, since: string, search: string, maxLines: number): Promise<string[]> {
+    const iface = await this.getInterface('Logs')
+    return iface.Query(unit, priority, since, search, maxLines)
+  }
+
+  async listLogUnits(): Promise<string[]> {
+    const iface = await this.getInterface('Logs')
+    return iface.ListUnits()
+  }
+
   async setServiceRunning(name: string, running: boolean): Promise<void> {
     const iface = await this.getInterface('Services')
     await iface.SetServiceRunning(name, running)

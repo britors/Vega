@@ -65,6 +65,9 @@ const api = {
   setServiceRunning: (name: string, running: boolean): Promise<void> =>
     ipcRenderer.invoke('vega:setServiceRunning', name, running),
   restartService: (name: string): Promise<void> => ipcRenderer.invoke('vega:restartService', name),
+  queryLogs: (unit: string, priority: string, since: string, search: string, maxLines: number): Promise<string[]> =>
+    ipcRenderer.invoke('vega:queryLogs', unit, priority, since, search, maxLines),
+  listLogUnits: (): Promise<string[]> => ipcRenderer.invoke('vega:listLogUnits'),
   windowMinimize: (): Promise<void> => ipcRenderer.invoke('vega:window:minimize'),
   windowToggleMaximize: (): Promise<{ maximized: boolean }> => ipcRenderer.invoke('vega:window:toggleMaximize'),
   windowClose: (): Promise<void> => ipcRenderer.invoke('vega:window:close'),

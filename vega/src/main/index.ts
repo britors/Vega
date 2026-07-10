@@ -156,6 +156,12 @@ app.whenReady().then(async () => {
     vegaClient.setServiceRunning(name, running)
   )
   ipcMain.handle('vega:restartService', (_event, name: string) => vegaClient.restartService(name))
+  ipcMain.handle(
+    'vega:queryLogs',
+    (_event, unit: string, priority: string, since: string, search: string, maxLines: number) =>
+      vegaClient.queryLogs(unit, priority, since, search, maxLines)
+  )
+  ipcMain.handle('vega:listLogUnits', () => vegaClient.listLogUnits())
   ipcMain.handle('vega:window:minimize', () => mainWindow?.minimize())
   ipcMain.handle('vega:window:toggleMaximize', () => {
     if (!mainWindow) return { maximized: false }

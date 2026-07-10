@@ -6,6 +6,7 @@ import Kernel from './Kernel'
 import Network from './Network'
 import Users from './Users'
 import Services from './Services'
+import Logs from './Logs'
 import About from './About'
 import type { ComponentType } from 'react'
 
@@ -27,5 +28,6 @@ export const modules: VegaModule[] = [
   { id: 'network', label: 'Rede e Firewall', section: 'sistema', Component: Network },
   { id: 'users', label: 'Usuários', section: 'sistema', Component: Users },
   { id: 'services', label: 'Serviços', section: 'sistema', Component: Services },
+  { id: 'logs', label: 'Log do Sistema', section: 'sistema', Component: Logs },
   { id: 'about', label: 'Sobre', section: 'outros', Component: About }
 ]
