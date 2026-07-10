@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "composite": true,
+    "outDir": ".tsbuild/web",
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
@@ -13,6 +14,6 @@
       "@renderer/*": ["src/renderer/src/*"]
     }
   },
-  "include": ["src/renderer/src/**/*", "src/preload/index.d.ts"],
+  "include": ["src/renderer/src/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

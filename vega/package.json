@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "tsc -b tsconfig.json",
     "lint": "eslint . --ext .ts,.tsx",
     "start": "electron-vite preview"
   },

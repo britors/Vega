@@ -9,6 +9,7 @@ release/
 *.log
 npm-debug.log*
 *.tsbuildinfo
+vega/.tsbuild/
 
 # Claude Code local settings
 .claude/settings.local.json
