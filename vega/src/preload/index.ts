@@ -14,6 +14,7 @@ import type {
 
 const api = {
   ping: (): Promise<VegaSystemInfo> => ipcRenderer.invoke('vega:ping'),
+  diskUsage: (): Promise<{ used: string; total: string; percent: number }> => ipcRenderer.invoke('vega:diskUsage'),
   search: (query: string): Promise<PackageRef[]> => ipcRenderer.invoke('vega:search', query),
   listUpdates: (): Promise<PackageRef[]> => ipcRenderer.invoke('vega:listUpdates'),
   getPackageDetails: (origin: string, id: string): Promise<PackageDetails> =>

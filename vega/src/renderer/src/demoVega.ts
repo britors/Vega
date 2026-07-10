@@ -7,6 +7,7 @@ export function installDemoVegaApi(): void {
 
   const api: VegaApi = {
     ping: async () => ({ version: 'demo', connected: false }),
+    diskUsage: async () => ({ used: '126G', total: '476G', percent: 27 }),
     search: async (query: string) => [
       {
         origin: 'official',

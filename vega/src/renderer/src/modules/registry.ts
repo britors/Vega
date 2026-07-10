@@ -1,3 +1,4 @@
+import Dashboard from './Dashboard'
 import Software from './Software'
 import Snapshots from './Snapshots'
 import Backup from './Backup'
@@ -20,6 +21,7 @@ export interface VegaModule {
 
 // MVP ISO surface: expose only modules backed by working daemon methods.
 export const modules: VegaModule[] = [
+  { id: 'dashboard', label: 'Painel', section: 'principal', Component: Dashboard },
   { id: 'software', label: 'Software', section: 'principal', star: true, Component: Software },
   { id: 'snapshots', label: 'Pontos de Restauração', section: 'principal', Component: Snapshots },
   { id: 'backup', label: 'Backup', section: 'principal', Component: Backup },

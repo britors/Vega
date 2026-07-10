@@ -239,6 +239,12 @@ export class VegaClient extends EventEmitter {
     }
   }
 
+  async diskUsage(): Promise<{ used: string; total: string; percent: number }> {
+    const iface = await this.getInterface('System')
+    const [used, total, percent]: [string, string, number] = await iface.DiskUsage()
+    return { used, total, percent }
+  }
+
   async search(query: string): Promise<PackageRef[]> {
     const iface = await this.software()
     const rows: [string, string, string, string, boolean][] = await iface.Search(query)

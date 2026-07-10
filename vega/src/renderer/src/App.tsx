@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import { modules } from './modules/registry'
 import WindowChrome from './components/window/WindowChrome'
 import { DialogProvider } from './components/dialogs/DialogProvider'
+import { NavigationContext } from './components/navigation/NavigationContext'
 
 export default function App(): JSX.Element {
   const [activeId, setActiveId] = useState(modules[0].id)
@@ -10,15 +11,17 @@ export default function App(): JSX.Element {
 
   return (
     <DialogProvider>
-      <div className="app-frame">
-        <WindowChrome />
-        <div className="app-shell">
-          <Sidebar activeId={activeId} onSelect={setActiveId} />
-          <main className="content">
-            <ActiveComponent />
-          </main>
+      <NavigationContext.Provider value={{ navigate: setActiveId }}>
+        <div className="app-frame">
+          <WindowChrome />
+          <div className="app-shell">
+            <Sidebar activeId={activeId} onSelect={setActiveId} />
+            <main className="content">
+              <ActiveComponent />
+            </main>
+          </div>
         </div>
-      </div>
+      </NavigationContext.Provider>
     </DialogProvider>
   )
 }

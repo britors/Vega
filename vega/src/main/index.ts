@@ -98,6 +98,7 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('vega:ping', () => vegaClient.ping())
+  ipcMain.handle('vega:diskUsage', () => vegaClient.diskUsage())
   ipcMain.handle('vega:search', (_event, query: string) => vegaClient.search(query))
   ipcMain.handle('vega:listUpdates', () => vegaClient.listUpdates())
   ipcMain.handle('vega:getPackageDetails', (_event, origin: string, id: string) =>
