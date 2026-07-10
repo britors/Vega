@@ -102,6 +102,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:diskUsage', () => vegaClient.diskUsage())
   ipcMain.handle('vega:search', (_event, query: string) => vegaClient.search(query))
   ipcMain.handle('vega:listUpdates', () => vegaClient.listUpdates())
+  ipcMain.handle('vega:listInstalled', () => vegaClient.listInstalled())
   ipcMain.handle('vega:getPackageDetails', (_event, origin: string, id: string) =>
     vegaClient.getPackageDetails(origin, id)
   )
@@ -180,6 +181,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:removeUser', (_event, username: string) => vegaClient.removeUser(username))
   ipcMain.handle('vega:setAdmin', (_event, username: string, isAdmin: boolean) => vegaClient.setAdmin(username, isAdmin))
   ipcMain.handle('vega:listManagedServices', () => vegaClient.listManagedServices())
+  ipcMain.handle('vega:listAllManagedServices', () => vegaClient.listAllManagedServices())
   ipcMain.handle('vega:setServiceEnabled', (_event, name: string, enabled: boolean) =>
     vegaClient.setServiceEnabled(name, enabled)
   )

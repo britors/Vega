@@ -14,6 +14,7 @@ interface ManagedServiceInfo {
 export default function Services(): JSX.Element {
   const dialogs = useDialogs()
   const [services, setServices] = useState<ManagedServiceInfo[]>([])
+  const [showAll, setShowAll] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +23,7 @@ export default function Services(): JSX.Element {
     setLoading(true)
     setError(null)
     try {
-      setServices(await window.vega.listManagedServices())
+      setServices(showAll ? await window.vega.listAllManagedServices() : await window.vega.listManagedServices())
     } catch (err) {
       setError((err as Error).message)
       setServices([])
@@ -33,7 +34,8 @@ export default function Services(): JSX.Element {
 
   useEffect(() => {
     refresh()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAll])
 
   async function setEnabled(service: ManagedServiceInfo): Promise<void> {
     const action = service.enabled ? 'desativar' : 'ativar'
@@ -98,11 +100,28 @@ export default function Services(): JSX.Element {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div className="card">
-        <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Serviços</h1>
-        <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-          Lista curada de units systemd com start/stop e enable/disable
-        </p>
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Serviços</h1>
+          <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
+            {showAll ? 'Todas as units service conhecidas pelo systemctl' : 'Lista curada de units systemd com start/stop e enable/disable'}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAll((value) => !value)}
+          disabled={loading || busy}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 'var(--lyra-radius-sm)',
+            border: '1px solid var(--lyra-border)',
+            background: showAll ? 'var(--lyra-surface-raised)' : 'transparent',
+            color: 'var(--lyra-text)',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {showAll ? 'Mostrar curados' : 'Mostrar tudo'}
+        </button>
       </div>
 
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
@@ -129,9 +148,12 @@ export default function Services(): JSX.Element {
       {loading && <EmptyState title="Carregando serviços..." />}
 
       <div className="card" style={{ display: 'grid', gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>Units principais</h2>
+        <h2 style={{ margin: 0, fontSize: '1rem' }}>{showAll ? 'Todas as units' : 'Units principais'}</h2>
         {services.length === 0 ? (
-          <EmptyState title="Nenhum serviço disponível" message="O daemon não retornou units curadas para esta máquina." />
+          <EmptyState
+            title="Nenhum serviço disponível"
+            message={showAll ? 'O systemctl não retornou services para esta máquina.' : 'O daemon não retornou units curadas para esta máquina.'}
+          />
         ) : (
           services.map((service) => (
             <div

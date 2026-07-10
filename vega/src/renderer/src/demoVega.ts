@@ -14,10 +14,29 @@ export function installDemoVegaApi(): void {
         id: 'firefox',
         name: 'Firefox',
         description: `Exemplo de busca para "${query}"`,
-        installed: false
+        installed: false,
+        icon: ''
       }
     ],
     listUpdates: async () => [],
+    listInstalled: async () => [
+      {
+        origin: 'official',
+        id: 'firefox',
+        name: 'Firefox',
+        description: 'Navegador web instalado',
+        installed: true,
+        icon: ''
+      },
+      {
+        origin: 'flathub',
+        id: 'org.gimp.GIMP',
+        name: 'GIMP',
+        description: '',
+        installed: true,
+        icon: ''
+      }
+    ],
     getPackageDetails: async (origin: string, id: string) => ({
       origin,
       id,
@@ -59,6 +78,11 @@ export function installDemoVegaApi(): void {
     listManagedServices: async () => [
       { name: 'sshd.service', label: 'Acesso remoto', description: 'Servidor SSH', enabled: false, active: false, available: true },
       { name: 'bluetooth.service', label: 'Bluetooth', description: 'Gerenciador do Bluetooth', enabled: true, active: true, available: true }
+    ],
+    listAllManagedServices: async () => [
+      { name: 'NetworkManager.service', label: 'NetworkManager', description: 'Network Manager', enabled: true, active: true, available: true },
+      { name: 'bluetooth.service', label: 'bluetooth', description: 'Bluetooth service', enabled: true, active: true, available: true },
+      { name: 'sshd.service', label: 'sshd', description: 'OpenSSH server daemon', enabled: false, active: false, available: true }
     ],
     setServiceEnabled: async () => {},
     setServiceRunning: async () => {},

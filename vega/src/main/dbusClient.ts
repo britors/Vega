@@ -15,6 +15,7 @@ export interface PackageRef {
   name: string
   description: string
   installed: boolean
+  icon: string
 }
 
 export interface PackageDetails {
@@ -329,13 +330,14 @@ export class VegaClient extends EventEmitter {
 
   async search(query: string): Promise<PackageRef[]> {
     const iface = await this.software()
-    const rows: [string, string, string, string, boolean][] = await iface.Search(query)
-    return rows.map(([origin, id, name, description, installed]) => ({
+    const rows: [string, string, string, string, boolean, string][] = await iface.Search(query)
+    return rows.map(([origin, id, name, description, installed, icon]) => ({
       origin,
       id,
       name,
       description,
-      installed
+      installed,
+      icon
     }))
   }
 
@@ -346,13 +348,27 @@ export class VegaClient extends EventEmitter {
 
   async listUpdates(): Promise<PackageRef[]> {
     const iface = await this.software()
-    const rows: [string, string, string, string, boolean][] = await iface.ListUpdates()
-    return rows.map(([origin, id, name, description, installed]) => ({
+    const rows: [string, string, string, string, boolean, string][] = await iface.ListUpdates()
+    return rows.map(([origin, id, name, description, installed, icon]) => ({
       origin,
       id,
       name,
       description,
-      installed
+      installed,
+      icon
+    }))
+  }
+
+  async listInstalled(): Promise<PackageRef[]> {
+    const iface = await this.software()
+    const rows: [string, string, string, string, boolean, string][] = await iface.ListInstalled()
+    return rows.map(([origin, id, name, description, installed, icon]) => ({
+      origin,
+      id,
+      name,
+      description,
+      installed,
+      icon
     }))
   }
 
@@ -752,6 +768,19 @@ export class VegaClient extends EventEmitter {
   async listManagedServices(): Promise<ManagedServiceInfo[]> {
     const iface = await this.getInterface('Services')
     const rows: [string, string, string, boolean, boolean, boolean][] = await iface.ListServices()
+    return rows.map(([name, label, description, enabled, active, available]) => ({
+      name,
+      label,
+      description,
+      enabled,
+      active,
+      available
+    }))
+  }
+
+  async listAllManagedServices(): Promise<ManagedServiceInfo[]> {
+    const iface = await this.getInterface('Services')
+    const rows: [string, string, string, boolean, boolean, boolean][] = await iface.ListAllServices()
     return rows.map(([name, label, description, enabled, active, available]) => ({
       name,
       label,

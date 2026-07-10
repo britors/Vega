@@ -13,6 +13,7 @@ interface PackageRef {
   name: string
   description: string
   installed: boolean
+  icon?: string
 }
 
 interface PackageDetails {
@@ -58,7 +59,8 @@ const originLabel: Record<string, string> = {
   aur: 'Comunidade'
 }
 
-type Tab = 'search' | 'updates' | 'recommended'
+type Tab = 'search' | 'installed' | 'updates' | 'recommended'
+type ViewMode = 'list' | 'cards'
 
 interface RecommendedApp {
   label: string
@@ -120,10 +122,46 @@ function groupPackages(items: PackageRef[] | null): GroupedPackage[] {
   })
 }
 
+function iconSrc(icon: string | undefined): string {
+  if (!icon) return ''
+  return `file://${icon.split('/').map(encodeURIComponent).join('/')}`
+}
+
+function PackageIcon({ pkg, size = 42 }: { pkg: PackageRef; size?: number }): JSX.Element {
+  const src = iconSrc(pkg.icon)
+  const label = (pkg.name || pkg.id || '?').trim().slice(0, 1).toUpperCase()
+  const baseStyle: React.CSSProperties = {
+    width: size,
+    height: size,
+    minWidth: size,
+    borderRadius: 8,
+    border: '1px solid var(--lyra-border)',
+    background: 'var(--lyra-surface-raised)',
+    display: 'grid',
+    placeItems: 'center',
+    overflow: 'hidden'
+  }
+
+  if (src) {
+    return (
+      <div style={baseStyle}>
+        <img src={src} alt="" style={{ width: '72%', height: '72%', objectFit: 'contain' }} />
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ ...baseStyle, color: 'var(--lyra-text-muted)', fontWeight: 700 }}>
+      {label}
+    </div>
+  )
+}
+
 export default function Software(): JSX.Element {
   const dialogs = useDialogs()
   const [status, setStatus] = useState<Status | null>(null)
   const [tab, setTab] = useState<Tab>('search')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<PackageRef[] | null>(null)
@@ -132,6 +170,8 @@ export default function Software(): JSX.Element {
 
   const [updates, setUpdates] = useState<PackageRef[] | null>(null)
   const [loadingUpdates, setLoadingUpdates] = useState(false)
+  const [installed, setInstalled] = useState<PackageRef[] | null>(null)
+  const [loadingInstalled, setLoadingInstalled] = useState(false)
 
   const [recommended, setRecommended] = useState<(PackageRef | null)[] | null>(null)
   const [loadingRecommended, setLoadingRecommended] = useState(false)
@@ -187,6 +227,7 @@ export default function Software(): JSX.Element {
       // via refs, not the closed-over tab/query state, since this handler
       // is registered once on mount and would otherwise see stale values.
       if (tabRef.current === 'search' && queryRef.current.trim()) runSearchQuery(queryRef.current.trim())
+      if (tabRef.current === 'installed') loadInstalled()
       if (tabRef.current === 'updates') loadUpdates()
       if (tabRef.current === 'recommended') loadRecommended()
 
@@ -246,7 +287,24 @@ export default function Software(): JSX.Element {
     }
   }
 
+  async function loadInstalled(): Promise<void> {
+    setLoadingInstalled(true)
+    setError(null)
+    try {
+      const rows = await window.vega.listInstalled()
+      setInstalled(rows)
+    } catch (err) {
+      setError((err as Error).message)
+      setInstalled(null)
+    } finally {
+      setLoadingInstalled(false)
+    }
+  }
+
   useEffect(() => {
+    if (tab === 'installed' && installed === null && !loadingInstalled) {
+      loadInstalled()
+    }
     if (tab === 'updates' && updates === null && !loadingUpdates) {
       loadUpdates()
     }
@@ -391,8 +449,8 @@ export default function Software(): JSX.Element {
     }))
   }
 
-  const activeList = tab === 'search' ? results : tab === 'updates' ? updates : null
-  const listLoading = tab === 'search' ? searching : loadingUpdates
+  const activeList = tab === 'search' ? results : tab === 'installed' ? installed : tab === 'updates' ? updates : null
+  const listLoading = tab === 'search' ? searching : tab === 'installed' ? loadingInstalled : loadingUpdates
   const groupedList = useMemo(() => groupPackages(activeList), [activeList])
 
   function selectedPackageForGroup(group: GroupedPackage): PackageRef {
@@ -468,6 +526,13 @@ export default function Software(): JSX.Element {
           Buscar
         </button>
         <button
+          onClick={() => setTab('installed')}
+          className={`sidebar__item ${tab === 'installed' ? 'sidebar__item--active' : ''}`}
+          style={{ width: 'auto' }}
+        >
+          Instalados{installed && installed.length > 0 ? ` (${installed.length})` : ''}
+        </button>
+        <button
           onClick={() => setTab('updates')}
           className={`sidebar__item ${tab === 'updates' ? 'sidebar__item--active' : ''}`}
           style={{ width: 'auto' }}
@@ -482,6 +547,32 @@ export default function Software(): JSX.Element {
           Recomendados
         </button>
         <div style={{ flex: 1 }} />
+        <div
+          style={{
+            display: 'flex',
+            padding: 3,
+            borderRadius: 'var(--lyra-radius-sm)',
+            border: '1px solid var(--lyra-border)',
+            background: 'var(--lyra-surface)'
+          }}
+        >
+          {(['list', 'cards'] as ViewMode[]).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 6,
+                border: 'none',
+                background: viewMode === mode ? 'var(--lyra-surface-raised)' : 'transparent',
+                color: viewMode === mode ? 'var(--lyra-text)' : 'var(--lyra-text-muted)',
+                cursor: 'pointer'
+              }}
+            >
+              {mode === 'list' ? 'Lista' : 'Cards'}
+            </button>
+          ))}
+        </div>
         {tab === 'updates' && (
           <button
             onClick={handleUpdateAll}
@@ -570,58 +661,105 @@ export default function Software(): JSX.Element {
         <EmptyState title="Verificando atualizações..." message="" />
       )}
 
+      {tab === 'installed' && listLoading && activeList === null && (
+        <EmptyState title="Carregando pacotes instalados..." message="" />
+      )}
+
       {activeList !== null && activeList.length === 0 && !listLoading && (
         <EmptyState
-          title={tab === 'search' ? 'Nenhum resultado' : 'Tudo em dia'}
-          message={tab === 'search' ? `Nada encontrado para "${query}".` : 'Nenhuma atualização pendente.'}
+          title={tab === 'search' ? 'Nenhum resultado' : tab === 'installed' ? 'Nenhum pacote listado' : 'Tudo em dia'}
+          message={
+            tab === 'search'
+              ? `Nada encontrado para "${query}".`
+              : tab === 'installed'
+                ? 'O sistema ainda não reportou pacotes instalados.'
+                : 'Nenhuma atualização pendente.'
+          }
         />
       )}
 
       {groupedList.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div
+          style={{
+            display: viewMode === 'cards' ? 'grid' : 'flex',
+            gridTemplateColumns: viewMode === 'cards' ? 'repeat(auto-fill, minmax(220px, 1fr))' : undefined,
+            flexDirection: viewMode === 'cards' ? undefined : 'column',
+            gap: 10
+          }}
+        >
           {groupedList.map((group) => {
             const pkg = selectedPackageForGroup(group)
+            const isCards = viewMode === 'cards'
             return (
               <div
                 key={group.key}
                 className="card"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px' }}
+                style={{
+                  display: 'flex',
+                  flexDirection: isCards ? 'column' : 'row',
+                  justifyContent: 'space-between',
+                  alignItems: isCards ? 'stretch' : 'center',
+                  gap: isCards ? 14 : 12,
+                  padding: isCards ? 16 : '14px 18px',
+                  minHeight: isCards ? 210 : undefined
+                }}
               >
                 <div
-                  style={{ minWidth: 0, flex: 1, cursor: 'pointer' }}
+                  style={{
+                    minWidth: 0,
+                    flex: 1,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: isCards ? 'column' : 'row',
+                    gap: isCards ? 12 : 14,
+                    alignItems: isCards ? 'flex-start' : 'center'
+                  }}
                   onClick={() => openDetails(pkg)}
                 >
-                  <div style={{ fontWeight: 600 }}>{group.title}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)' }}>{group.description}</div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                    {group.items.map((item) => (
-                      <button
-                        key={`${group.key}:${item.origin}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedOrigins((prev) => ({
-                            ...prev,
-                            [group.key]: item.origin
-                          }))
-                        }}
-                        style={{
-                          padding: '3px 8px',
-                          borderRadius: 999,
-                          border: item.origin === pkg.origin ? 'none' : '1px solid var(--lyra-border)',
-                          background: item.origin === pkg.origin ? 'var(--lyra-gradient)' : 'transparent',
-                          color: item.origin === pkg.origin ? '#fff' : 'var(--lyra-text-muted)',
-                          cursor: 'pointer',
-                          fontSize: '0.78rem'
-                        }}
-                      >
-                        {originLabel[item.origin] ?? item.origin}
-                      </button>
-                    ))}
+                  {isCards && <PackageIcon pkg={pkg} size={54} />}
+                  {!isCards && <PackageIcon pkg={pkg} />}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600 }}>{group.title}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)', marginTop: 3 }}>
+                      {group.description || pkg.id}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {group.items.map((item) => (
+                        <button
+                          key={`${group.key}:${item.origin}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedOrigins((prev) => ({
+                              ...prev,
+                              [group.key]: item.origin
+                            }))
+                          }}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 999,
+                            border: item.origin === pkg.origin ? 'none' : '1px solid var(--lyra-border)',
+                            background: item.origin === pkg.origin ? 'var(--lyra-gradient)' : 'transparent',
+                            color: item.origin === pkg.origin ? '#fff' : 'var(--lyra-text-muted)',
+                            cursor: 'pointer',
+                            fontSize: '0.78rem'
+                          }}
+                        >
+                          {originLabel[item.origin] ?? item.origin}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: isCards ? 'space-between' : 'flex-end',
+                    gap: 10
+                  }}
+                >
                   <span className="status-pill">{originLabel[pkg.origin] ?? pkg.origin}</span>
-                  {tab === 'search' &&
+                  {(tab === 'search' || tab === 'installed') &&
                     (pkg.installed ? (
                       <button
                         onClick={() => handleRemove(pkg)}
@@ -678,25 +816,59 @@ export default function Software(): JSX.Element {
       )}
 
       {tab === 'recommended' && recommended && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div
+          style={{
+            display: viewMode === 'cards' ? 'grid' : 'flex',
+            gridTemplateColumns: viewMode === 'cards' ? 'repeat(auto-fill, minmax(220px, 1fr))' : undefined,
+            flexDirection: viewMode === 'cards' ? undefined : 'column',
+            gap: 10
+          }}
+        >
           {RECOMMENDED_APPS.map((app, index) => {
             const pkg = recommended[index]
+            const isCards = viewMode === 'cards'
             return (
               <div
                 key={app.label}
                 className="card"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px' }}
+                style={{
+                  display: 'flex',
+                  flexDirection: isCards ? 'column' : 'row',
+                  justifyContent: 'space-between',
+                  alignItems: isCards ? 'stretch' : 'center',
+                  gap: isCards ? 14 : 12,
+                  padding: isCards ? 16 : '14px 18px',
+                  minHeight: isCards ? 190 : undefined
+                }}
               >
                 <div
-                  style={{ minWidth: 0, flex: 1, cursor: pkg ? 'pointer' : 'default' }}
+                  style={{
+                    minWidth: 0,
+                    flex: 1,
+                    cursor: pkg ? 'pointer' : 'default',
+                    display: 'flex',
+                    flexDirection: isCards ? 'column' : 'row',
+                    gap: isCards ? 12 : 14,
+                    alignItems: isCards ? 'flex-start' : 'center'
+                  }}
                   onClick={() => pkg && openDetails(pkg)}
                 >
-                  <div style={{ fontWeight: 600 }}>{app.label}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)' }}>
-                    {pkg ? pkg.description || pkg.id : 'Indisponível neste sistema'}
+                  {pkg && <PackageIcon pkg={pkg} size={isCards ? 54 : 42} />}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600 }}>{app.label}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)', marginTop: 3 }}>
+                      {pkg ? pkg.description || pkg.id : 'Indisponível neste sistema'}
+                    </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: isCards ? 'space-between' : 'flex-end',
+                    gap: 10
+                  }}
+                >
                   {pkg && <span className="status-pill">{originLabel[pkg.origin] ?? pkg.origin}</span>}
                   {pkg &&
                     (pkg.installed ? (

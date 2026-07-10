@@ -18,6 +18,7 @@ const api = {
   diskUsage: (): Promise<{ used: string; total: string; percent: number }> => ipcRenderer.invoke('vega:diskUsage'),
   search: (query: string): Promise<PackageRef[]> => ipcRenderer.invoke('vega:search', query),
   listUpdates: (): Promise<PackageRef[]> => ipcRenderer.invoke('vega:listUpdates'),
+  listInstalled: (): Promise<PackageRef[]> => ipcRenderer.invoke('vega:listInstalled'),
   getPackageDetails: (origin: string, id: string): Promise<PackageDetails> =>
     ipcRenderer.invoke('vega:getPackageDetails', origin, id),
   install: (origin: string, id: string): Promise<number> => ipcRenderer.invoke('vega:install', origin, id),
@@ -135,6 +136,9 @@ const api = {
   listManagedServices: (): Promise<
     { name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean }[]
   > => ipcRenderer.invoke('vega:listManagedServices'),
+  listAllManagedServices: (): Promise<
+    { name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean }[]
+  > => ipcRenderer.invoke('vega:listAllManagedServices'),
   setServiceEnabled: (name: string, enabled: boolean): Promise<void> =>
     ipcRenderer.invoke('vega:setServiceEnabled', name, enabled),
   setServiceRunning: (name: string, running: boolean): Promise<void> =>
