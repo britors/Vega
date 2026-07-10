@@ -3,9 +3,6 @@ import Software from './Software'
 import Snapshots from './Snapshots'
 import Backup from './Backup'
 import Hardware from './Hardware'
-import Bluetooth from './Bluetooth'
-import Video from './Video'
-import Wallpapers from './Wallpapers'
 import Kernel from './Kernel'
 import Network from './Network'
 import DateTimeLocale from './DateTimeLocale'
@@ -32,9 +29,6 @@ export const modules: VegaModule[] = [
   { id: 'snapshots', label: 'Pontos de Restauração', section: 'principal', Component: Snapshots },
   { id: 'backup', label: 'Backup', section: 'principal', Component: Backup },
   { id: 'hardware', label: 'Hardware', section: 'sistema', Component: Hardware },
-  { id: 'bluetooth', label: 'Bluetooth', section: 'sistema', Component: Bluetooth },
-  { id: 'video', label: 'Vídeo', section: 'sistema', Component: Video },
-  { id: 'wallpapers', label: 'Wallpapers', section: 'sistema', Component: Wallpapers },
   { id: 'kernel', label: 'Kernel', section: 'sistema', Component: Kernel },
   { id: 'network', label: 'Rede e Firewall', section: 'sistema', Component: Network },
   { id: 'datetime', label: 'Data, Hora e Idioma', section: 'sistema', Component: DateTimeLocale },
