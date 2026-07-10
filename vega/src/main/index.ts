@@ -100,6 +100,9 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:ping', () => vegaClient.ping())
   ipcMain.handle('vega:search', (_event, query: string) => vegaClient.search(query))
   ipcMain.handle('vega:listUpdates', () => vegaClient.listUpdates())
+  ipcMain.handle('vega:getPackageDetails', (_event, origin: string, id: string) =>
+    vegaClient.getPackageDetails(origin, id)
+  )
   ipcMain.handle('vega:install', (_event, origin: string, id: string) => vegaClient.install(origin, id))
   ipcMain.handle('vega:getAurPkgbuild', (_event, id: string) => vegaClient.getAurPkgbuild(id))
   ipcMain.handle('vega:remove', (_event, origin: string, id: string) => vegaClient.remove(origin, id))

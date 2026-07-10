@@ -15,6 +15,22 @@ interface PackageRef {
   installed: boolean
 }
 
+interface PackageDetails {
+  origin: string
+  id: string
+  name: string
+  description: string
+  installed: boolean
+  installedVersion: string
+  availableVersion: string
+  downloadSize: string
+  installedSize: string
+  dependencies: string[]
+  licenses: string[]
+  url: string
+  maintainer: string
+}
+
 interface Transaction {
   id: number
   label: string
@@ -123,6 +139,11 @@ export default function Software(): JSX.Element {
   const [transactions, setTransactions] = useState<Record<number, Transaction>>({})
   const labelForTx = useRef<Map<number, string>>(new Map())
   const [selectedOrigins, setSelectedOrigins] = useState<Record<string, string>>({})
+
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detail, setDetail] = useState<PackageDetails | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
 
   const tabRef = useRef(tab)
   useEffect(() => {
@@ -239,6 +260,28 @@ export default function Software(): JSX.Element {
     } finally {
       setLoadingRecommended(false)
     }
+  }
+
+  async function openDetails(pkg: PackageRef): Promise<void> {
+    setDetailOpen(true)
+    setDetail(null)
+    setDetailError(null)
+    setDetailLoading(true)
+    try {
+      const rows = await window.vega.getPackageDetails(pkg.origin, pkg.id)
+      setDetail(rows)
+    } catch (err) {
+      setDetailError((err as Error).message)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  function closeDetails(): void {
+    setDetailOpen(false)
+    setDetail(null)
+    setDetailError(null)
+    setDetailLoading(false)
   }
 
   async function handleInstall(pkg: PackageRef): Promise<void> {
@@ -498,19 +541,23 @@ export default function Software(): JSX.Element {
                 className="card"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px' }}
               >
-                <div style={{ minWidth: 0, flex: 1 }}>
+                <div
+                  style={{ minWidth: 0, flex: 1, cursor: 'pointer' }}
+                  onClick={() => openDetails(pkg)}
+                >
                   <div style={{ fontWeight: 600 }}>{group.title}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)' }}>{group.description}</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                     {group.items.map((item) => (
                       <button
                         key={`${group.key}:${item.origin}`}
-                        onClick={() =>
+                        onClick={(e) => {
+                          e.stopPropagation()
                           setSelectedOrigins((prev) => ({
                             ...prev,
                             [group.key]: item.origin
                           }))
-                        }
+                        }}
                         style={{
                           padding: '3px 8px',
                           borderRadius: 999,
@@ -594,7 +641,10 @@ export default function Software(): JSX.Element {
                 className="card"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px' }}
               >
-                <div style={{ minWidth: 0, flex: 1 }}>
+                <div
+                  style={{ minWidth: 0, flex: 1, cursor: pkg ? 'pointer' : 'default' }}
+                  onClick={() => pkg && openDetails(pkg)}
+                >
                   <div style={{ fontWeight: 600 }}>{app.label}</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)' }}>
                     {pkg ? pkg.description || pkg.id : 'Indisponível neste sistema'}
@@ -636,6 +686,148 @@ export default function Software(): JSX.Element {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {detailOpen && (
+        <div className="dialog-backdrop" role="presentation" onClick={closeDetails}>
+          <div
+            className="dialog"
+            style={{ width: 'min(560px, calc(100vw - 32px))' }}
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {detailLoading && <p className="dialog__message">Carregando detalhes...</p>}
+
+            {!detailLoading && detailError && (
+              <>
+                <h2 className="dialog__title">Falha ao carregar detalhes</h2>
+                <p className="dialog__message" style={{ color: 'var(--lyra-danger)' }}>
+                  {detailError}
+                </p>
+              </>
+            )}
+
+            {!detailLoading && !detailError && detail && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                  <h2 className="dialog__title">{detail.name || detail.id}</h2>
+                  <span className="status-pill">{originLabel[detail.origin] ?? detail.origin}</span>
+                </div>
+                <p className="dialog__message">{detail.description || 'Sem descrição disponível.'}</p>
+
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gap: 10,
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  {detail.installed && detail.installedVersion && (
+                    <div>
+                      <div style={{ color: 'var(--lyra-text-muted)' }}>Versão instalada</div>
+                      <div>{detail.installedVersion}</div>
+                    </div>
+                  )}
+                  {detail.availableVersion && (
+                    <div>
+                      <div style={{ color: 'var(--lyra-text-muted)' }}>Versão disponível</div>
+                      <div>{detail.availableVersion}</div>
+                    </div>
+                  )}
+                  {detail.downloadSize && (
+                    <div>
+                      <div style={{ color: 'var(--lyra-text-muted)' }}>Tamanho de download</div>
+                      <div>{detail.downloadSize}</div>
+                    </div>
+                  )}
+                  {detail.installedSize && (
+                    <div>
+                      <div style={{ color: 'var(--lyra-text-muted)' }}>Tamanho instalado</div>
+                      <div>{detail.installedSize}</div>
+                    </div>
+                  )}
+                  {detail.licenses.length > 0 && (
+                    <div>
+                      <div style={{ color: 'var(--lyra-text-muted)' }}>Licenças</div>
+                      <div>{detail.licenses.join(' ')}</div>
+                    </div>
+                  )}
+                  {detail.maintainer && (
+                    <div>
+                      <div style={{ color: 'var(--lyra-text-muted)' }}>Mantenedor</div>
+                      <div>{detail.maintainer}</div>
+                    </div>
+                  )}
+                </div>
+
+                {detail.dependencies.length > 0 && (
+                  <div style={{ marginTop: 14, fontSize: '0.85rem' }}>
+                    <div style={{ color: 'var(--lyra-text-muted)', marginBottom: 6 }}>Dependências</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {detail.dependencies.map((dep) => (
+                        <span
+                          key={dep}
+                          style={{
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            border: '1px solid var(--lyra-border)',
+                            color: 'var(--lyra-text-muted)',
+                            fontSize: '0.78rem'
+                          }}
+                        >
+                          {dep}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {detail.url && (
+                  <p className="dialog__message" style={{ marginTop: 14 }}>
+                    <a href={detail.url} target="_blank" rel="noreferrer" style={{ color: 'var(--lyra-text)' }}>
+                      {detail.url}
+                    </a>
+                  </p>
+                )}
+              </>
+            )}
+
+            <div className="dialog__actions">
+              <button className="dialog__button" onClick={closeDetails}>
+                Fechar
+              </button>
+              {!detailLoading && !detailError && detail && (
+                <>
+                  {detail.installed ? (
+                    <button
+                      className="dialog__button"
+                      style={{ color: 'var(--lyra-danger)' }}
+                      onClick={() => {
+                        closeDetails()
+                        handleRemove(detail)
+                      }}
+                    >
+                      Remover
+                    </button>
+                  ) : (
+                    <button
+                      className="dialog__button dialog__button--primary"
+                      onClick={() => {
+                        closeDetails()
+                        handleInstall(detail)
+                      }}
+                    >
+                      Instalar
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

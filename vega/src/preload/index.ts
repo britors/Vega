@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type {
   VegaSystemInfo,
   PackageRef,
+  PackageDetails,
   SnapshotInfo,
   BackupConfig,
   BackupSnapshotInfo,
@@ -15,6 +16,8 @@ const api = {
   ping: (): Promise<VegaSystemInfo> => ipcRenderer.invoke('vega:ping'),
   search: (query: string): Promise<PackageRef[]> => ipcRenderer.invoke('vega:search', query),
   listUpdates: (): Promise<PackageRef[]> => ipcRenderer.invoke('vega:listUpdates'),
+  getPackageDetails: (origin: string, id: string): Promise<PackageDetails> =>
+    ipcRenderer.invoke('vega:getPackageDetails', origin, id),
   install: (origin: string, id: string): Promise<number> => ipcRenderer.invoke('vega:install', origin, id),
   getAurPkgbuild: (id: string): Promise<string> => ipcRenderer.invoke('vega:getAurPkgbuild', id),
   remove: (origin: string, id: string): Promise<number> => ipcRenderer.invoke('vega:remove', origin, id),

@@ -17,6 +17,22 @@ export interface PackageRef {
   installed: boolean
 }
 
+export interface PackageDetails {
+  origin: string
+  id: string
+  name: string
+  description: string
+  installed: boolean
+  installedVersion: string
+  availableVersion: string
+  downloadSize: string
+  installedSize: string
+  dependencies: string[]
+  licenses: string[]
+  url: string
+  maintainer: string
+}
+
 export interface TransactionProgress {
   transactionId: number
   percent: number
@@ -250,6 +266,41 @@ export class VegaClient extends EventEmitter {
       description,
       installed
     }))
+  }
+
+  async getPackageDetails(origin: string, id: string): Promise<PackageDetails> {
+    const iface = await this.software()
+    const [
+      detOrigin,
+      detId,
+      name,
+      description,
+      installed,
+      installedVersion,
+      availableVersion,
+      downloadSize,
+      installedSize,
+      dependencies,
+      licenses,
+      url,
+      maintainer
+    ]: [string, string, string, string, boolean, string, string, string, string, string[], string[], string, string] =
+      await iface.GetPackageDetails(origin, id)
+    return {
+      origin: detOrigin,
+      id: detId,
+      name,
+      description,
+      installed,
+      installedVersion,
+      availableVersion,
+      downloadSize,
+      installedSize,
+      dependencies,
+      licenses,
+      url,
+      maintainer
+    }
   }
 
   async install(origin: string, id: string): Promise<number> {

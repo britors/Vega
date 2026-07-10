@@ -17,6 +17,21 @@ export function installDemoVegaApi(): void {
       }
     ],
     listUpdates: async () => [],
+    getPackageDetails: async (origin: string, id: string) => ({
+      origin,
+      id,
+      name: id === 'firefox' ? 'Firefox' : id,
+      description: 'Descrição completa de exemplo, como apareceria no painel de detalhe.',
+      installed: false,
+      installedVersion: '',
+      availableVersion: '152.0.5-1',
+      downloadSize: '81,81 MiB',
+      installedSize: '286,44 MiB',
+      dependencies: ['glibc', 'gtk3', 'dbus'],
+      licenses: ['MPL-2.0'],
+      url: 'https://www.mozilla.org/firefox/',
+      maintainer: ''
+    }),
     install: async () => 1,
     getAurPkgbuild: async () => '# demo\npkgname=exemplo\npkgver=1.0.0',
     remove: async () => 2,
