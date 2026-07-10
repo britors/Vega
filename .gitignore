@@ -22,6 +22,7 @@ vegad/bin/
 # Arch packaging
 packaging/*/pkg/
 packaging/*/src/
+packaging/*/Vega/
 packaging/*/*.pkg.tar.*
 packaging/*/*.pkg.tar.*.sig
 
