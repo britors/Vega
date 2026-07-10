@@ -76,6 +76,26 @@ export default function Services(): JSX.Element {
     }
   }
 
+  async function restart(service: ManagedServiceInfo): Promise<void> {
+    const ok = await dialogs.confirm({
+      title: 'Reiniciar serviço',
+      message: `Reiniciar ${service.label} (${service.name}) agora?`,
+      variant: 'warning',
+      confirmLabel: 'Reiniciar'
+    })
+    if (!ok) return
+    setBusy(true)
+    setError(null)
+    try {
+      await window.vega.restartService(service.name)
+      await refresh()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div className="card">
@@ -183,6 +203,20 @@ export default function Services(): JSX.Element {
                   }}
                 >
                   {busy ? 'Processando...' : service.active ? 'Parar' : 'Iniciar'}
+                </button>
+                <button
+                  onClick={() => restart(service)}
+                  disabled={busy || !service.available || !service.active}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 'var(--lyra-radius-sm)',
+                    border: '1px solid var(--lyra-border)',
+                    background: 'transparent',
+                    color: 'var(--lyra-text)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {busy ? 'Processando...' : 'Reiniciar'}
                 </button>
                 <button
                   onClick={() => setEnabled(service)}

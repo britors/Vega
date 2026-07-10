@@ -155,6 +155,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:setServiceRunning', (_event, name: string, running: boolean) =>
     vegaClient.setServiceRunning(name, running)
   )
+  ipcMain.handle('vega:restartService', (_event, name: string) => vegaClient.restartService(name))
   ipcMain.handle('vega:window:minimize', () => mainWindow?.minimize())
   ipcMain.handle('vega:window:toggleMaximize', () => {
     if (!mainWindow) return { maximized: false }

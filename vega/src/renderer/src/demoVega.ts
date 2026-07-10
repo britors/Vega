@@ -54,6 +54,13 @@ export function installDemoVegaApi(): void {
         frequency: 'daily'
       }
     ],
+    listManagedServices: async () => [
+      { name: 'sshd.service', label: 'Acesso remoto', description: 'Servidor SSH', enabled: false, active: false, available: true },
+      { name: 'bluetooth.service', label: 'Bluetooth', description: 'Gerenciador do Bluetooth', enabled: true, active: true, available: true }
+    ],
+    setServiceEnabled: async () => {},
+    setServiceRunning: async () => {},
+    restartService: async () => {},
     createBackupConfig: async () => 'home',
     runBackupNow: async () => 1,
     listBackupSnapshots: async () => [

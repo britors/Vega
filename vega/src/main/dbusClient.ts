@@ -513,6 +513,11 @@ export class VegaClient extends EventEmitter {
     await iface.SetServiceRunning(name, running)
   }
 
+  async restartService(name: string): Promise<void> {
+    const iface = await this.getInterface('Services')
+    await iface.RestartService(name)
+  }
+
   disconnect(): void {
     this.bus?.disconnect()
     this.bus = null

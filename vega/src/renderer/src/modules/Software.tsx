@@ -138,6 +138,7 @@ export default function Software(): JSX.Element {
 
   const [transactions, setTransactions] = useState<Record<number, Transaction>>({})
   const labelForTx = useRef<Map<number, string>>(new Map())
+  const dismissTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
   const [selectedOrigins, setSelectedOrigins] = useState<Record<string, string>>({})
 
   const [detailOpen, setDetailOpen] = useState(false)
@@ -188,11 +189,25 @@ export default function Software(): JSX.Element {
       if (tabRef.current === 'search' && queryRef.current.trim()) runSearchQuery(queryRef.current.trim())
       if (tabRef.current === 'updates') loadUpdates()
       if (tabRef.current === 'recommended') loadRecommended()
+
+      // Auto-dismiss the progress bar a few seconds after completion —
+      // long enough to read the outcome, short enough not to linger.
+      const timer = setTimeout(() => {
+        setTransactions((prev) => {
+          const next = { ...prev }
+          delete next[evt.transactionId]
+          return next
+        })
+        dismissTimers.current.delete(evt.transactionId)
+      }, 4000)
+      dismissTimers.current.set(evt.transactionId, timer)
     })
 
     return () => {
       offProgress()
       offFinished()
+      dismissTimers.current.forEach((timer) => clearTimeout(timer))
+      dismissTimers.current.clear()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

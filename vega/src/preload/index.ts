@@ -64,6 +64,7 @@ const api = {
     ipcRenderer.invoke('vega:setServiceEnabled', name, enabled),
   setServiceRunning: (name: string, running: boolean): Promise<void> =>
     ipcRenderer.invoke('vega:setServiceRunning', name, running),
+  restartService: (name: string): Promise<void> => ipcRenderer.invoke('vega:restartService', name),
   windowMinimize: (): Promise<void> => ipcRenderer.invoke('vega:window:minimize'),
   windowToggleMaximize: (): Promise<{ maximized: boolean }> => ipcRenderer.invoke('vega:window:toggleMaximize'),
   windowClose: (): Promise<void> => ipcRenderer.invoke('vega:window:close'),
