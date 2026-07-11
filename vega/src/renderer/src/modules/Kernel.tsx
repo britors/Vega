@@ -5,6 +5,7 @@ import { useDialogs } from '../components/dialogs/useDialogs'
 export default function Kernel(): JSX.Element {
   const dialogs = useDialogs()
   const [kernels, setKernels] = useState<string[]>([])
+  const [availableKernels, setAvailableKernels] = useState<string[]>([])
   const [boot, setBoot] = useState({ loader: '', defaultEntry: '', timeout: 5, cmdline: '' })
   const [bootEntries, setBootEntries] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -15,12 +16,14 @@ export default function Kernel(): JSX.Element {
     setLoading(true)
     setError(null)
     try {
-      const [nextKernels, nextBoot, nextEntries] = await Promise.all([
+      const [nextKernels, nextAvailable, nextBoot, nextEntries] = await Promise.all([
         window.vega.kernelListInstalled(),
+        window.vega.kernelAvailablePackages(),
         window.vega.bootStatus(),
         window.vega.listBootEntries()
       ])
       setKernels(nextKernels)
+      setAvailableKernels(nextAvailable)
       setBoot(nextBoot)
       setBootEntries(nextEntries)
     } catch (err) {
@@ -147,7 +150,7 @@ export default function Kernel(): JSX.Element {
       <div className="card" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <span style={{ color: 'var(--lyra-text-muted)' }}>Disponíveis</span>
         <div style={{ flex: 1 }} />
-        {['linux-zen', 'linux-lts'].map((kernel) => {
+        {availableKernels.map((kernel) => {
           const isInstalled = kernels.includes(kernel)
           return (
             <button

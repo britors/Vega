@@ -18,6 +18,9 @@ import type { DisplayConfig, DisplayOutputInfo, WallpaperInfo } from '../main/se
 
 const api = {
   ping: (): Promise<VegaSystemInfo> => ipcRenderer.invoke('vega:ping'),
+  distroLogo: (): Promise<string> => ipcRenderer.invoke('vega:distroLogo'),
+  packageManagerName: (): Promise<string> => ipcRenderer.invoke('vega:packageManagerName'),
+  communityLayerName: (): Promise<string> => ipcRenderer.invoke('vega:communityLayerName'),
   diskUsage: (): Promise<{ used: string; total: string; percent: number }> => ipcRenderer.invoke('vega:diskUsage'),
   search: (query: string): Promise<PackageRef[]> => ipcRenderer.invoke('vega:search', query),
   listUpdates: (): Promise<PackageRef[]> => ipcRenderer.invoke('vega:listUpdates'),
@@ -53,6 +56,7 @@ const api = {
   hardwareFirmwareStatus: (): Promise<string> => ipcRenderer.invoke('vega:hardwareFirmwareStatus'),
   switchNvidiaDriver: (driver: string): Promise<void> => ipcRenderer.invoke('vega:switchNvidiaDriver', driver),
   kernelListInstalled: (): Promise<string[]> => ipcRenderer.invoke('vega:kernelListInstalled'),
+  kernelAvailablePackages: (): Promise<string[]> => ipcRenderer.invoke('vega:kernelAvailablePackages'),
   kernelInstall: (kernel: string): Promise<number> => ipcRenderer.invoke('vega:kernelInstall', kernel),
   kernelRemove: (kernel: string): Promise<void> => ipcRenderer.invoke('vega:kernelRemove', kernel),
   bootStatus: (): Promise<{ loader: string; defaultEntry: string; timeout: number; cmdline: string }> =>

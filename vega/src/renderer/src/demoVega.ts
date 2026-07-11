@@ -6,7 +6,10 @@ export function installDemoVegaApi(): void {
   if (window.vega) return
 
   const api: VegaApi = {
-    ping: async () => ({ version: 'demo', connected: false }),
+    ping: async () => ({ version: 'demo', connected: false, distro: 'Lyra OS (demo)' }),
+    distroLogo: async () => '',
+    packageManagerName: async () => 'Pacman (demo)',
+    communityLayerName: async () => 'AUR (demo)',
     diskUsage: async () => ({ used: '126G', total: '476G', percent: 27 }),
     search: async (query: string) => [
       {
@@ -105,6 +108,7 @@ export function installDemoVegaApi(): void {
     hardwareFirmwareStatus: async () => 'Nenhuma atualização de firmware disponível (demo).',
     switchNvidiaDriver: async () => {},
     kernelListInstalled: async () => ['linux', 'linux-lts'],
+    kernelAvailablePackages: async () => ['linux', 'linux-lts', 'linux-zen'],
     kernelInstall: async () => 5,
     kernelRemove: async () => {},
     bootStatus: async () => ({ loader: 'grub', defaultEntry: '0', timeout: 5, cmdline: 'quiet splash' }),

@@ -59,33 +59,8 @@ const originLabel: Record<string, string> = {
   aur: 'Comunidade'
 }
 
-type Tab = 'search' | 'installed' | 'updates' | 'recommended'
+type Tab = 'search' | 'installed' | 'updates'
 type ViewMode = 'list' | 'cards'
-
-interface RecommendedApp {
-  label: string
-  query: string
-  matchIds: string[]
-}
-
-// Curated one-click picks — matchIds narrows each search to the specific
-// package(s) that are actually this app (searching "chrome" also surfaces
-// unrelated chrome-* packages, etc.), across whichever origin has it.
-const RECOMMENDED_APPS: RecommendedApp[] = [
-  { label: 'Firefox', query: 'firefox', matchIds: ['firefox'] },
-  { label: 'Google Chrome', query: 'chrome', matchIds: ['com.google.Chrome', 'google-chrome'] },
-  { label: 'LibreOffice', query: 'libreoffice', matchIds: ['libreoffice-fresh', 'libreoffice-still'] },
-  { label: 'VLC', query: 'vlc', matchIds: ['vlc'] },
-  { label: 'Audacity', query: 'audacity', matchIds: ['audacity', 'org.audacityteam.Audacity'] },
-  { label: 'GIMP', query: 'gimp', matchIds: ['gimp', 'org.gimp.GIMP'] },
-  { label: 'Thunderbird', query: 'thunderbird', matchIds: ['thunderbird'] },
-  { label: 'Okular', query: 'okular', matchIds: ['okular', 'org.kde.okular'] },
-  { label: 'Kdenlive', query: 'kdenlive', matchIds: ['kdenlive', 'org.kde.kdenlive'] },
-  { label: 'Bitwarden', query: 'bitwarden', matchIds: ['bitwarden', 'com.bitwarden.desktop'] },
-  { label: 'Steam', query: 'steam', matchIds: ['steam', 'com.valvesoftware.Steam'] },
-  { label: 'Proton (GE)', query: 'proton-ge', matchIds: ['proton-ge-custom-bin', 'proton-ge-custom'] },
-  { label: 'VirtualBox', query: 'virtualbox', matchIds: ['virtualbox'] }
-]
 
 type GroupedPackage = {
   key: string
@@ -160,6 +135,7 @@ function PackageIcon({ pkg, size = 42 }: { pkg: PackageRef; size?: number }): JS
 export default function Software(): JSX.Element {
   const dialogs = useDialogs()
   const [status, setStatus] = useState<Status | null>(null)
+  const [pkgManagerName, setPkgManagerName] = useState('')
   const [tab, setTab] = useState<Tab>('search')
   const [viewMode, setViewMode] = useState<ViewMode>('list')
 
@@ -172,9 +148,6 @@ export default function Software(): JSX.Element {
   const [loadingUpdates, setLoadingUpdates] = useState(false)
   const [installed, setInstalled] = useState<PackageRef[] | null>(null)
   const [loadingInstalled, setLoadingInstalled] = useState(false)
-
-  const [recommended, setRecommended] = useState<(PackageRef | null)[] | null>(null)
-  const [loadingRecommended, setLoadingRecommended] = useState(false)
 
   const [transactions, setTransactions] = useState<Record<number, Transaction>>({})
   const labelForTx = useRef<Map<number, string>>(new Map())
@@ -197,6 +170,7 @@ export default function Software(): JSX.Element {
 
   useEffect(() => {
     window.vega.ping().then(setStatus)
+    window.vega.packageManagerName().then(setPkgManagerName)
 
     const offProgress = window.vega.onTransactionProgress((evt: TransactionProgressEvent) => {
       setTransactions((prev) => ({
@@ -229,7 +203,6 @@ export default function Software(): JSX.Element {
       if (tabRef.current === 'search' && queryRef.current.trim()) runSearchQuery(queryRef.current.trim())
       if (tabRef.current === 'installed') loadInstalled()
       if (tabRef.current === 'updates') loadUpdates()
-      if (tabRef.current === 'recommended') loadRecommended()
 
       // Auto-dismiss the progress bar a few seconds after completion —
       // long enough to read the outcome, short enough not to linger.
@@ -308,32 +281,8 @@ export default function Software(): JSX.Element {
     if (tab === 'updates' && updates === null && !loadingUpdates) {
       loadUpdates()
     }
-    if (tab === 'recommended' && recommended === null && !loadingRecommended) {
-      loadRecommended()
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab])
-
-  async function loadRecommended(): Promise<void> {
-    setLoadingRecommended(true)
-    setError(null)
-    try {
-      const matches = await Promise.all(
-        RECOMMENDED_APPS.map(async (app) => {
-          const rows: PackageRef[] = await window.vega.search(app.query)
-          const candidates = rows.filter((row: PackageRef) => app.matchIds.includes(row.id))
-          if (candidates.length === 0) return null
-          return preferredPackage(candidates)
-        })
-      )
-      setRecommended(matches)
-    } catch (err) {
-      setError((err as Error).message)
-      setRecommended(null)
-    } finally {
-      setLoadingRecommended(false)
-    }
-  }
 
   async function openDetails(pkg: PackageRef): Promise<void> {
     setDetailOpen(true)
@@ -436,7 +385,7 @@ export default function Software(): JSX.Element {
   async function handleOptimizeMirrors(): Promise<void> {
     const ok = await dialogs.confirm({
       title: 'Otimizar mirrors',
-      message: 'Testar a velocidade dos mirrors do Pacman e atualizar a lista agora? Pode levar um tempo.',
+      message: `Testar a velocidade dos mirrors do ${pkgManagerName || 'gerenciador de pacotes'} e atualizar a lista agora? Pode levar um tempo.`,
       variant: 'warning',
       confirmLabel: 'Otimizar'
     })
@@ -464,7 +413,7 @@ export default function Software(): JSX.Element {
         <div>
           <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Software</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-            Oficial (Pacman) e Flathub em um só lugar
+            Oficial ({pkgManagerName || '...'}) e Flathub em um só lugar
           </p>
         </div>
         {status && (
@@ -538,13 +487,6 @@ export default function Software(): JSX.Element {
           style={{ width: 'auto' }}
         >
           Atualizações{updates && updates.length > 0 ? ` (${updates.length})` : ''}
-        </button>
-        <button
-          onClick={() => setTab('recommended')}
-          className={`sidebar__item ${tab === 'recommended' ? 'sidebar__item--active' : ''}`}
-          style={{ width: 'auto' }}
-        >
-          Recomendados
         </button>
         <div style={{ flex: 1 }} />
         <div
@@ -804,102 +746,6 @@ export default function Software(): JSX.Element {
                       Atualizar
                     </button>
                   )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {tab === 'recommended' && loadingRecommended && recommended === null && (
-        <EmptyState title="Carregando recomendações..." message="" />
-      )}
-
-      {tab === 'recommended' && recommended && (
-        <div
-          style={{
-            display: viewMode === 'cards' ? 'grid' : 'flex',
-            gridTemplateColumns: viewMode === 'cards' ? 'repeat(auto-fill, minmax(220px, 1fr))' : undefined,
-            flexDirection: viewMode === 'cards' ? undefined : 'column',
-            gap: 10
-          }}
-        >
-          {RECOMMENDED_APPS.map((app, index) => {
-            const pkg = recommended[index]
-            const isCards = viewMode === 'cards'
-            return (
-              <div
-                key={app.label}
-                className="card"
-                style={{
-                  display: 'flex',
-                  flexDirection: isCards ? 'column' : 'row',
-                  justifyContent: 'space-between',
-                  alignItems: isCards ? 'stretch' : 'center',
-                  gap: isCards ? 14 : 12,
-                  padding: isCards ? 16 : '14px 18px',
-                  minHeight: isCards ? 190 : undefined
-                }}
-              >
-                <div
-                  style={{
-                    minWidth: 0,
-                    flex: 1,
-                    cursor: pkg ? 'pointer' : 'default',
-                    display: 'flex',
-                    flexDirection: isCards ? 'column' : 'row',
-                    gap: isCards ? 12 : 14,
-                    alignItems: isCards ? 'flex-start' : 'center'
-                  }}
-                  onClick={() => pkg && openDetails(pkg)}
-                >
-                  {pkg && <PackageIcon pkg={pkg} size={isCards ? 54 : 42} />}
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600 }}>{app.label}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)', marginTop: 3 }}>
-                      {pkg ? pkg.description || pkg.id : 'Indisponível neste sistema'}
-                    </div>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: isCards ? 'space-between' : 'flex-end',
-                    gap: 10
-                  }}
-                >
-                  {pkg && <span className="status-pill">{originLabel[pkg.origin] ?? pkg.origin}</span>}
-                  {pkg &&
-                    (pkg.installed ? (
-                      <button
-                        onClick={() => handleRemove(pkg)}
-                        style={{
-                          padding: '6px 14px',
-                          borderRadius: 'var(--lyra-radius-sm)',
-                          border: '1px solid var(--lyra-border)',
-                          background: 'transparent',
-                          color: 'var(--lyra-danger)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Remover
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleInstall(pkg)}
-                        style={{
-                          padding: '6px 14px',
-                          borderRadius: 'var(--lyra-radius-sm)',
-                          border: 'none',
-                          background: 'var(--lyra-gradient)',
-                          color: '#fff',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Instalar
-                      </button>
-                    ))}
                 </div>
               </div>
             )

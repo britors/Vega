@@ -3,13 +3,23 @@ import { useEffect, useState } from 'react'
 interface Status {
   version: string
   connected: boolean
+  distro: string
+}
+
+function fileSrc(path: string): string {
+  if (!path) return ''
+  return `file://${path.split('/').map(encodeURIComponent).join('/')}`
 }
 
 export default function About(): JSX.Element {
   const [status, setStatus] = useState<Status | null>(null)
+  const [logo, setLogo] = useState('')
+  const [channel, setChannel] = useState<string | null>(null)
 
   useEffect(() => {
     window.vega.ping().then(setStatus)
+    window.vega.distroLogo().then(setLogo)
+    window.vega.communityLayerName().then(setChannel)
   }, [])
 
   return (
@@ -56,7 +66,7 @@ export default function About(): JSX.Element {
           <dt style={{ color: 'var(--lyra-text-muted)' }}>D-Bus</dt>
           <dd style={{ margin: 0 }}>org.lyraos.Vega1</dd>
           <dt style={{ color: 'var(--lyra-text-muted)' }}>Canal</dt>
-          <dd style={{ margin: 0 }}>AUR</dd>
+          <dd style={{ margin: 0 }}>{channel === null ? 'carregando...' : channel || 'Nenhum (sem camada de comunidade)'}</dd>
         </dl>
       </div>
 
@@ -71,9 +81,12 @@ export default function About(): JSX.Element {
             <span style={{ color: 'var(--lyra-text-muted)' }}>Daemon</span>
             <strong>Go + D-Bus + polkit</strong>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
             <span style={{ color: 'var(--lyra-text-muted)' }}>Distribuição</span>
-            <strong>Pacotes AUR</strong>
+            <strong style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {logo && <img src={fileSrc(logo)} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />}
+              {status?.distro ?? 'carregando...'}
+            </strong>
           </div>
         </div>
       </div>

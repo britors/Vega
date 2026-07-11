@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Manual install script for openSUSE Leap — there is no .rpm packaging yet,
+# so this mirrors packaging/vegad/PKGBUILD's package() layout by hand,
+# minus the AUR/vega-build sandbox bits that don't apply here (Leap has no
+# AUR-equivalent community layer; distro.Provider.Community() is nil on
+# openSUSE, see vegad/internal/distro/opensuse.go).
+#
+# Usage: sudo packaging/opensuse/install.sh
+set -euo pipefail
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Rode como root (sudo $0)" >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+VERSION="${VEGA_VERSION:-$(grep -m1 '^pkgver=' "$REPO_ROOT/packaging/vegad/PKGBUILD" | cut -d= -f2)}"
+echo "==> Instalando Vega/vegad $VERSION (openSUSE Leap) a partir de $REPO_ROOT"
+
+for tool in go npm node; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "Erro: '$tool' é necessário para compilar e não foi encontrado no PATH." >&2
+    exit 1
+  fi
+done
+
+echo "==> Verificando dependências opcionais de runtime"
+for tool in flatpak restic snapper firewall-cmd fwupdmgr nmcli bluetoothctl; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "  aviso: '$tool' não encontrado — o recurso correspondente do Vega ficará indisponível até instalar (zypper install ...)"
+  fi
+done
+
+echo "==> Compilando vegad"
+(
+  cd "$REPO_ROOT/vegad"
+  go build -trimpath -ldflags "-X github.com/lyraos/vegad/internal/version.Version=${VERSION}" \
+    -o vegad ./cmd/vegad
+)
+
+echo "==> Compilando vega (frontend Electron)"
+(
+  cd "$REPO_ROOT/vega"
+  npm ci
+  npm run build
+)
+
+echo "==> Instalando vegad e integração systemd/D-Bus/polkit"
+install -Dm755 "$REPO_ROOT/vegad/vegad" /usr/lib/vega/vegad
+install -Dm644 "$REPO_ROOT/packaging/vegad/vegad.service" /usr/lib/systemd/system/vegad.service
+install -Dm644 "$REPO_ROOT/packaging/vegad/vegad-update-check.service" /usr/lib/systemd/system/vegad-update-check.service
+install -Dm644 "$REPO_ROOT/packaging/vegad/vegad-update-check.timer" /usr/lib/systemd/system/vegad-update-check.timer
+install -Dm644 "$REPO_ROOT/packaging/vegad/org.lyraos.Vega1.conf" /usr/share/dbus-1/system.d/org.lyraos.Vega1.conf
+install -Dm644 "$REPO_ROOT/packaging/vegad/org.lyraos.Vega1.service" /usr/share/dbus-1/system-services/org.lyraos.Vega1.service
+install -Dm644 "$REPO_ROOT/packaging/vegad/org.lyraos.vega.policy" /usr/share/polkit-1/actions/org.lyraos.vega.policy
+
+echo "==> Instalando vega (app)"
+install -dm755 /usr/lib/lyra-vega
+cp -r "$REPO_ROOT/vega/out/." /usr/lib/lyra-vega/
+rm -rf /usr/lib/lyra-vega/node_modules
+cp -r "$REPO_ROOT/vega/node_modules" /usr/lib/lyra-vega/node_modules
+
+# openSUSE has no packaged system-wide "electron" binary (unlike Arch's
+# electron31-bin) — the npm devDependency's own bundled binary is what the
+# wrapper below runs instead.
+install -Dm755 /dev/stdin /usr/bin/vega <<'WRAPPER'
+#!/bin/sh
+exec /usr/lib/lyra-vega/node_modules/electron/dist/electron /usr/lib/lyra-vega/main/index.js "$@"
+WRAPPER
+
+install -Dm644 "$REPO_ROOT/packaging/vega/vega.desktop" /usr/share/applications/vega.desktop
+install -Dm644 "$REPO_ROOT/packaging/vega/vega.svg" /usr/share/icons/hicolor/scalable/apps/vega.svg
+
+echo "==> Recarregando systemd/D-Bus e habilitando o timer de atualização"
+systemctl daemon-reload
+systemctl reload dbus.service 2>/dev/null || true
+systemctl enable --now vegad-update-check.timer
+
+cat <<EOF
+
+Instalação concluída.
+- Daemon: /usr/lib/vega/vegad (ativado sob demanda via D-Bus, org.lyraos.Vega1)
+- App: /usr/bin/vega (ou pelo atalho "Vega" no menu)
+
+Aviso: o backend Zypper/hardware NVIDIA do vegad para openSUSE (vegad/internal/distro/zypper.go,
+hardware_opensuse.go) ainda não foi validado ponta a ponta num Leap real — teste os módulos de
+Software/Kernel/Hardware com cautela antes de confiar neles em produção.
+EOF

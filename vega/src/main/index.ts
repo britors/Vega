@@ -106,6 +106,9 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('vega:ping', () => vegaClient.ping())
+  ipcMain.handle('vega:distroLogo', () => vegaClient.distroLogo())
+  ipcMain.handle('vega:packageManagerName', () => vegaClient.packageManagerName())
+  ipcMain.handle('vega:communityLayerName', () => vegaClient.communityLayerName())
   ipcMain.handle('vega:diskUsage', () => vegaClient.diskUsage())
   ipcMain.handle('vega:search', (_event, query: string) => vegaClient.search(query))
   ipcMain.handle('vega:listUpdates', () => vegaClient.listUpdates())
@@ -147,6 +150,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:hardwareFirmwareStatus', () => vegaClient.hardwareFirmwareStatus())
   ipcMain.handle('vega:switchNvidiaDriver', (_event, driver: string) => vegaClient.switchNvidiaDriver(driver))
   ipcMain.handle('vega:kernelListInstalled', () => vegaClient.kernelListInstalled())
+  ipcMain.handle('vega:kernelAvailablePackages', () => vegaClient.kernelAvailablePackages())
   ipcMain.handle('vega:kernelInstall', (_event, kernel: string) => vegaClient.kernelInstall(kernel))
   ipcMain.handle('vega:kernelRemove', (_event, kernel: string) => vegaClient.kernelRemove(kernel))
   ipcMain.handle('vega:bootStatus', () => vegaClient.bootStatus())

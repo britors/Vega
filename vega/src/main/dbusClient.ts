@@ -7,6 +7,7 @@ const OBJECT_PATH = '/org/lyraos/Vega1'
 export interface VegaSystemInfo {
   version: string
   connected: boolean
+  distro: string
 }
 
 export interface PackageRef {
@@ -338,13 +339,29 @@ export class VegaClient extends EventEmitter {
     try {
       const iface = await this.getInterface('System')
       const version: string = await iface.Version()
-      return { version, connected: true }
+      const distro: string = await iface.Distro()
+      return { version, connected: true, distro }
     } catch (err) {
       // vegad not installed/running yet in this dev environment — surface
       // a disconnected state instead of crashing the UI.
       console.warn('vegad unreachable:', (err as Error).message)
-      return { version: 'unknown', connected: false }
+      return { version: 'unknown', connected: false, distro: 'desconhecida' }
     }
+  }
+
+  async packageManagerName(): Promise<string> {
+    const iface = await this.getInterface('Software')
+    return iface.PackageManagerName()
+  }
+
+  async communityLayerName(): Promise<string> {
+    const iface = await this.getInterface('Software')
+    return iface.CommunityLayerName()
+  }
+
+  async distroLogo(): Promise<string> {
+    const iface = await this.getInterface('System')
+    return iface.Logo()
   }
 
   async diskUsage(): Promise<{ used: string; total: string; percent: number }> {
@@ -574,6 +591,11 @@ export class VegaClient extends EventEmitter {
   async kernelListInstalled(): Promise<string[]> {
     const iface = await this.getInterface('Kernel')
     return iface.ListInstalled()
+  }
+
+  async kernelAvailablePackages(): Promise<string[]> {
+    const iface = await this.getInterface('Kernel')
+    return iface.AvailablePackages()
   }
 
   async kernelInstall(kernel: string): Promise<number> {
