@@ -34,3 +34,4 @@ packaging/*/*.pkg.tar.*.sig
 # Env
 .env
 .env.local
+.claude/settings.json
