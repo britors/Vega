@@ -7,7 +7,8 @@ Obrigado por contribuir com o Vega. Este projeto combina uma interface Electron/
 - Node.js e npm para a interface em `vega/`.
 - Go para o daemon em `vegad/`.
 - Linux com systemd, D-Bus e polkit para testar integracoes reais.
-- Em Lyra OS/Arch, use os scripts em `scripts/` e os arquivos de `packaging/` para validar instalacao local.
+- Em Lyra OS/Arch, use os scripts em `scripts/` e os PKGBUILDs em `packaging/vega/` e `packaging/vegad/` para validar instalacao local.
+- Em openSUSE Leap, use `packaging/opensuse/install.sh` (e `uninstall.sh`) para validar instalacao local.
 
 ## Fluxo de trabalho
 
@@ -52,7 +53,7 @@ Quando a mudanca tocar empacotamento, D-Bus, polkit ou integracao com ferramenta
 
 - Use mensagens objetivas, em portugues ou ingles, descrevendo o efeito da mudanca.
 - Descreva testes executados no PR.
-- Informe riscos residuais, principalmente quando depender de hardware, bootloader, NetworkManager, pacman, flatpak, snapper ou restic.
+- Informe riscos residuais, principalmente quando depender de hardware, bootloader, NetworkManager, pacman, zypper, flatpak, snapper ou restic.
 - Evite refatoracoes amplas junto de mudancas funcionais.
 
 ## Licenca

@@ -1,8 +1,39 @@
 # Vega
 
-Centro de controle unificado do Lyra OS. Ver especificação completa em
-[`docs/specs/PROMPT-VEGA.md`](docs/specs/PROMPT-VEGA.md) e no incremento
-[`docs/specs/PROMPT-VEGA-MODULO-BACKUP.md`](docs/specs/PROMPT-VEGA-MODULO-BACKUP.md).
+Centro de controle unificado para Linux.
+
+## Instalação
+
+### Arch / Lyra OS
+
+Publicado no AUR:
+
+```sh
+yay -S lyra-vega
+```
+
+### openSUSE Leap
+
+Ainda não há pacote nos repositórios oficiais nem no OBS. O jeito mais
+rápido de testar é baixar o `.rpm` já compilado pela release mais recente
+(gerado por [`.github/workflows/release-opensuse.yml`](.github/workflows/release-opensuse.yml)
+a partir de [`packaging/opensuse/`](packaging/opensuse/)):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
+```
+
+Isso baixa `vegad-*.rpm` e `vega-*.rpm` da [release mais recente](https://github.com/britors/Vega/releases)
+e instala via `zypper`. Os RPMs ainda não são assinados, então a instalação
+usa `--allow-unsigned-rpm` — confira o script antes de rodar se preferir.
+Para travar numa versão específica: `VEGA_VERSION=v1.3.4 sudo -E bash install.sh`
+(baixe o script primeiro se for usar essa variante).
+
+Empacotamento openSUSE ainda é considerado de teste (ver aviso em
+[`packaging/opensuse/vegad.spec`](packaging/opensuse/vegad.spec)). Para
+instalar a partir do checkout local em vez do RPM, veja
+[`packaging/opensuse/install.sh`](packaging/opensuse/install.sh), documentado
+em [`CONTRIBUTING.md`](CONTRIBUTING.md) e [`dependencias.md`](dependencias.md).
 
 ## Layout do repositório
 
@@ -10,8 +41,7 @@ Centro de controle unificado do Lyra OS. Ver especificação completa em
 vega/        UI (Electron + TypeScript + React), roda como usuário comum
 vegad/       Daemon privilegiado (Go), roda como root, exposto via D-Bus
 dbus/        Definições de interface D-Bus (XML de introspecção) — contrato entre vega e vegad
-packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs
-docs/specs/  Especificações congeladas que orientam a implementação
+packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs (Arch) e specs RPM (openSUSE)
 ```
 
 ## Status

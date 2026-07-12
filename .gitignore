@@ -26,6 +26,10 @@ packaging/*/Vega/
 packaging/*/*.pkg.tar.*
 packaging/*/*.pkg.tar.*.sig
 
+# RPM packaging (openSUSE)
+*.rpm
+dist-test/
+
 # Editors / OS
 .DS_Store
 .vscode/

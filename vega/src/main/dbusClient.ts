@@ -235,7 +235,7 @@ export interface BackupItem {
  *
  * Emits `transaction-progress` / `transaction-finished` forwarding the
  * Software interface's D-Bus signals, so the main process can relay them to
- * the renderer instead of polling (PROMPT-VEGA.md §2.2).
+ * the renderer instead of polling.
  */
 export class VegaClient extends EventEmitter {
   private bus: MessageBus | null = null
