@@ -34,8 +34,8 @@ export default function About(): JSX.Element {
             background: 'var(--lyra-gradient)'
           }}
         />
-        <h1 style={{ margin: '0 0 4px', fontSize: '1.4rem' }}>Lyra OS</h1>
-        <p style={{ margin: 0, color: 'var(--lyra-text-muted)' }}>Harmonia. Performance. Liberdade.</p>
+        <h1 style={{ margin: '0 0 4px', fontSize: '1.4rem' }}> Vega </h1>
+        <p style={{ margin: 0, color: 'var(--lyra-text-muted)' }}>Centro de Controle para Linux</p>
       </div>
       <div className="card" style={{ display: 'grid', gap: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
