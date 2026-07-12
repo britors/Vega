@@ -1,8 +1,8 @@
 {
   "name": "vega",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Centro de controle unificado para Linux",
-  "author": "Lyra OS",
+  "author": "Rodrigo Brito",
   "license": "GPL-3.0",
   "main": "out/main/index.js",
   "scripts": {

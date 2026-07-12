@@ -1,11 +1,11 @@
 # Dependências do sistema para o Vega
 
 O `vegad` fala com o gerenciador de pacotes por trás de uma camada de abstração
-(`vegad/internal/distro`) com um backend por distro: Pacman+AUR em Arch/Lyra OS e
+(`vegad/internal/distro`) com um backend por distro: Pacman+AUR em Arch e
 Zypper em openSUSE Leap. As dependências abaixo mudam de nome/forma de instalação
 conforme a distro, mas o papel de cada uma é o mesmo.
 
-## Arch / Lyra OS
+## Arch
 
 ### Pacotes obrigatórios
 

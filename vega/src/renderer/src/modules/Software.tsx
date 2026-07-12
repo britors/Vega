@@ -318,7 +318,7 @@ export default function Software(): JSX.Element {
       const ok = await dialogs.confirm({
         title: `Instalar ${pkg.name || pkg.id} (Comunidade)`,
         message:
-          'Pacotes da Comunidade (AUR) não são verificados pelo Lyra OS. Revise o script de build (PKGBUILD) abaixo antes de continuar.',
+          'Pacotes da Comunidade não são verificados pelo time do Vega.',
         code: pkgbuild,
         variant: 'warning',
         confirmLabel: 'Instalar'

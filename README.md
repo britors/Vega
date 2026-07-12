@@ -4,7 +4,7 @@ Centro de controle unificado para Linux.
 
 ## Instalação
 
-### Arch / Lyra OS
+### Arch
 
 Publicado no AUR:
 
@@ -74,8 +74,6 @@ cd vegad
 go mod tidy
 go build ./...
 ```
-
-### Pacotes locais para o ISO do Lyra OS
 
 Os PKGBUILDs em `packaging/vega` e `packaging/vegad` empacotam este checkout
 local por padrão. Para gerar os dois pacotes em ordem (`vegad` e depois

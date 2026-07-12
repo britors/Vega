@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Instalador de conveniência: baixa os RPMs pré-compilados da release mais
 # recente do Vega (publicados por .github/workflows/release-opensuse.yml) e
-# instala via zypper. Só cobre openSUSE Leap por enquanto — em Arch/Lyra OS
+# instala via zypper. Só cobre openSUSE Leap por enquanto — em Arch
 # use o pacote no AUR (`yay -S lyra-vega`), que já existe e é o caminho
 # recomendado.
 #
@@ -29,7 +29,7 @@ fi
 case "$distro_id $distro_id_like" in
   *arch*)
     cat >&2 <<'EOF'
-Detectei Arch/Lyra OS. Este instalador só empacota RPMs pra openSUSE Leap;
+Detectei Arch. Este instalador só empacota RPMs pra openSUSE Leap;
 em Arch use o pacote do AUR, que já é o caminho suportado:
 
   yay -S lyra-vega

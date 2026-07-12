@@ -1,6 +1,6 @@
 # Vega End-to-End Validation
 
-Este roteiro cobre a validação local automatizada e o smoke test manual no Lyra OS.
+Este roteiro cobre a validação local automatizada e o smoke test manual no Arch.
 
 ## 1. Validação local automatizada
 
@@ -19,7 +19,7 @@ O script valida:
 - `makepkg --printsrcinfo` dos dois PKGBUILDs
 - presença dos contratos D-Bus versionados
 
-## 2. Smoke test no Lyra OS
+## 2. Smoke test no Arch
 
 Executar em uma máquina/VM com os pacotes `vega` e `vegad` instalados.
 
