@@ -1,4 +1,4 @@
-import { systemBus, type MessageBus, type ClientInterface } from 'dbus-next'
+import type { MessageBus, ClientInterface } from 'dbus-next'
 import { EventEmitter } from 'node:events'
 import { release } from 'node:os'
 import type { SystemClient } from './system/systemClient'
@@ -28,6 +28,7 @@ export class LinuxSystemClient extends EventEmitter implements SystemClient {
   private backupIface: ClientInterface | null = null
 
   async connect(): Promise<void> {
+    const { systemBus } = await import('dbus-next')
     const bus = systemBus()
     this.bus = bus
 
