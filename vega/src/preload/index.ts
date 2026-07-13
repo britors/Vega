@@ -30,6 +30,7 @@ import type {
   AIToolOutcome,
   AIToolProposal
 } from '../main/ai/types'
+import type { UpdateStatus } from '../main/updater'
 
 const api = {
   ping: (): Promise<VegaSystemInfo> => ipcRenderer.invoke('vega:ping'),
@@ -172,6 +173,15 @@ const api = {
   queryLogs: (unit: string, priority: string, since: string, search: string, maxLines: number): Promise<string[]> =>
     ipcRenderer.invoke('vega:queryLogs', unit, priority, since, search, maxLines),
   listLogUnits: (): Promise<string[]> => ipcRenderer.invoke('vega:listLogUnits'),
+  updaterGetStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke('updater:getStatus'),
+  updaterCheck: (): Promise<void> => ipcRenderer.invoke('updater:check'),
+  updaterDownload: (): Promise<void> => ipcRenderer.invoke('updater:download'),
+  updaterInstall: (): Promise<void> => ipcRenderer.invoke('updater:install'),
+  onUpdaterStatus: (cb: (status: UpdateStatus) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void => cb(status)
+    ipcRenderer.on('updater:status', listener)
+    return () => ipcRenderer.removeListener('updater:status', listener)
+  },
   windowMinimize: (): Promise<void> => ipcRenderer.invoke('vega:window:minimize'),
   windowToggleMaximize: (): Promise<{ maximized: boolean }> => ipcRenderer.invoke('vega:window:toggleMaximize'),
   windowClose: (): Promise<void> => ipcRenderer.invoke('vega:window:close'),

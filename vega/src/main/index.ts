@@ -36,6 +36,7 @@ import { readAuditLog } from './ai/auditLog'
 import { getDailyUsage } from './ai/usageTracker'
 import type { AIProviderId, AIToolOutcome, AIToolProposal } from './ai/types'
 import { starterPromptsForCapabilities } from './ai/platformContext'
+import { initUpdater } from './updater'
 
 const vegaClient = createSystemClient()
 let mainWindow: BrowserWindow | null = null
@@ -319,6 +320,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:window:isMaximized', () => Boolean(mainWindow?.isMaximized()))
 
   createWindow()
+  initUpdater(() => mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -83,12 +83,25 @@ jobs:
             "$hash  $($_.Name)" | Set-Content "$($_.FullName).sha256"
           }
 
+      - name: Validar metadata do auto-update
+        shell: pwsh
+        run: |
+          $metadata = "vega/dist/latest.yml"
+          if (!(Test-Path $metadata)) { throw "latest.yml não foi gerado" }
+          $match = Select-String -Path $metadata -Pattern '^path:\s*(.+)$' | Select-Object -First 1
+          if (!$match) { throw "latest.yml não contém path" }
+          $installer = $match.Matches[0].Groups[1].Value.Trim()
+          if (!(Test-Path (Join-Path "vega/dist" $installer))) { throw "latest.yml aponta para artefato ausente: $installer" }
+          if (!(Test-Path "vega/dist/$installer.blockmap")) { throw "blockmap ausente para $installer" }
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
           path: |
             vega/dist/Vega-Setup-*-x64.exe
             vega/dist/Vega-Setup-*-x64.exe.sha256
+            vega/dist/Vega-Setup-*-x64.exe.blockmap
+            vega/dist/latest.yml
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -110,4 +123,4 @@ jobs:
           $tag = $env:GITHUB_REF_NAME
           gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
           if ($LASTEXITCODE -ne 0) { gh release create $tag --repo $env:GITHUB_REPOSITORY --title $tag --generate-notes }
-          gh release upload $tag artifacts/Vega-Setup-*-x64.exe artifacts/Vega-Setup-*-x64.exe.sha256 --repo $env:GITHUB_REPOSITORY --clobber
+          gh release upload $tag artifacts/Vega-Setup-*-x64.exe artifacts/Vega-Setup-*-x64.exe.sha256 artifacts/Vega-Setup-*-x64.exe.blockmap artifacts/latest.yml --repo $env:GITHUB_REPOSITORY --clobber
