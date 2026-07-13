@@ -16,7 +16,8 @@ import type {
   HardwareInventory,
   ProcessInfo,
   StorageVolumeInfo,
-  SystemMetrics
+  SystemMetrics,
+  UserInfo
 } from '../main/system/types'
 import type { SoftwareInstallOptions } from '../main/system/types'
 import type { SystemCapabilities } from '../main/system/types'
@@ -158,9 +159,9 @@ const api = {
   systemMetrics: (): Promise<SystemMetrics> => ipcRenderer.invoke('vega:systemMetrics'),
   listProcesses: (): Promise<ProcessInfo[]> => ipcRenderer.invoke('vega:listProcesses'),
   killProcess: (pid: number): Promise<void> => ipcRenderer.invoke('vega:killProcess', pid),
-  listUsers: (): Promise<{ username: string; isAdmin: boolean }[]> => ipcRenderer.invoke('vega:listUsers'),
-  createUser: (username: string, isAdmin: boolean): Promise<void> => ipcRenderer.invoke('vega:createUser', username, isAdmin),
-  removeUser: (username: string): Promise<void> => ipcRenderer.invoke('vega:removeUser', username),
+  listUsers: (): Promise<UserInfo[]> => ipcRenderer.invoke('vega:listUsers'),
+  createUser: (username: string, isAdmin: boolean, password?: string): Promise<void> => ipcRenderer.invoke('vega:createUser', username, isAdmin, password),
+  removeUser: (username: string, removeProfile?: boolean): Promise<void> => ipcRenderer.invoke('vega:removeUser', username, removeProfile),
   setAdmin: (username: string, isAdmin: boolean): Promise<void> => ipcRenderer.invoke('vega:setAdmin', username, isAdmin),
   listManagedServices: (): Promise<
     { name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean; startupType?: string; serviceType?: string; protected?: boolean }[]

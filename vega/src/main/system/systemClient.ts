@@ -88,8 +88,8 @@ export interface SystemClient extends EventEmitter {
   listProcesses(): Promise<ProcessInfo[]>
   killProcess(pid: number): Promise<void>
   listUsers(): Promise<UserInfo[]>
-  createUser(username: string, isAdmin: boolean): Promise<void>
-  removeUser(username: string): Promise<void>
+  createUser(username: string, isAdmin: boolean, password?: string): Promise<void>
+  removeUser(username: string, removeProfile?: boolean): Promise<void>
   setAdmin(username: string, isAdmin: boolean): Promise<void>
   listManagedServices(): Promise<ManagedServiceInfo[]>
   listAllManagedServices(): Promise<ManagedServiceInfo[]>

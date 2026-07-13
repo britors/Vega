@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/lyraos/vega-agent/internal/eventlogs"
+	"github.com/lyraos/vega-agent/internal/localaccounts"
 	"github.com/lyraos/vega-agent/internal/networking"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/regional"
 	"github.com/lyraos/vega-agent/internal/servicecontrol"
 	"github.com/lyraos/vega-agent/internal/software"
 )
@@ -86,6 +88,10 @@ func (*fixtureElevator) SetFirewallRule(context.Context, string, bool) error    
 func (*fixtureElevator) CreateFirewallRule(context.Context, networking.FirewallRuleSpec) (string, error) {
 	return "Vega-test", nil
 }
+func (*fixtureElevator) AccountCreate(context.Context, localaccounts.CreateParams) error  { return nil }
+func (*fixtureElevator) AccountRemove(context.Context, localaccounts.RemoveParams) error  { return nil }
+func (*fixtureElevator) AccountSetAdmin(context.Context, localaccounts.AdminParams) error { return nil }
+func (*fixtureElevator) RegionalApply(context.Context, regional.ApplyParams) error        { return nil }
 
 type fixtureServices struct{}
 
@@ -119,6 +125,21 @@ func (fixtureWifi) List(context.Context) ([]networking.WifiNetwork, error) {
 }
 func (fixtureWifi) Connect(context.Context, string, string) error { return nil }
 func (fixtureWifi) Disconnect(context.Context, string) error      { return nil }
+
+type fixtureAccounts struct{}
+
+func (fixtureAccounts) List(context.Context) ([]localaccounts.Info, error) {
+	return []localaccounts.Info{{Username: "José", SID: "S-1-5-21-1", IsAdmin: true, AccountType: "local"}}, nil
+}
+
+type fixtureRegional struct{}
+
+func (fixtureRegional) Status(context.Context) (regional.Status, error) {
+	return regional.Status{Timezone: "E. South America Standard Time", NTP: true, Locale: "pt-BR"}, nil
+}
+func (fixtureRegional) Timezones(context.Context) ([]string, error) {
+	return []string{"UTC", "E. South America Standard Time"}, nil
+}
 func (fixtureEventLogs) Query(_ context.Context, query eventlogs.Query) ([]eventlogs.Event, error) {
 	return []eventlogs.Event{{Timestamp: "2026-01-01T00:00:00Z", Provider: "Teste", EventID: 42, Level: "Information", Message: "mensagem 日本語 " + query.Channel}}, nil
 }
@@ -397,5 +418,27 @@ func TestNetworkUsesClosedContractsAndKeepsWifiPasswordOutOfResults(t *testing.T
 	created := request(t, conn, hello, "firewall-create", "network.firewallRuleCreate", []byte(`{"label":"Servidor","direction":"inbound","profile":"private","protocol":"tcp","port":8080}`))
 	if created.Kind != "result" {
 		t.Fatalf("firewall: %#v", created)
+	}
+}
+
+func TestAccountsAndRegionalRejectWeakOrInjectedParameters(t *testing.T) {
+	conn, closeServer := startConfiguredTestServer(t, Server{
+		PlatformVersion: "test", Accounts: fixtureAccounts{}, Regional: fixtureRegional{}, Elevator: &fixtureElevator{},
+	})
+	defer closeServer()
+	hello := handshake(t, conn)
+	if result := request(t, conn, hello, "accounts-list", "accounts.list", nil); result.Kind != "result" {
+		t.Fatalf("accounts: %#v", result)
+	}
+	if result := request(t, conn, hello, "regional-status", "regional.status", nil); result.Kind != "result" {
+		t.Fatalf("regional: %#v", result)
+	}
+	weak := request(t, conn, hello, "weak-password", "accounts.create", []byte(`{"username":"ana","password":"curta","isAdmin":false}`))
+	if weak.Error == nil || weak.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("weak: %#v", weak)
+	}
+	injected := request(t, conn, hello, "timezone-injection", "regional.apply", []byte(`{"timezone":"UTC; whoami","ntp":true}`))
+	if injected.Error == nil || injected.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("timezone: %#v", injected)
 	}
 }

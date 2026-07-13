@@ -75,7 +75,10 @@ export interface FirewallRuleSpec {
   label: string; direction: 'inbound' | 'outbound'; profile: 'domain' | 'private' | 'public' | 'any'
   protocol: 'tcp' | 'udp'; port?: number; program?: string; service?: string
 }
-export interface UserInfo { username: string; isAdmin: boolean }
+export interface UserInfo {
+  username: string; isAdmin: boolean; sid?: string; accountType?: 'local' | 'microsoft' | 'domain'
+  readOnly?: boolean; protected?: boolean
+}
 export interface ManagedServiceInfo {
   name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean
   startupType?: string; serviceType?: string; protected?: boolean

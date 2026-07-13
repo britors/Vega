@@ -11,9 +11,11 @@ import (
 	"strings"
 
 	"github.com/lyraos/vega-agent/internal/eventlogs"
+	"github.com/lyraos/vega-agent/internal/localaccounts"
 	"github.com/lyraos/vega-agent/internal/networking"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/regional"
 	"github.com/lyraos/vega-agent/internal/servicecontrol"
 	"github.com/lyraos/vega-agent/internal/software"
 )
@@ -30,6 +32,8 @@ type Server struct {
 	EventLogs           EventLogReader
 	Network             NetworkManager
 	Wifi                WifiManager
+	Accounts            AccountReader
+	Regional            RegionalReader
 	MissingDependencies []protocol.MissingDependency
 }
 
@@ -40,6 +44,10 @@ type Elevator interface {
 	StaticIPv4(context.Context, networking.StaticIPv4) error
 	SetFirewallRule(context.Context, string, bool) error
 	CreateFirewallRule(context.Context, networking.FirewallRuleSpec) (string, error)
+	AccountCreate(context.Context, localaccounts.CreateParams) error
+	AccountRemove(context.Context, localaccounts.RemoveParams) error
+	AccountSetAdmin(context.Context, localaccounts.AdminParams) error
+	RegionalApply(context.Context, regional.ApplyParams) error
 }
 
 type ProcessController interface{ Kill(uint32) error }
@@ -60,6 +68,13 @@ type WifiManager interface {
 	List(context.Context) ([]networking.WifiNetwork, error)
 	Connect(context.Context, string, string) error
 	Disconnect(context.Context, string) error
+}
+type AccountReader interface {
+	List(context.Context) ([]localaccounts.Info, error)
+}
+type RegionalReader interface {
+	Status(context.Context) (regional.Status, error)
+	Timezones(context.Context) ([]string, error)
 }
 
 func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) error {
@@ -129,6 +144,22 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 	if s.Wifi != nil {
 		readOperations = append(readOperations, "listWifi")
 		mutations = append(mutations, "connectWifi", "disconnectNetwork")
+	}
+	if s.Accounts != nil {
+		modules = append(modules, "users")
+		readOperations = append(readOperations, "listUsers")
+		if s.Elevator != nil {
+			mutations = append(mutations, "createUser", "removeUser", "setAdmin")
+			elevatedMutations = append(elevatedMutations, "createUser", "removeUser", "setAdmin")
+		}
+	}
+	if s.Regional != nil {
+		modules = append(modules, "datetime")
+		readOperations = append(readOperations, "dateTimeStatus", "listTimezones", "listLocales", "listKeymaps")
+		if s.Elevator != nil {
+			mutations = append(mutations, "applyDateTimeLocale")
+			elevatedMutations = append(elevatedMutations, "applyDateTimeLocale")
+		}
 	}
 	if err := protocol.Write(output, protocol.Message{
 		Version: protocol.Version, Kind: "hello", Nonce: nonce,
@@ -438,6 +469,78 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
 		case "network.staticIPv4", "network.firewallRuleSet", "network.firewallRuleCreate":
 			err = s.networkElevated(ctx, output, request)
+		case "accounts.list":
+			if s.Accounts == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "contas locais indisponíveis"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "accounts.list não aceita parâmetros"))
+				break
+			}
+			rows, readErr := s.Accounts.List(ctx)
+			if readErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: rows})
+		case "accounts.create", "accounts.remove", "accounts.setAdmin":
+			err = s.accountsElevated(ctx, output, request)
+		case "regional.status":
+			if s.Regional == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "configurações regionais indisponíveis"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "regional.status não aceita parâmetros"))
+				break
+			}
+			value, readErr := s.Regional.Status(ctx)
+			if readErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: value})
+		case "regional.timezones":
+			if s.Regional == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "fusos horários indisponíveis"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "regional.timezones não aceita parâmetros"))
+				break
+			}
+			value, readErr := s.Regional.Timezones(ctx)
+			if readErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: value})
+		case "regional.apply":
+			if s.Regional == nil || s.Elevator == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "alteração regional indisponível"))
+				break
+			}
+			var params regional.ApplyParams
+			if decodeParams(request.Params, &params) != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "configuração regional inválida"))
+				break
+			}
+			valid, validateErr := regional.ValidateApply(params)
+			if validateErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+				break
+			}
+			applyErr := s.Elevator.RegionalApply(ctx, valid)
+			if applyErr != nil {
+				code := "EXTERNAL_FAILURE"
+				if strings.Contains(applyErr.Error(), "UAC_CANCELED") {
+					code = "CANCELED"
+				}
+				err = protocol.Write(output, failure(request.RequestID, code, applyErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
 		case "broker.proof":
 			if s.Elevator == nil {
 				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "elevação indisponível"))
@@ -458,6 +561,55 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 			return err
 		}
 	}
+}
+
+func (s Server) accountsElevated(ctx context.Context, output io.Writer, request protocol.Message) error {
+	if s.Accounts == nil || s.Elevator == nil {
+		return protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "gerenciamento de contas indisponível"))
+	}
+	var err error
+	switch request.Operation {
+	case "accounts.create":
+		var params localaccounts.CreateParams
+		if decodeParams(request.Params, &params) != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "parâmetros de conta inválidos"))
+		}
+		valid, validateErr := localaccounts.ValidateCreate(params)
+		if validateErr != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+		}
+		err = s.Elevator.AccountCreate(ctx, valid)
+	case "accounts.remove":
+		var params localaccounts.RemoveParams
+		if decodeParams(request.Params, &params) != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "parâmetros de conta inválidos"))
+		}
+		username, validateErr := localaccounts.ValidateUsername(params.Username)
+		if validateErr != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+		}
+		params.Username = username
+		err = s.Elevator.AccountRemove(ctx, params)
+	case "accounts.setAdmin":
+		var params localaccounts.AdminParams
+		if decodeParams(request.Params, &params) != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "parâmetros de conta inválidos"))
+		}
+		username, validateErr := localaccounts.ValidateUsername(params.Username)
+		if validateErr != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+		}
+		params.Username = username
+		err = s.Elevator.AccountSetAdmin(ctx, params)
+	}
+	if err != nil {
+		code := "EXTERNAL_FAILURE"
+		if strings.Contains(err.Error(), "UAC_CANCELED") {
+			code = "CANCELED"
+		}
+		return protocol.Write(output, failure(request.RequestID, code, err.Error()))
+	}
+	return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
 }
 
 func (s Server) networkRead(output io.Writer, request protocol.Message, operation func() (any, error)) error {

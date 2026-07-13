@@ -13,9 +13,11 @@ import (
 	"github.com/lyraos/vega-agent/internal/agent"
 	"github.com/lyraos/vega-agent/internal/broker"
 	"github.com/lyraos/vega-agent/internal/eventlogs"
+	"github.com/lyraos/vega-agent/internal/localaccounts"
 	"github.com/lyraos/vega-agent/internal/networking"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/regional"
 	"github.com/lyraos/vega-agent/internal/servicecontrol"
 	"github.com/lyraos/vega-agent/internal/winget"
 )
@@ -49,6 +51,8 @@ func newAgentServer() agent.Server {
 		EventLogs:       eventlogs.Reader{},
 		Network:         networking.Reader{},
 		Wifi:            networking.Wifi{},
+		Accounts:        localaccounts.Manager{},
+		Regional:        regional.Manager{},
 	}
 	software, err := winget.New()
 	if err == nil {

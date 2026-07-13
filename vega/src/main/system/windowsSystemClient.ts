@@ -3,8 +3,8 @@ import { AgentTransport } from './agentTransport'
 import type { SystemClient } from './systemClient'
 import {
   SystemClientError, type FirewallRuleSpec, type FirewallServiceInfo, type HardwareInventory, type ManagedServiceInfo,
-  type NetworkInterfaceInfo, type ProcessInfo, type ProxyConfig, type StorageVolumeInfo, type SystemCapabilities,
-  type SystemMetrics, type VegaSystemInfo, type WifiNetworkInfo
+  type DateTimeStatus, type NetworkInterfaceInfo, type ProcessInfo, type ProxyConfig, type StorageVolumeInfo,
+  type SystemCapabilities, type SystemMetrics, type UserInfo, type VegaSystemInfo, type WifiNetworkInfo
 } from './types'
 import type { PackageDetails, PackageRef, SoftwareInstallOptions } from './types'
 
@@ -102,6 +102,23 @@ class WindowsSystemClientBase extends EventEmitter {
   }
   async firewallCreateRule(spec: FirewallRuleSpec): Promise<void> {
     await this.transport.request('network.firewallRuleCreate', { ...spec }, undefined, 120_000)
+  }
+  async listUsers(): Promise<UserInfo[]> { return this.transport.request('accounts.list') }
+  async createUser(username: string, isAdmin: boolean, password = ''): Promise<void> {
+    await this.transport.request('accounts.create', { username, isAdmin, password }, undefined, 120_000)
+  }
+  async removeUser(username: string, removeProfile = false): Promise<void> {
+    await this.transport.request('accounts.remove', { username, removeProfile }, undefined, 120_000)
+  }
+  async setAdmin(username: string, isAdmin: boolean): Promise<void> {
+    await this.transport.request('accounts.setAdmin', { username, isAdmin }, undefined, 120_000)
+  }
+  async dateTimeStatus(): Promise<DateTimeStatus> { return this.transport.request('regional.status') }
+  async listTimezones(): Promise<string[]> { return this.transport.request('regional.timezones') }
+  async listLocales(): Promise<string[]> { return [(await this.dateTimeStatus()).locale] }
+  async listKeymaps(): Promise<string[]> { return [(await this.dateTimeStatus()).keymap] }
+  async applyDateTimeLocale(timezone: string, ntp: boolean, _locale: string, _keymap: string): Promise<void> {
+    await this.transport.request('regional.apply', { timezone, ntp }, undefined, 120_000)
   }
 
   private async startTransaction(operation: string, params: Record<string, unknown> = {}): Promise<number> {

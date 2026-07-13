@@ -734,12 +734,12 @@ export class LinuxSystemClient extends EventEmitter implements SystemClient {
     return rows.map(([username, isAdmin]) => ({ username, isAdmin }))
   }
 
-  async createUser(username: string, isAdmin: boolean): Promise<void> {
+  async createUser(username: string, isAdmin: boolean, _password?: string): Promise<void> {
     const iface = await this.getInterface('Users')
     await iface.CreateUser(username, isAdmin)
   }
 
-  async removeUser(username: string): Promise<void> {
+  async removeUser(username: string, _removeProfile?: boolean): Promise<void> {
     const iface = await this.getInterface('Users')
     await iface.RemoveUser(username)
   }

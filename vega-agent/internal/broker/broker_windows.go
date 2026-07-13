@@ -18,9 +18,11 @@ import (
 	"time"
 
 	"github.com/Microsoft/go-winio"
+	"github.com/lyraos/vega-agent/internal/localaccounts"
 	"github.com/lyraos/vega-agent/internal/networking"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/regional"
 	"github.com/lyraos/vega-agent/internal/servicecontrol"
 	"golang.org/x/sys/windows"
 )
@@ -68,6 +70,23 @@ func (e Elevator) CreateFirewallRule(parent context.Context, spec networking.Fir
 		return "", fmt.Errorf("broker não retornou o identificador da regra")
 	}
 	return name, nil
+}
+
+func (e Elevator) AccountCreate(parent context.Context, params localaccounts.CreateParams) error {
+	_, err := e.execute(parent, "accounts.create", map[string]any{"username": params.Username, "password": params.Password, "isAdmin": params.IsAdmin})
+	return err
+}
+func (e Elevator) AccountRemove(parent context.Context, params localaccounts.RemoveParams) error {
+	_, err := e.execute(parent, "accounts.remove", map[string]any{"username": params.Username, "removeProfile": params.RemoveProfile})
+	return err
+}
+func (e Elevator) AccountSetAdmin(parent context.Context, params localaccounts.AdminParams) error {
+	_, err := e.execute(parent, "accounts.setAdmin", map[string]any{"username": params.Username, "isAdmin": params.IsAdmin})
+	return err
+}
+func (e Elevator) RegionalApply(parent context.Context, params regional.ApplyParams) error {
+	_, err := e.execute(parent, "regional.apply", map[string]any{"timezone": params.Timezone, "ntp": params.NTP})
+	return err
 }
 
 func (e Elevator) execute(parent context.Context, operation string, params map[string]any) (map[string]any, error) {
@@ -254,6 +273,50 @@ func RunClient(ctx context.Context, pipeName string, serverPID, sessionID uint32
 			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
 		}
 		result["name"] = name
+	case "accounts.create":
+		var params localaccounts.CreateParams
+		if err := decodeClosed(request.Params, &params); err != nil {
+			return fmt.Errorf("invalid accounts.create parameters")
+		}
+		valid, err := localaccounts.ValidateCreate(params)
+		if err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "INVALID_ARGUMENT", Message: err.Error()}})
+		}
+		if err := (localaccounts.Manager{}).Create(ctx, valid); err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
+		}
+		result["changed"] = true
+	case "accounts.remove":
+		var params localaccounts.RemoveParams
+		if err := decodeClosed(request.Params, &params); err != nil {
+			return fmt.Errorf("invalid accounts.remove parameters")
+		}
+		if err := (localaccounts.Manager{}).Remove(ctx, params); err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
+		}
+		result["changed"] = true
+	case "accounts.setAdmin":
+		var params localaccounts.AdminParams
+		if err := decodeClosed(request.Params, &params); err != nil {
+			return fmt.Errorf("invalid accounts.setAdmin parameters")
+		}
+		if err := (localaccounts.Manager{}).SetAdmin(ctx, params); err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
+		}
+		result["changed"] = true
+	case "regional.apply":
+		var params regional.ApplyParams
+		if err := decodeClosed(request.Params, &params); err != nil {
+			return fmt.Errorf("invalid regional.apply parameters")
+		}
+		valid, err := regional.ValidateApply(params)
+		if err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "INVALID_ARGUMENT", Message: err.Error()}})
+		}
+		if err := (regional.Manager{}).Apply(ctx, valid); err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
+		}
+		result["changed"] = true
 	default:
 		return fmt.Errorf("broker operation not allowed")
 	}
