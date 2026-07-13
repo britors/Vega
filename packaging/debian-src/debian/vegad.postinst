@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+
+# vegad.service has no [Install] section (bus-activated, not
+# systemctl-enabled) — only the update-check timer is enabled here, same
+# logic as packaging/vegad/vegad.install (Arch) and vegad.spec's %post
+# (openSUSE).
+if [ "$1" = "configure" ]; then
+	systemctl daemon-reload || true
+	systemctl reload dbus.service 2>/dev/null || true
+	systemctl enable --now vegad-update-check.timer 2>/dev/null || true
+fi
+
+#DEBHELPER#
+
+exit 0

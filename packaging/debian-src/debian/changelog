@@ -1,0 +1,7 @@
+vega (1.6.0-1) unstable; urgency=medium
+
+  * Empacotamento inicial para Debian/Ubuntu (backend apt/dpkg, Timeshift,
+    ufw). Empacotamento de teste, ainda não validado ponta a ponta num
+    Ubuntu real — ver packaging/opensuse/ para o mesmo aviso já feito lá.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Mon, 13 Jul 2026 10:00:00 -0300

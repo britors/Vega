@@ -35,13 +35,26 @@ instalar a partir do checkout local em vez do RPM, veja
 [`packaging/opensuse/install.sh`](packaging/opensuse/install.sh), documentado
 em [`CONTRIBUTING.md`](CONTRIBUTING.md) e [`dependencias.md`](dependencias.md).
 
+### Ubuntu / Debian
+
+Suporte novo, sem pacote publicado ainda (nem PPA, nem `.deb` anexado a uma
+release) — para buildar localmente, veja
+[`packaging/debian-src/`](packaging/debian-src/) (o `debian/rules` de lá
+documenta o passo de copiar `debian/` para a raiz do repo antes de rodar
+`dpkg-buildpackage`, exigência do próprio `dpkg`). O backend do `vegad`
+(pacotes via `apt`, kernel, drivers NVIDIA via `ubuntu-drivers`, firewall via
+`ufw`, snapshots via Timeshift) é código novo, não validado contra uma
+instalação Ubuntu real — mesmo aviso de "empacotamento de teste" que já vale
+para Arch/openSUSE, só que aqui vale para o backend inteiro, não só pro
+empacotamento.
+
 ## Layout do repositório
 
 ```
 vega/        UI (Electron + TypeScript + React), roda como usuário comum
 vegad/       Daemon privilegiado (Go), roda como root, exposto via D-Bus
 dbus/        Definições de interface D-Bus (XML de introspecção) — contrato entre vega e vegad
-packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs (Arch) e specs RPM (openSUSE)
+packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs (Arch), specs RPM (openSUSE) e debian/rules (Ubuntu/Debian)
 ```
 
 ## Status
@@ -125,3 +138,4 @@ Para rodar os checks automatizados deste checkout, use:
 - Hardware, Kernel, Rede/Firewall e Usuários já têm backend básico e telas iniciais; ainda faltam integrações mais profundas e o módulo de Serviços continua fora da navegação do MVP
 - PKGBUILDs em `packaging/*/PKGBUILD` usam a fonte versionada do Vega por padrão e aceitam `VEGA_SOURCE_URL`/`VEGA_SOURCE_DIR` para builds locais e empacotamento AUR
 - `vegad` implementa `org.freedesktop.DBus.Introspectable` via reflection (`introspect.Methods`, ver `server.go`) — necessário para clientes como `dbus-next` (usado pela UI) que fazem introspecção antes de chamar métodos; `busctl`/`gdbus call` funcionam mesmo sem isso, então esse gap só aparece testando com o mesmo cliente D-Bus que a UI usa
+- Suporte a Ubuntu/Debian (`vegad/internal/distro/{apt,kernel_debian,hardware_debian}.go`, `dbusserver/{ufw,timeshift}.go`) é novo e não testado numa instalação real: `SetRepoEnabled` só reconhece linhas que batem exatamente com `apt list`/`sources.list` (sem suporte a PPA via `add-apt-repository`); o backend de Firewall usa `ufw` quando `firewall-cmd` não está presente, e o de Snapshots usa Timeshift quando `snapper` não está — mas Timeshift exige configuração prévia de um dispositivo de backup (diferente do snapper, que já funciona na subvolume raiz), não tem diff de pacotes como o snapper (`DiffPackages` retorna uma mensagem explicativa) e sua política de retenção única (`count_daily`/`weekly`/`monthly`/`hourly`/`boot`) é aproximada para o mesmo valor em vez de configurável por período

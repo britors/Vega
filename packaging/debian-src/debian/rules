@@ -1,0 +1,60 @@
+#!/usr/bin/make -f
+#
+# Build from the repo root, not from here — dpkg-buildpackage always reads
+# ./debian relative to its cwd, so this whole "debian/" directory (and
+# ../vega-wrapper.sh) has to be copied to the repo root first:
+#
+#   cp -r packaging/debian-src/debian .
+#   cp packaging/debian-src/vega-wrapper.sh .
+#   dpkg-buildpackage -us -uc -b
+#   rm -rf debian vega-wrapper.sh
+#
+# Empacotamento de teste, mesmo aviso que packaging/opensuse/*.spec já
+# carrega: não validado ponta a ponta num Ubuntu real.
+
+export DH_VERBOSE=1
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cd vega && npm ci && npm run build
+	cd vegad && go build -trimpath \
+		-ldflags "-X github.com/lyraos/vegad/internal/version.Version=$(DEB_VERSION_UPSTREAM)" \
+		-o vegad ./cmd/vegad
+
+# Both binary packages are populated directly here (rather than via
+# debian/tmp + per-package .install files) since neither the Electron/npm
+# nor the Go build is a buildsystem debhelper recognizes automatically —
+# same install-file list as packaging/opensuse/{vega,vegad}.spec's
+# %install sections.
+override_dh_auto_install:
+	install -dm755 debian/vega/usr/lib/lyra-vega
+	cp -r vega/out/. debian/vega/usr/lib/lyra-vega/
+	rm -rf debian/vega/usr/lib/lyra-vega/node_modules
+	cp -r vega/node_modules debian/vega/usr/lib/lyra-vega/node_modules
+	install -Dm755 vega-wrapper.sh debian/vega/usr/bin/vega
+	install -Dm644 packaging/vega/vega.desktop \
+		debian/vega/usr/share/applications/vega.desktop
+	install -Dm644 packaging/vega/vega.svg \
+		debian/vega/usr/share/icons/hicolor/scalable/apps/vega.svg
+
+	install -Dm755 vegad/vegad debian/vegad/usr/lib/vega/vegad
+	install -Dm644 packaging/vegad/vegad.service \
+		debian/vegad/usr/lib/systemd/system/vegad.service
+	install -Dm644 packaging/vegad/vegad-update-check.service \
+		debian/vegad/usr/lib/systemd/system/vegad-update-check.service
+	install -Dm644 packaging/vegad/vegad-update-check.timer \
+		debian/vegad/usr/lib/systemd/system/vegad-update-check.timer
+	install -Dm644 packaging/vegad/org.lyraos.Vega1.conf \
+		debian/vegad/usr/share/dbus-1/system.d/org.lyraos.Vega1.conf
+	install -Dm644 packaging/vegad/org.lyraos.Vega1.service \
+		debian/vegad/usr/share/dbus-1/system-services/org.lyraos.Vega1.service
+	install -Dm644 packaging/vegad/org.lyraos.vega.policy \
+		debian/vegad/usr/share/polkit-1/actions/org.lyraos.vega.policy
+
+# Units are installed by hand above (not via the debian/<pkg>.<unit> naming
+# dh_installsystemd expects), and enabling only the update-check timer
+# (not vegad.service, which is bus-activated) is handled explicitly in
+# debian/vegad.postinst/prerm instead.
+override_dh_installsystemd:

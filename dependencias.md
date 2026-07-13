@@ -1,9 +1,9 @@
 # Dependências do sistema para o Vega
 
 O `vegad` fala com o gerenciador de pacotes por trás de uma camada de abstração
-(`vegad/internal/distro`) com um backend por distro: Pacman+AUR em Arch e
-Zypper em openSUSE Leap. As dependências abaixo mudam de nome/forma de instalação
-conforme a distro, mas o papel de cada uma é o mesmo.
+(`vegad/internal/distro`) com um backend por distro: Pacman+AUR em Arch, Zypper
+em openSUSE Leap e APT em Debian/Ubuntu. As dependências abaixo mudam de
+nome/forma de instalação conforme a distro, mas o papel de cada uma é o mesmo.
 
 ## Arch
 
@@ -92,7 +92,55 @@ sudo systemctl enable --now firewalld
 sudo packaging/opensuse/install.sh
 ```
 
-## Requisitos de sistema comuns às duas distros
+## Ubuntu / Debian
+
+Ainda não existe pacote publicado (nem PPA, nem `.deb` numa release); veja
+[`packaging/debian-src/`](packaging/debian-src/) pro empacotamento local. O
+backend APT/hardware NVIDIA (`vegad/internal/distro/{apt,kernel_debian,hardware_debian}.go`)
+e os backends de Firewall/Snapshots (`vegad/internal/dbusserver/{ufw,timeshift}.go`)
+são código novo, não validados ponta a ponta num Ubuntu real — mesmo aviso
+de "ponto de partida, não garantia" que já vale pro backend openSUSE.
+
+### Necessários só para compilar
+
+- `golang-go`
+- `nodejs` / `npm`
+
+### Base de sistema
+
+- `systemd`
+- `dbus`
+- `polkit`
+- Não há camada de comunidade equivalente à AUR — `distro.Provider.Community()` retorna `nil`, então o módulo Software não tem origem "Comunidade" nessa distro (PPAs ficam fora do escopo atual).
+
+### Pacotes opcionais (mesmo papel das tabelas acima)
+
+| Pacote (apt) | Binário verificado | Módulo | Observação |
+| --- | --- | --- | --- |
+| `timeshift` | `timeshift` | Snapshots | Ao contrário do snapper, exige rodar o assistente do Timeshift primeiro pra configurar um dispositivo de backup — não funciona "de fábrica" mesmo instalado. Sem diff de pacotes como o snapper. |
+| `flatpak` | `flatpak` | Software (origem Flathub) | — |
+| `network-manager` | `nmcli` | Rede | — |
+| `restic` | `restic` | Backup | — |
+| `ufw` | `ufw` | Firewall | Catálogo de perfis (`ufw app list`) depende de quais pacotes com profile (`openssh-server`, `samba`, `cups`) estão instalados. |
+| `fwupd` | `fwupdmgr` | Hardware (firmware) | — |
+| `bluez` | `bluetoothctl` | Bluetooth | — |
+| `ubuntu-drivers-common` | `ubuntu-drivers` | Hardware (driver NVIDIA) | Sem ele, `AvailableNvidiaDrivers` só oferece a opção `nouveau`. |
+
+### Resumo de instalação (Ubuntu/Debian)
+
+```sh
+# dependências de build
+sudo apt install golang-go nodejs npm
+
+# opcionais (conforme os módulos desejados)
+sudo apt install timeshift flatpak network-manager restic ufw fwupd bluez ubuntu-drivers-common
+sudo ufw enable
+
+# configurar o Timeshift antes de usar o módulo Snapshots
+sudo timeshift --list   # confirma se já existe backup_device_uuid configurado
+```
+
+## Requisitos de sistema comuns a todas as distros
 
 - **Barramento D-Bus system ativo** (`dbus-broker.service` ou `dbus.service`,
   a depender da distro). O `vegad` é ativado sob demanda pelo D-Bus
@@ -103,4 +151,7 @@ sudo packaging/opensuse/install.sh
   que precisa pedir ao systemd para subir o daemon.
 - **polkit ativo** — autoriza as ações privilegiadas que o `vegad` expõe
   (`org.lyraos.vega.policy`).
-- Sistema de arquivos raiz em **Btrfs**, se o módulo de Snapshots for usado.
+- Sistema de arquivos raiz em **Btrfs**, se o módulo de Snapshots for usado
+  via snapper (Arch/openSUSE). No backend Timeshift (Ubuntu/Debian) isso não
+  é obrigatório — o modo padrão (`rsync`) funciona em ext4, desde que um
+  dispositivo de backup já tenha sido configurado.
