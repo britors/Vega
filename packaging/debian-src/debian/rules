@@ -62,3 +62,10 @@ override_dh_installsystemd:
 # dwz only applies to C/C++ debug info; vegad's Go binary already ships
 # compressed DWARF, which dwz can't re-compress and aborts on.
 override_dh_dwz:
+
+# The bundled Electron binaries under node_modules are prebuilt third-party
+# artifacts, not something we compiled — dpkg-shlibdeps can't resolve their
+# runtime libs (libgtk-3, libX11, ...) since those dev libs aren't installed
+# in the build container, and bundling them isn't what shlibs:Depends is for.
+override_dh_shlibdeps:
+	dh_shlibdeps -X usr/lib/lyra-vega/node_modules
