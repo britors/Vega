@@ -4,6 +4,7 @@ import { modules } from './modules/registry'
 import WindowChrome from './components/window/WindowChrome'
 import { DialogProvider } from './components/dialogs/DialogProvider'
 import { NavigationContext } from './components/navigation/NavigationContext'
+import { isModuleVisible } from './modules/platformVisibility'
 
 export default function App(): JSX.Element {
   const fallbackModules = useMemo(() => modules.filter((module) => module.id === 'about'), [])
@@ -17,7 +18,7 @@ export default function App(): JSX.Element {
     window.vega.getCapabilities().then(
       (capabilities) => {
         if (!active) return
-        const supported = modules.filter((module) => capabilities.modules.includes(module.id))
+        const supported = modules.filter((module) => isModuleVisible(module.id, capabilities))
         const next = supported.length > 0 ? supported : fallbackModules
         setAvailableModules(next)
         setActiveId((current) => next.some((module) => module.id === current) ? current : next[0].id)

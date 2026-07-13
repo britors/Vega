@@ -52,6 +52,7 @@ export default function Dashboard(): JSX.Element {
           if (cancelled) return
           const memoryPercent = metrics.memTotal > 0 ? (metrics.memUsed / metrics.memTotal) * 100 : 0
           setCards([
+            // Pontos de Restauração/Snapper é deliberadamente ausente no Windows.
             { title: 'Sistema', value: system.distro, detail: `build ${system.build || 'indisponível'} · ${system.architecture || 'arquitetura desconhecida'}`, tone: 'neutral', moduleId: 'about' },
             { title: 'Agente Vega', value: system.connected ? 'Conectado' : 'Desconectado', detail: `versão ${system.version}`, tone: system.connected ? 'ok' : 'danger', moduleId: 'about' },
             { title: 'CPU', value: `${metrics.cpuPercent.toFixed(0)}%`, detail: 'uso geral', tone: metrics.cpuPercent >= 90 ? 'danger' : metrics.cpuPercent >= 75 ? 'warn' : 'ok', moduleId: 'monitor' },
