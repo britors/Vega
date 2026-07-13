@@ -21,7 +21,7 @@ Description: Centro de controle para Linux
 
 Package: vegad
 Architecture: amd64
-Depends: ${misc:Depends}, ${shlibs:Depends}, dbus, polkit, apt
+Depends: ${misc:Depends}, ${shlibs:Depends}, dbus, polkitd | policykit-1, apt
 Recommends: timeshift, ufw, network-manager, fwupd, bluez, restic, ubuntu-drivers-common
 Description: Daemon privilegiado do Vega, centro de controle para Linux
  Expõe operações de sistema (pacotes via APT, snapshots via Timeshift,
