@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Instalador de conveniência: baixa os RPMs pré-compilados da release mais
-# recente do Vega (publicados por .github/workflows/release-opensuse.yml) e
-# instala via zypper. Só cobre openSUSE Leap por enquanto — em Arch
-# use o pacote no AUR (`yay -S lyra-vega`), que já existe e é o caminho
-# recomendado.
+# Instalador de conveniência: baixa os pacotes pré-compilados da release mais
+# recente do Vega e instala com o gerenciador de pacotes da distro. Cobre
+# openSUSE Leap (RPM, via .github/workflows/release-opensuse.yml) e
+# Ubuntu/Debian (.deb, via .github/workflows/release-debian.yml). Em Arch use
+# o pacote no AUR (`yay -S lyra-vega`), que já existe e é o caminho
+# recomendado — não há RPM/.deb equivalente pra Arch.
 #
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
@@ -26,10 +27,50 @@ if [ -r /etc/os-release ]; then
   distro_id_like="${ID_LIKE:-}"
 fi
 
+# download_release_assets baixa pra $workdir todo asset da release cujo nome
+# termina no sufixo passado (".rpm" ou ".deb"), usando a API de releases do
+# GitHub — mesma lógica que já existia hardcoded pra RPM, só parametrizada
+# pelo sufixo pra ser reaproveitada pelo caminho .deb também.
+download_release_assets() {
+  local suffix="$1"
+  local release_tag="${VEGA_VERSION:-latest}"
+  local api_url
+  if [ "$release_tag" = "latest" ]; then
+    api_url="https://api.github.com/repos/$REPO/releases/latest"
+  else
+    api_url="https://api.github.com/repos/$REPO/releases/tags/$release_tag"
+  fi
+
+  echo "==> Consultando release ($release_tag) em $REPO" >&2
+  local release_json
+  release_json="$(curl -fsSL "$api_url")"
+
+  local urls=()
+  mapfile -t urls < <(printf '%s' "$release_json" \
+    | grep -o "\"browser_download_url\": *\"[^\"]*${suffix}\"" \
+    | sed -E 's/.*"(https:[^"]+)"/\1/' \
+    | grep -Ev 'debuginfo|debugsource')
+
+  if [ "${#urls[@]}" -eq 0 ]; then
+    echo "Erro: nenhum asset '*${suffix}' encontrado na release '$release_tag'." >&2
+    echo "Confira se o workflow de release já rodou para essa tag:" >&2
+    echo "  https://github.com/$REPO/releases" >&2
+    exit 1
+  fi
+
+  for url in "${urls[@]}"; do
+    echo "==> Baixando $(basename "$url")" >&2
+    curl -fsSL "$url" -o "$workdir/$(basename "$url")"
+  done
+}
+
+workdir="$(mktemp -d)"
+trap 'rm -rf "$workdir"' EXIT
+
 case "$distro_id $distro_id_like" in
   *arch*)
     cat >&2 <<'EOF'
-Detectei Arch. Este instalador só empacota RPMs pra openSUSE Leap;
+Detectei Arch. Este instalador só empacota RPM/.deb pra openSUSE/Ubuntu;
 em Arch use o pacote do AUR, que já é o caminho suportado:
 
   yay -S lyra-vega
@@ -39,55 +80,40 @@ EOF
     exit 1
     ;;
   *opensuse*|*suse*)
+    if ! command -v zypper >/dev/null 2>&1; then
+      echo "Erro: 'zypper' não encontrado — isso não parece ser openSUSE." >&2
+      exit 1
+    fi
+
+    download_release_assets '\.rpm'
+
+    echo "==> Instalando via zypper"
+    echo "Aviso: os RPMs desta release ainda não são assinados (sem chave GPG"
+    echo "configurada), então a instalação usa --allow-unsigned-rpm."
+    zypper --non-interactive install -y --allow-unsigned-rpm "$workdir"/*.rpm
+    ;;
+  *debian*|*ubuntu*)
+    if ! command -v apt-get >/dev/null 2>&1; then
+      echo "Erro: 'apt-get' não encontrado — isso não parece ser Debian/Ubuntu." >&2
+      exit 1
+    fi
+
+    download_release_assets '\.deb'
+
+    echo "==> Instalando via apt"
+    echo "Aviso: empacotamento Ubuntu/Debian ainda é considerado de teste,"
+    echo "não validado ponta a ponta numa instalação real."
+    apt-get update
+    # apt (não dpkg -i) resolve as dependências declaradas em debian/control
+    # (dbus, polkit etc.) a partir dos repositórios já configurados.
+    apt-get install -y "$workdir"/*.deb
     ;;
   *)
     echo "Distro não reconhecida (ID=$distro_id, ID_LIKE=$distro_id_like)." >&2
-    echo "Este instalador só cobre openSUSE Leap por enquanto." >&2
+    echo "Este instalador cobre openSUSE Leap e Ubuntu/Debian por enquanto." >&2
     exit 1
     ;;
 esac
-
-if ! command -v zypper >/dev/null 2>&1; then
-  echo "Erro: 'zypper' não encontrado — isso não parece ser openSUSE." >&2
-  exit 1
-fi
-
-release_tag="${VEGA_VERSION:-latest}"
-if [ "$release_tag" = "latest" ]; then
-  api_url="https://api.github.com/repos/$REPO/releases/latest"
-else
-  api_url="https://api.github.com/repos/$REPO/releases/tags/$release_tag"
-fi
-
-echo "==> Consultando release ($release_tag) em $REPO"
-release_json="$(curl -fsSL "$api_url")"
-
-# Extrai as URLs de download dos assets .rpm "de verdade" (o build já exclui
-# debuginfo/debugsource, mas o grep abaixo reforça isso caso mude).
-mapfile -t rpm_urls < <(printf '%s' "$release_json" \
-  | grep -o '"browser_download_url": *"[^"]*\.rpm"' \
-  | sed -E 's/.*"(https:[^"]+)"/\1/' \
-  | grep -Ev 'debuginfo|debugsource')
-
-if [ "${#rpm_urls[@]}" -eq 0 ]; then
-  echo "Erro: nenhum .rpm encontrado nos assets da release '$release_tag'." >&2
-  echo "Confira se .github/workflows/release-opensuse.yml já rodou para essa tag:" >&2
-  echo "  https://github.com/$REPO/releases" >&2
-  exit 1
-fi
-
-workdir="$(mktemp -d)"
-trap 'rm -rf "$workdir"' EXIT
-
-for url in "${rpm_urls[@]}"; do
-  echo "==> Baixando $(basename "$url")"
-  curl -fsSL "$url" -o "$workdir/$(basename "$url")"
-done
-
-echo "==> Instalando via zypper"
-echo "Aviso: os RPMs desta release ainda não são assinados (sem chave GPG"
-echo "configurada), então a instalação usa --allow-unsigned-rpm."
-zypper --non-interactive install -y --allow-unsigned-rpm "$workdir"/*.rpm
 
 cat <<'EOF'
 
@@ -95,6 +121,6 @@ Instalação concluída.
 - Daemon: vegad, ativado sob demanda via D-Bus (org.lyraos.Vega1)
 - App: /usr/bin/vega (ou pelo atalho "Vega" no menu)
 
-Empacotamento openSUSE ainda é considerado de teste — reporte problemas em
+Empacotamento ainda é considerado de teste — reporte problemas em
 https://github.com/britors/Vega/issues.
 EOF

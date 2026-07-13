@@ -12,41 +12,43 @@ Publicado no AUR:
 yay -S lyra-vega
 ```
 
-### openSUSE Leap
+### openSUSE Leap e Ubuntu/Debian
 
-Ainda não há pacote nos repositórios oficiais nem no OBS. O jeito mais
-rápido de testar é baixar o `.rpm` já compilado pela release mais recente
-(gerado por [`.github/workflows/release-opensuse.yml`](.github/workflows/release-opensuse.yml)
-a partir de [`packaging/opensuse/`](packaging/opensuse/)):
+Nenhuma das duas está nos repositórios oficiais ainda (nem OBS, nem PPA). O
+mesmo instalador de conveniência serve as duas — ele detecta a distro via
+`/etc/os-release` e baixa o pacote certo (`.rpm` ou `.deb`) da release mais
+recente:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
 ```
 
-Isso baixa `vegad-*.rpm` e `vega-*.rpm` da [release mais recente](https://github.com/britors/Vega/releases)
-e instala via `zypper`. Os RPMs ainda não são assinados, então a instalação
-usa `--allow-unsigned-rpm` — confira o script antes de rodar se preferir.
+Em openSUSE isso baixa `vegad-*.rpm`/`vega-*.rpm` (gerados por
+[`.github/workflows/release-opensuse.yml`](.github/workflows/release-opensuse.yml)
+a partir de [`packaging/opensuse/`](packaging/opensuse/)) e instala via
+`zypper --allow-unsigned-rpm` (os RPMs ainda não são assinados). Em
+Ubuntu/Debian baixa `vega_*.deb`/`vegad_*.deb` (gerados por
+[`.github/workflows/release-debian.yml`](.github/workflows/release-debian.yml)
+a partir de [`packaging/debian-src/`](packaging/debian-src/)) e instala via
+`apt-get install` (assim as dependências declaradas em `debian/control` são
+resolvidas normalmente, ao contrário de `dpkg -i`). Em Arch o script só aponta
+pro AUR — não há RPM/`.deb` equivalente lá.
+
 Para travar numa versão específica: `VEGA_VERSION=v1.3.4 sudo -E bash install.sh`
 (baixe o script primeiro se for usar essa variante).
 
-Empacotamento openSUSE ainda é considerado de teste (ver aviso em
-[`packaging/opensuse/vegad.spec`](packaging/opensuse/vegad.spec)). Para
-instalar a partir do checkout local em vez do RPM, veja
-[`packaging/opensuse/install.sh`](packaging/opensuse/install.sh), documentado
-em [`CONTRIBUTING.md`](CONTRIBUTING.md) e [`dependencias.md`](dependencias.md).
-
-### Ubuntu / Debian
-
-Suporte novo, sem pacote publicado ainda (nem PPA, nem `.deb` anexado a uma
-release) — para buildar localmente, veja
-[`packaging/debian-src/`](packaging/debian-src/) (o `debian/rules` de lá
-documenta o passo de copiar `debian/` para a raiz do repo antes de rodar
-`dpkg-buildpackage`, exigência do próprio `dpkg`). O backend do `vegad`
-(pacotes via `apt`, kernel, drivers NVIDIA via `ubuntu-drivers`, firewall via
-`ufw`, snapshots via Timeshift) é código novo, não validado contra uma
-instalação Ubuntu real — mesmo aviso de "empacotamento de teste" que já vale
-para Arch/openSUSE, só que aqui vale para o backend inteiro, não só pro
-empacotamento.
+Os dois empacotamentos ainda são considerados de teste (ver avisos em
+[`packaging/opensuse/vegad.spec`](packaging/opensuse/vegad.spec) e
+[`packaging/debian-src/debian/control`](packaging/debian-src/debian/control)
+— o backend Ubuntu/Debian do `vegad` em si, não só o empacotamento, ainda não
+foi validado contra uma instalação real). Para instalar a partir do checkout
+local em vez do pacote pronto, veja
+[`packaging/opensuse/install.sh`](packaging/opensuse/install.sh) (openSUSE,
+documentado também em [`CONTRIBUTING.md`](CONTRIBUTING.md) e
+[`dependencias.md`](dependencias.md)) ou o comentário no topo de
+[`packaging/debian-src/debian/rules`](packaging/debian-src/debian/rules)
+(Ubuntu/Debian, precisa copiar `debian/` pra raiz do repo antes de rodar
+`dpkg-buildpackage`, exigência do próprio `dpkg`).
 
 ## Layout do repositório
 

@@ -1,0 +1,70 @@
+name: Release DEBs (Ubuntu/Debian)
+
+# Builda vega.deb e vegad.deb num container Ubuntu a partir do template em
+# packaging/debian-src/ e anexa os dois na GitHub Release da tag empurrada.
+# Empacotamento ainda de teste — não validado ponta a ponta num Ubuntu real,
+# ver packaging/debian-src/debian/control.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    steps:
+      - name: Instalar dependências de build
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential debhelper dpkg-dev fakeroot \
+            golang-go nodejs npm ca-certificates git
+
+      - uses: actions/checkout@v4
+
+      - name: Preparar árvore debian/ e versão
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cp -r packaging/debian-src/debian .
+          cp packaging/debian-src/vega-wrapper.sh .
+          sed -i "1s/^vega ([^)]*)/vega (${version}-1)/" debian/changelog
+
+      - name: Buildar os .deb
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Coletar .deb finais
+        run: |
+          mkdir -p dist
+          cp ../*.deb dist/
+          ls -lh dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debian-debs
+          path: dist/*.deb
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: debian-debs
+          path: dist
+
+      - name: Publicar .deb na release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --generate-notes
+          fi
+          gh release upload "$tag" dist/*.deb --repo "$GITHUB_REPOSITORY" --clobber
