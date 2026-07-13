@@ -6,6 +6,17 @@
 # (a tag `vX.Y.Z` sem o "v"). Buildar sem essa define usa o default abaixo.
 %{!?version: %define version 0.0.0}
 
+# Fedora's rpmbuild (unlike openSUSE's) errors out generating the automatic
+# -debugsource subpackage for this binary: `find-debuginfo`/dwz can't produce
+# a source-file list for a stripped Go binary shipping its own compressed
+# DWARF (same underlying Go-vs-DWARF-tooling mismatch that made the .deb
+# build skip dh_dwz, see packaging/debian-src/debian/rules), so
+# debugsourcefiles.list ends up empty and rpm treats that as a fatal error.
+# Disabling debuginfo package generation entirely sidesteps it — standard
+# fix for Go/Rust binaries in Fedora spec files that don't follow the full
+# Fedora Go packaging macros.
+%global debug_package %{nil}
+
 Name:           vegad
 Version:        %{version}
 Release:        1%{?dist}

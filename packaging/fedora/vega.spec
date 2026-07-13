@@ -1,7 +1,10 @@
 # Empacotamento de teste local/CI para Fedora. Ver vegad.spec neste mesmo
 # diretório para as notas gerais (versionamento via --define version,
-# status do empacotamento).
+# status do empacotamento e por que debug_package é desabilitado — mesmo
+# problema aqui, agravado pelo Electron bundled trazendo seus próprios
+# binários pré-compilados que find-debuginfo tentaria escanear).
 %{!?version: %define version 0.0.0}
+%global debug_package %{nil}
 
 Name:           vega
 Version:        %{version}
