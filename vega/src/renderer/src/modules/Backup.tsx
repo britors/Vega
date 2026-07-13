@@ -58,6 +58,7 @@ export default function Backup(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isWindows, setIsWindows] = useState(false)
   const txLabels = useRef<Map<number, string>>(new Map())
 
   const [id, setId] = useState('')
@@ -104,6 +105,13 @@ export default function Backup(): JSX.Element {
   }
 
   useEffect(() => {
+    window.vega.getCapabilities().then((capabilities) => {
+      if (capabilities.platform !== 'windows') return
+      setIsWindows(true)
+      setPaths('%USERPROFILE%\\Documents,%USERPROFILE%\\Pictures')
+      setDestination('D:\\VegaBackup')
+      setRestoreTarget('%USERPROFILE%\\VegaRestored')
+    }).catch(() => undefined)
     refreshConfigs()
   }, [])
 
@@ -306,7 +314,7 @@ export default function Backup(): JSX.Element {
       <div className="card">
         <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Backup</h1>
         <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-          O quê / Para onde / Quando, com `restic` por trás
+          {isWindows ? 'Arquivos protegidos com Restic, DPAPI e Agendador de Tarefas do Windows' : 'O quê / Para onde / Quando, com `restic` por trás'}
         </p>
       </div>
 
@@ -382,9 +390,12 @@ export default function Backup(): JSX.Element {
         </div>
         <input
           className="sidebar__search"
-          placeholder="UUID do dispositivo removível (opcional)"
+          placeholder={isWindows ? 'Drive ou volume GUID removível (opcional, ex.: E:)' : 'UUID do dispositivo removível (opcional)'}
           value={destinationUUID}
-          onChange={(e) => setDestinationUUID(e.target.value)}
+          onChange={(e) => {
+            if (isWindows && destinationUUID.trim() === '' && e.target.value.trim() !== '' && /^[A-Za-z]:[\\/]/.test(destination)) setDestination('VegaBackup')
+            setDestinationUUID(e.target.value)
+          }}
         />
         <input
           className="sidebar__search"
@@ -401,7 +412,7 @@ export default function Backup(): JSX.Element {
           </select>
           <button
             onClick={createConfig}
-            disabled={busy || paths.trim() === '' || destination.trim() === ''}
+            disabled={busy || paths.trim() === '' || destination.trim() === '' || (isWindows && id.trim() === '')}
             style={{
               padding: '6px 14px',
               borderRadius: 'var(--lyra-radius-sm)',
@@ -414,6 +425,11 @@ export default function Backup(): JSX.Element {
             Criar configuração
           </button>
         </div>
+        {isWindows && (
+          <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>
+            A senha do repositório é gerada pelo Vega e armazenada cifrada para o usuário atual via DPAPI. “Ao conectar” verifica o destino a cada 15 minutos; a senha não é gravada na tarefa agendada.
+          </div>
+        )}
       </div>
 
       {error && (
@@ -444,7 +460,7 @@ export default function Backup(): JSX.Element {
                 <div style={{ fontWeight: 600 }}>{config.id}</div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)' }}>
                   {config.destination} · {config.frequency}
-                  {config.destinationUUID ? ` · UUID ${config.destinationUUID}` : ''}
+                  {config.destinationUUID ? ` · ${isWindows ? 'volume' : 'UUID'} ${config.destinationUUID}` : ''}
                 </div>
                 <div style={{ fontSize: '0.82rem', color: 'var(--lyra-text-muted)', marginTop: 4 }}>
                   {config.paths.join(', ')}
@@ -459,7 +475,7 @@ export default function Backup(): JSX.Element {
                 <h2 style={{ margin: 0, fontSize: '1rem' }}>{selectedConfig.id}</h2>
                 <div style={{ fontSize: '0.85rem', color: 'var(--lyra-text-muted)' }}>
                   {selectedConfig.destination} · {selectedConfig.frequency}
-                  {selectedConfig.destinationUUID ? ` · UUID ${selectedConfig.destinationUUID}` : ''}
+                  {selectedConfig.destinationUUID ? ` · ${isWindows ? 'volume' : 'UUID'} ${selectedConfig.destinationUUID}` : ''}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
@@ -619,7 +635,7 @@ export default function Backup(): JSX.Element {
           </select>
         </div>
         <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.85rem' }}>
-          A restauração usa o snapshot selecionado na configuração atual.
+          {isWindows ? 'A restauração usa o snapshot selecionado. O agente bloqueia raiz do volume, Windows, Program Files, ProgramData e o perfil inteiro do usuário; escolha uma subpasta dedicada.' : 'A restauração usa o snapshot selecionado na configuração atual.'}
         </div>
       </div>
     </div>

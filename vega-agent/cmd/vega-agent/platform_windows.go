@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/lyraos/vega-agent/internal/agent"
+	"github.com/lyraos/vega-agent/internal/backup"
 	"github.com/lyraos/vega-agent/internal/broker"
 	"github.com/lyraos/vega-agent/internal/eventlogs"
 	"github.com/lyraos/vega-agent/internal/localaccounts"
@@ -23,6 +24,20 @@ import (
 )
 
 func runPlatformMode(args []string) bool {
+	if len(args) == 2 && args[0] == "--run-backup" {
+		if err := backup.NewManager(currentExecutable()).RunScheduled(context.Background(), args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "vega-agent: backup agendado falhou:", err)
+			os.Exit(1)
+		}
+		return true
+	}
+	if len(args) == 1 && args[0] == "--cleanup-backup-tasks" {
+		if err := backup.NewManager(currentExecutable()).CleanupTasks(context.Background()); err != nil {
+			fmt.Fprintln(os.Stderr, "vega-agent: limpeza de tarefas falhou:", err)
+			os.Exit(1)
+		}
+		return true
+	}
 	if len(args) == 0 || args[0] != "--broker" {
 		return false
 	}
@@ -41,7 +56,7 @@ func runPlatformMode(args []string) bool {
 }
 
 func newAgentServer() agent.Server {
-	executable, _ := os.Executable()
+	executable := currentExecutable()
 	server := agent.Server{
 		PlatformVersion: runtime.GOOS + "/" + runtime.GOARCH,
 		Elevator:        broker.Elevator{Executable: executable},
@@ -53,6 +68,7 @@ func newAgentServer() agent.Server {
 		Wifi:            networking.Wifi{},
 		Accounts:        localaccounts.Manager{},
 		Regional:        regional.Manager{},
+		Backup:          backup.NewManager(executable),
 	}
 	software, err := winget.New()
 	if err == nil {
@@ -63,7 +79,15 @@ func newAgentServer() agent.Server {
 	if err == nil {
 		server.Software = software
 	} else {
-		server.MissingDependencies = []protocol.MissingDependency{{ID: "winget", Modules: []string{"software"}, Detail: err.Error()}}
+		server.MissingDependencies = append(server.MissingDependencies, protocol.MissingDependency{ID: "winget", Modules: []string{"software"}, Detail: err.Error()})
+	}
+	if !backup.Available() {
+		server.MissingDependencies = append(server.MissingDependencies, protocol.MissingDependency{ID: "restic", Modules: []string{"backup"}, Detail: "restic.exe não encontrado no PATH"})
 	}
 	return server
+}
+
+func currentExecutable() string {
+	executable, _ := os.Executable()
+	return executable
 }

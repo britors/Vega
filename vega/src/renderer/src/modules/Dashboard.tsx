@@ -46,8 +46,9 @@ export default function Dashboard(): JSX.Element {
       try {
         const capabilities = await window.vega.getCapabilities()
         if (capabilities.platform === 'windows') {
-          const [system, metrics, disk] = await Promise.all([
-            window.vega.ping(), window.vega.systemMetrics(), window.vega.diskUsage()
+          const [system, metrics, disk, backupConfigs] = await Promise.all([
+            window.vega.ping(), window.vega.systemMetrics(), window.vega.diskUsage(),
+            capabilities.modules.includes('backup') ? window.vega.listBackupConfigs() : Promise.resolve([])
           ])
           if (cancelled) return
           const memoryPercent = metrics.memTotal > 0 ? (metrics.memUsed / metrics.memTotal) * 100 : 0
@@ -57,7 +58,8 @@ export default function Dashboard(): JSX.Element {
             { title: 'Agente Vega', value: system.connected ? 'Conectado' : 'Desconectado', detail: `versão ${system.version}`, tone: system.connected ? 'ok' : 'danger', moduleId: 'about' },
             { title: 'CPU', value: `${metrics.cpuPercent.toFixed(0)}%`, detail: 'uso geral', tone: metrics.cpuPercent >= 90 ? 'danger' : metrics.cpuPercent >= 75 ? 'warn' : 'ok', moduleId: 'monitor' },
             { title: 'Memória', value: `${memoryPercent.toFixed(0)}%`, detail: `${formatBytes(metrics.memUsed)} de ${formatBytes(metrics.memTotal)}`, tone: memoryPercent >= 90 ? 'danger' : memoryPercent >= 75 ? 'warn' : 'ok', moduleId: 'monitor' },
-            { title: 'Volume do sistema', value: `${disk.percent}%`, detail: `${disk.used} de ${disk.total} usados`, tone: disk.percent >= 90 ? 'danger' : disk.percent >= 75 ? 'warn' : 'ok', moduleId: 'storage' }
+            { title: 'Volume do sistema', value: `${disk.percent}%`, detail: `${disk.used} de ${disk.total} usados`, tone: disk.percent >= 90 ? 'danger' : disk.percent >= 75 ? 'warn' : 'ok', moduleId: 'storage' },
+            ...(capabilities.modules.includes('backup') ? [{ title: 'Backup', value: backupConfigs.length ? `${backupConfigs.length} configurado(s)` : 'Não configurado', detail: backupConfigs.length ? 'Restic protegido por DPAPI' : 'Nenhum destino cadastrado', tone: backupConfigs.length ? 'ok' as const : 'warn' as const, moduleId: 'backup' as const }] : [])
           ])
           return
         }

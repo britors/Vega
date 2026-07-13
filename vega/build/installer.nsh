@@ -11,6 +11,7 @@
 !macroend
 
 !macro customUnInstall
+  nsExec::ExecToLog '"$INSTDIR\resources\bin\vega-agent.exe" --cleanup-backup-tasks'
   SetShellVarContext all
   RMDir /r "$APPDATA\Vega"
 !macroend

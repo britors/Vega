@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import { AgentTransport } from './agentTransport'
 import type { SystemClient } from './systemClient'
 import {
-  SystemClientError, type FirewallRuleSpec, type FirewallServiceInfo, type HardwareInventory, type ManagedServiceInfo,
+  SystemClientError, type BackupConfig, type BackupSnapshotInfo, type FirewallRuleSpec, type FirewallServiceInfo, type HardwareInventory, type ManagedServiceInfo,
   type DateTimeStatus, type NetworkInterfaceInfo, type ProcessInfo, type ProxyConfig, type StorageVolumeInfo,
   type SystemCapabilities, type SystemMetrics, type UserInfo, type VegaSystemInfo, type WifiNetworkInfo
 } from './types'
@@ -119,6 +119,43 @@ class WindowsSystemClientBase extends EventEmitter {
   async listKeymaps(): Promise<string[]> { return [(await this.dateTimeStatus()).keymap] }
   async applyDateTimeLocale(timezone: string, ntp: boolean, _locale: string, _keymap: string): Promise<void> {
     await this.transport.request('regional.apply', { timezone, ntp }, undefined, 120_000)
+  }
+  async listBackupConfigs(): Promise<BackupConfig[]> { return this.transport.request('backup.configs') }
+  async createBackupConfig(config: BackupConfig): Promise<string> {
+    return this.transport.request('backup.create', { ...config }, undefined, 30 * 60_000)
+  }
+  async listBackupSnapshots(configId: string): Promise<BackupSnapshotInfo[]> {
+    return this.transport.request('backup.snapshots', { configId }, undefined, 5 * 60_000)
+  }
+  async listBackupSnapshotPaths(configId: string, snapshotId: string): Promise<string[]> {
+    return this.transport.request('backup.paths', { configId, snapshotId }, undefined, 5 * 60_000)
+  }
+  async runBackupNow(configId: string): Promise<number> {
+    return this.startBackupTransaction('backup.run', { id: configId })
+  }
+  async restoreBackupSnapshot(snapshotId: string, targetPath: string, mode: string): Promise<number> {
+    return this.startBackupTransaction('backup.restore', { snapshotId, targetPath, mode, paths: [] })
+  }
+  async restoreBackupItems(snapshotId: string, targetPath: string, mode: string, paths: string[]): Promise<number> {
+    return this.startBackupTransaction('backup.restore', { snapshotId, targetPath, mode, paths })
+  }
+  async deleteBackupConfig(configId: string): Promise<void> {
+    await this.transport.request('backup.delete', { id: configId }, undefined, 120_000)
+  }
+
+  private async startBackupTransaction(operation: string, params: Record<string, unknown>): Promise<number> {
+    const transactionId = ++this.transactionId
+    void this.transport.request<{ message?: string }>(
+      operation,
+      params,
+      (progress) => this.emit('backup-transaction-progress', { transactionId, ...progress }),
+      12 * 60 * 60_000
+    ).then((result) => {
+      this.emit('backup-transaction-finished', { transactionId, success: true, message: result.message || 'Operação concluída.' })
+    }).catch((error: Error) => {
+      this.emit('backup-transaction-finished', { transactionId, success: false, message: error.message })
+    })
+    return transactionId
   }
 
   private async startTransaction(operation: string, params: Record<string, unknown> = {}): Promise<number> {

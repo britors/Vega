@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/lyraos/vega-agent/internal/backup"
 	"github.com/lyraos/vega-agent/internal/eventlogs"
 	"github.com/lyraos/vega-agent/internal/localaccounts"
 	"github.com/lyraos/vega-agent/internal/networking"
@@ -34,6 +35,7 @@ type Server struct {
 	Wifi                WifiManager
 	Accounts            AccountReader
 	Regional            RegionalReader
+	Backup              BackupManager
 	MissingDependencies []protocol.MissingDependency
 }
 
@@ -75,6 +77,15 @@ type AccountReader interface {
 type RegionalReader interface {
 	Status(context.Context) (regional.Status, error)
 	Timezones(context.Context) ([]string, error)
+}
+type BackupManager interface {
+	List(context.Context) ([]backup.Config, error)
+	Create(context.Context, backup.Config) (string, error)
+	Delete(context.Context, string) error
+	Snapshots(context.Context, string) ([]backup.Snapshot, error)
+	Paths(context.Context, string, string) ([]string, error)
+	Backup(context.Context, string, backup.Progress) error
+	Restore(context.Context, backup.RestoreParams, backup.Progress) error
 }
 
 func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) error {
@@ -160,6 +171,11 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 			mutations = append(mutations, "applyDateTimeLocale")
 			elevatedMutations = append(elevatedMutations, "applyDateTimeLocale")
 		}
+	}
+	if s.Backup != nil {
+		modules = append(modules, "backup")
+		readOperations = append(readOperations, "listBackupConfigs", "listBackupSnapshots", "listBackupSnapshotPaths")
+		mutations = append(mutations, "createBackupConfig", "runBackupNow", "restoreBackupSnapshot", "restoreBackupItems", "deleteBackupConfig")
 	}
 	if err := protocol.Write(output, protocol.Message{
 		Version: protocol.Version, Kind: "hello", Nonce: nonce,
@@ -541,6 +557,72 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 				break
 			}
 			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
+		case "backup.configs":
+			if s.Backup == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "backup indisponível"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "backup.configs não aceita parâmetros"))
+				break
+			}
+			rows, readErr := s.Backup.List(ctx)
+			if readErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: rows})
+		case "backup.create":
+			if s.Backup == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "backup indisponível"))
+				break
+			}
+			var params backup.Config
+			if decodeParams(request.Params, &params) != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "configuração de backup inválida"))
+				break
+			}
+			valid, validateErr := backup.ValidateConfig(params)
+			if validateErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+				break
+			}
+			id, createErr := s.Backup.Create(ctx, valid)
+			if createErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", createErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: id})
+		case "backup.snapshots":
+			err = s.backupRead(ctx, output, request, false)
+		case "backup.paths":
+			err = s.backupRead(ctx, output, request, true)
+		case "backup.run":
+			err = s.backupMutation(ctx, output, request, false)
+		case "backup.restore":
+			err = s.backupMutation(ctx, output, request, true)
+		case "backup.delete":
+			if s.Backup == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "backup indisponível"))
+				break
+			}
+			var params struct {
+				ID string `json:"id"`
+			}
+			if decodeParams(request.Params, &params) != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "ID de backup inválido"))
+				break
+			}
+			id, validateErr := backup.ValidateID(params.ID)
+			if validateErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+				break
+			}
+			if deleteErr := s.Backup.Delete(ctx, id); deleteErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", deleteErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
 		case "broker.proof":
 			if s.Elevator == nil {
 				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "elevação indisponível"))
@@ -610,6 +692,76 @@ func (s Server) accountsElevated(ctx context.Context, output io.Writer, request 
 		return protocol.Write(output, failure(request.RequestID, code, err.Error()))
 	}
 	return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
+}
+
+func (s Server) backupRead(ctx context.Context, output io.Writer, request protocol.Message, paths bool) error {
+	if s.Backup == nil {
+		return protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "backup indisponível"))
+	}
+	var params struct {
+		ConfigID   string `json:"configId"`
+		SnapshotID string `json:"snapshotId,omitempty"`
+	}
+	if decodeParams(request.Params, &params) != nil {
+		return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "parâmetros de backup inválidos"))
+	}
+	id, err := backup.ValidateID(params.ConfigID)
+	if err != nil {
+		return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", err.Error()))
+	}
+	if paths {
+		valid, validateErr := backup.ValidateRestore(backup.RestoreParams{SnapshotID: params.SnapshotID, TargetPath: `C:\VegaRestore`, Mode: "separate-folder"})
+		if validateErr != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+		}
+		rows, readErr := s.Backup.Paths(ctx, id, valid.SnapshotID)
+		if readErr != nil {
+			return protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+		}
+		return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: rows})
+	}
+	rows, readErr := s.Backup.Snapshots(ctx, id)
+	if readErr != nil {
+		return protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+	}
+	return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: rows})
+}
+
+func (s Server) backupMutation(ctx context.Context, output io.Writer, request protocol.Message, restore bool) error {
+	if s.Backup == nil {
+		return protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "backup indisponível"))
+	}
+	report := func(percent int, message string) {
+		_ = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "progress", RequestID: request.RequestID, Result: map[string]any{"percent": percent, "message": message}})
+	}
+	var operationErr error
+	if restore {
+		var params backup.RestoreParams
+		if decodeParams(request.Params, &params) != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "parâmetros de restauração inválidos"))
+		}
+		valid, err := backup.ValidateRestore(params)
+		if err != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", err.Error()))
+		}
+		operationErr = s.Backup.Restore(ctx, valid, report)
+	} else {
+		var params struct {
+			ID string `json:"id"`
+		}
+		if decodeParams(request.Params, &params) != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "ID de backup inválido"))
+		}
+		id, err := backup.ValidateID(params.ID)
+		if err != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", err.Error()))
+		}
+		operationErr = s.Backup.Backup(ctx, id, report)
+	}
+	if operationErr != nil {
+		return protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", operationErr.Error()))
+	}
+	return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"message": "Operação de backup concluída."}})
 }
 
 func (s Server) networkRead(output io.Writer, request protocol.Message, operation func() (any, error)) error {

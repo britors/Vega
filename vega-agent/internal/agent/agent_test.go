@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lyraos/vega-agent/internal/backup"
 	"github.com/lyraos/vega-agent/internal/eventlogs"
 	"github.com/lyraos/vega-agent/internal/localaccounts"
 	"github.com/lyraos/vega-agent/internal/networking"
@@ -139,6 +140,29 @@ func (fixtureRegional) Status(context.Context) (regional.Status, error) {
 }
 func (fixtureRegional) Timezones(context.Context) ([]string, error) {
 	return []string{"UTC", "E. South America Standard Time"}, nil
+}
+
+type fixtureBackup struct{}
+
+func (fixtureBackup) List(context.Context) ([]backup.Config, error) {
+	return []backup.Config{{ID: "docs", Paths: []string{`C:\Users\ana\Documents`}, Destination: `D:\repo`, Frequency: "daily"}}, nil
+}
+func (fixtureBackup) Create(_ context.Context, config backup.Config) (string, error) {
+	return config.ID, nil
+}
+func (fixtureBackup) Delete(context.Context, string) error { return nil }
+func (fixtureBackup) Snapshots(context.Context, string) ([]backup.Snapshot, error) {
+	return []backup.Snapshot{{ID: "abc123", Timestamp: 1}}, nil
+}
+func (fixtureBackup) Paths(context.Context, string, string) ([]string, error) {
+	return []string{`C:\Users\ana\Documents\olá.txt`}, nil
+}
+func (fixtureBackup) Backup(_ context.Context, _ string, progress backup.Progress) error {
+	progress(50, "Protegendo arquivos")
+	return nil
+}
+func (fixtureBackup) Restore(context.Context, backup.RestoreParams, backup.Progress) error {
+	return nil
 }
 func (fixtureEventLogs) Query(_ context.Context, query eventlogs.Query) ([]eventlogs.Event, error) {
 	return []eventlogs.Event{{Timestamp: "2026-01-01T00:00:00Z", Provider: "Teste", EventID: 42, Level: "Information", Message: "mensagem 日本語 " + query.Channel}}, nil
@@ -440,5 +464,36 @@ func TestAccountsAndRegionalRejectWeakOrInjectedParameters(t *testing.T) {
 	injected := request(t, conn, hello, "timezone-injection", "regional.apply", []byte(`{"timezone":"UTC; whoami","ntp":true}`))
 	if injected.Error == nil || injected.Error.Code != "INVALID_ARGUMENT" {
 		t.Fatalf("timezone: %#v", injected)
+	}
+}
+
+func TestBackupUsesClosedContractsAndStreamsProgress(t *testing.T) {
+	conn, closeServer := startConfiguredTestServer(t, Server{PlatformVersion: "test", Backup: fixtureBackup{}})
+	defer closeServer()
+	hello := handshake(t, conn)
+	if result := request(t, conn, hello, "backup-list", "backup.configs", nil); result.Kind != "result" {
+		t.Fatalf("configs: %#v", result)
+	}
+	if err := protocol.Write(conn, protocol.Message{Version: protocol.Version, Kind: "request", RequestID: "backup-run", Nonce: hello.Nonce, Operation: "backup.run", Params: []byte(`{"id":"docs"}`)}); err != nil {
+		t.Fatal(err)
+	}
+	progress, err := protocol.Read(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finished, err := protocol.Read(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if progress.Kind != "progress" || finished.Kind != "result" {
+		t.Fatalf("progress=%#v result=%#v", progress, finished)
+	}
+	injected := request(t, conn, hello, "backup-injection", "backup.create", []byte(`{"id":"docs & whoami","paths":["C:\\Users\\ana"],"destination":"D:\\repo","destinationUUID":"","frequency":"daily"}`))
+	if injected.Error == nil || injected.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("injection: %#v", injected)
+	}
+	unknown := request(t, conn, hello, "backup-unknown", "backup.restore", []byte(`{"snapshotId":"abc123","targetPath":"C:\\Restore","mode":"separate-folder","paths":[],"command":"format"}`))
+	if unknown.Error == nil || unknown.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("unknown: %#v", unknown)
 	}
 }
