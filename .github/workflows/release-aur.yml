@@ -33,7 +33,7 @@ jobs:
           sed -i "s/^pkgrel=.*/pkgrel=1/" packaging/vega/PKGBUILD
 
       - name: Publicar lyra-vega no AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v4
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
         with:
           pkgname: lyra-vega
           pkgbuild: packaging/vega/PKGBUILD
@@ -54,7 +54,7 @@ jobs:
           sed -i "s/^pkgrel=.*/pkgrel=1/" packaging/vegad/PKGBUILD
 
       - name: Publicar vegad no AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v4
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
         with:
           pkgname: vegad
           pkgbuild: packaging/vegad/PKGBUILD
