@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import { AgentTransport } from './agentTransport'
 import type { SystemClient } from './systemClient'
 import {
-  SystemClientError, type HardwareInventory, type ProcessInfo, type StorageVolumeInfo,
+  SystemClientError, type HardwareInventory, type ManagedServiceInfo, type ProcessInfo, type StorageVolumeInfo,
   type SystemCapabilities, type SystemMetrics, type VegaSystemInfo
 } from './types'
 import type { PackageDetails, PackageRef, SoftwareInstallOptions } from './types'
@@ -55,6 +55,24 @@ class WindowsSystemClientBase extends EventEmitter {
     return this.startTransaction('software.remove', { origin, id })
   }
   async updateAll(): Promise<number> { return this.startTransaction('software.updateAll') }
+  async listManagedServices(): Promise<ManagedServiceInfo[]> { return this.transport.request('services.list') }
+  async listAllManagedServices(): Promise<ManagedServiceInfo[]> { return this.transport.request('services.listAll') }
+  async setServiceEnabled(name: string, enabled: boolean): Promise<void> {
+    await this.transport.request(enabled ? 'services.enable' : 'services.disable', { name }, undefined, 120_000)
+  }
+  async setServiceRunning(name: string, running: boolean): Promise<void> {
+    await this.transport.request(running ? 'services.start' : 'services.stop', { name }, undefined, 120_000)
+  }
+  async restartService(name: string): Promise<void> {
+    await this.transport.request('services.restart', { name }, undefined, 120_000)
+  }
+  async listLogUnits(): Promise<string[]> { return this.transport.request('eventlog.channels', {}, undefined, 20_000) }
+  async queryLogs(unit: string, priority: string, since: string, search: string, maxLines: number): Promise<string[]> {
+    const events = await this.transport.request<Array<{ timestamp: string; provider: string; eventId: number; level: string; message: string }>>(
+      'eventlog.query', { channel: unit || 'System', priority, since, search, limit: maxLines }, undefined, 20_000
+    )
+    return events.map((event) => `${event.timestamp} [${event.level || 'Nível desconhecido'}] ${event.provider} · ID ${event.eventId}\n${event.message || '[mensagem localizada indisponível]'}`)
+  }
 
   private async startTransaction(operation: string, params: Record<string, unknown> = {}): Promise<number> {
     const transactionId = ++this.transactionId

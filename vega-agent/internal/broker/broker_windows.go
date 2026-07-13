@@ -20,6 +20,7 @@ import (
 	"github.com/Microsoft/go-winio"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/servicecontrol"
 	"golang.org/x/sys/windows"
 )
 
@@ -33,6 +34,11 @@ func (e Elevator) Proof(parent context.Context) (map[string]any, error) {
 
 func (e Elevator) Kill(parent context.Context, pid uint32) error {
 	_, err := e.execute(parent, "process.kill", map[string]any{"pid": pid})
+	return err
+}
+
+func (e Elevator) Service(parent context.Context, name, action string) error {
+	_, err := e.execute(parent, "services."+action, map[string]any{"name": name})
 	return err
 }
 
@@ -160,6 +166,27 @@ func RunClient(ctx context.Context, pipeName string, serverPID, sessionID uint32
 			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: code, Message: err.Error()}})
 		}
 		result["terminated"] = true
+	case "services.start", "services.stop", "services.restart", "services.enable", "services.disable":
+		var params struct {
+			Name string `json:"name"`
+		}
+		decoder := json.NewDecoder(strings.NewReader(string(request.Params)))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&params); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
+			return fmt.Errorf("invalid service parameters")
+		}
+		action := strings.TrimPrefix(request.Operation, "services.")
+		if err := servicecontrol.ValidateAction(params.Name, action); err != nil {
+			code := "INVALID_ARGUMENT"
+			if errors.Is(err, servicecontrol.ErrProtected) {
+				code = "UNAUTHORIZED"
+			}
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: code, Message: err.Error()}})
+		}
+		if err := (servicecontrol.Manager{}).Apply(ctx, params.Name, action); err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
+		}
+		result["changed"] = true
 	default:
 		return fmt.Errorf("broker operation not allowed")
 	}

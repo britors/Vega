@@ -74,6 +74,7 @@ export interface FirewallServiceInfo { name: string; label: string; enabled: boo
 export interface UserInfo { username: string; isAdmin: boolean }
 export interface ManagedServiceInfo {
   name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean
+  startupType?: string; serviceType?: string; protected?: boolean
 }
 export interface DateTimeStatus { timezone: string; ntp: boolean; locale: string; keymap: string }
 export interface BootStatus { loader: string; defaultEntry: string; timeout: number; cmdline: string }

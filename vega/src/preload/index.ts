@@ -159,10 +159,10 @@ const api = {
   removeUser: (username: string): Promise<void> => ipcRenderer.invoke('vega:removeUser', username),
   setAdmin: (username: string, isAdmin: boolean): Promise<void> => ipcRenderer.invoke('vega:setAdmin', username, isAdmin),
   listManagedServices: (): Promise<
-    { name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean }[]
+    { name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean; startupType?: string; serviceType?: string; protected?: boolean }[]
   > => ipcRenderer.invoke('vega:listManagedServices'),
   listAllManagedServices: (): Promise<
-    { name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean }[]
+    { name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean; startupType?: string; serviceType?: string; protected?: boolean }[]
   > => ipcRenderer.invoke('vega:listAllManagedServices'),
   setServiceEnabled: (name: string, enabled: boolean): Promise<void> =>
     ipcRenderer.invoke('vega:setServiceEnabled', name, enabled),

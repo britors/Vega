@@ -2,12 +2,15 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/lyraos/vega-agent/internal/eventlogs"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/servicecontrol"
 	"github.com/lyraos/vega-agent/internal/software"
 )
 
@@ -61,12 +64,37 @@ func (fixtureProcesses) Kill(pid uint32) error {
 	return nil
 }
 
-type fixtureElevator struct{ killed uint32 }
+type fixtureElevator struct {
+	killed                     uint32
+	serviceName, serviceAction string
+}
 
 func (*fixtureElevator) Proof(context.Context) (map[string]any, error) {
 	return map[string]any{"elevated": true}, nil
 }
 func (e *fixtureElevator) Kill(_ context.Context, pid uint32) error { e.killed = pid; return nil }
+func (e *fixtureElevator) Service(_ context.Context, name, action string) error {
+	if name == "MissingService" {
+		return errors.New(`serviço "MissingService" não existe`)
+	}
+	e.serviceName, e.serviceAction = name, action
+	return nil
+}
+
+type fixtureServices struct{}
+
+func (fixtureServices) List(_ context.Context, all bool) ([]servicecontrol.Info, error) {
+	return []servicecontrol.Info{{Name: "Spooler", Label: "Spooler", Active: all, Available: true}}, nil
+}
+
+type fixtureEventLogs struct{}
+
+func (fixtureEventLogs) ListChannels(context.Context) ([]string, error) {
+	return []string{"Application", "System"}, nil
+}
+func (fixtureEventLogs) Query(_ context.Context, query eventlogs.Query) ([]eventlogs.Event, error) {
+	return []eventlogs.Event{{Timestamp: "2026-01-01T00:00:00Z", Provider: "Teste", EventID: 42, Level: "Information", Message: "mensagem 日本語 " + query.Channel}}, nil
+}
 
 type fixtureSoftware struct{ mutation software.Mutation }
 
@@ -287,5 +315,35 @@ func TestSoftwareUsesClosedParametersAndStreamsProgress(t *testing.T) {
 	invalid := request(t, conn, hello, "injection", "software.install", []byte(`{"origin":"winget","id":"Safe.App","scope":"user","acceptAgreements":true,"args":["--override","cmd"]}`))
 	if invalid.Error == nil || invalid.Error.Code != "INVALID_ARGUMENT" {
 		t.Fatalf("invalid: %#v", invalid)
+	}
+}
+
+func TestServicesAndEventLogUseClosedContracts(t *testing.T) {
+	elevator := &fixtureElevator{}
+	conn, closeServer := startConfiguredTestServer(t, Server{PlatformVersion: "test", Services: fixtureServices{}, EventLogs: fixtureEventLogs{}, Elevator: elevator})
+	defer closeServer()
+	hello := handshake(t, conn)
+
+	if result := request(t, conn, hello, "services", "services.list", nil); result.Kind != "result" {
+		t.Fatalf("services: %#v", result)
+	}
+	if result := request(t, conn, hello, "logs", "eventlog.query", []byte(`{"channel":"System","priority":"warning","since":"-1hour","search":"日本","limit":50}`)); result.Kind != "result" {
+		t.Fatalf("logs: %#v", result)
+	}
+	if result := request(t, conn, hello, "service", "services.restart", []byte(`{"name":"Spooler"}`)); result.Kind != "result" || elevator.serviceName != "Spooler" || elevator.serviceAction != "restart" {
+		t.Fatalf("service mutation: %#v / %#v", result, elevator)
+	}
+
+	protected := request(t, conn, hello, "protected-service", "services.stop", []byte(`{"name":"RpcSs"}`))
+	if protected.Error == nil || protected.Error.Code != "UNAUTHORIZED" || elevator.serviceName != "Spooler" {
+		t.Fatalf("protected: %#v / %#v", protected, elevator)
+	}
+	injected := request(t, conn, hello, "injected-channel", "eventlog.query", []byte(`{"channel":"System'; whoami","priority":"","since":"","search":"","limit":50}`))
+	if injected.Error == nil || injected.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("injection: %#v", injected)
+	}
+	missing := request(t, conn, hello, "missing-service", "services.start", []byte(`{"name":"MissingService"}`))
+	if missing.Error == nil || missing.Error.Code != "EXTERNAL_FAILURE" {
+		t.Fatalf("missing service: %#v", missing)
 	}
 }

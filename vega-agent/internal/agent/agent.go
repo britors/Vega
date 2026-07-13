@@ -10,8 +10,10 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/lyraos/vega-agent/internal/eventlogs"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/servicecontrol"
 	"github.com/lyraos/vega-agent/internal/software"
 )
 
@@ -23,15 +25,25 @@ type Server struct {
 	Collector           Collector
 	Processes           ProcessController
 	Software            software.Manager
+	Services            ServiceManager
+	EventLogs           EventLogReader
 	MissingDependencies []protocol.MissingDependency
 }
 
 type Elevator interface {
 	Proof(context.Context) (map[string]any, error)
 	Kill(context.Context, uint32) error
+	Service(context.Context, string, string) error
 }
 
 type ProcessController interface{ Kill(uint32) error }
+type ServiceManager interface {
+	List(context.Context, bool) ([]servicecontrol.Info, error)
+}
+type EventLogReader interface {
+	ListChannels(context.Context) ([]string, error)
+	Query(context.Context, eventlogs.Query) ([]eventlogs.Event, error)
+}
 
 func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) error {
 	request, err := protocol.Read(input)
@@ -75,6 +87,18 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 		if s.Software != nil {
 			mutations = append(mutations, "install", "remove", "updateAll")
 		}
+	}
+	if s.Services != nil {
+		modules = append(modules, "services")
+		readOperations = append(readOperations, "listManagedServices", "listAllManagedServices")
+		if s.Elevator != nil {
+			mutations = append(mutations, "setServiceEnabled", "setServiceRunning", "restartService")
+			elevatedMutations = append(elevatedMutations, "setServiceEnabled", "setServiceRunning", "restartService")
+		}
+	}
+	if s.EventLogs != nil {
+		modules = append(modules, "logs")
+		readOperations = append(readOperations, "listLogUnits", "queryLogs")
 	}
 	if err := protocol.Write(output, protocol.Message{
 		Version: protocol.Version, Kind: "hello", Nonce: nonce,
@@ -219,6 +243,88 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 			}
 			action := map[string]string{"software.install": "install", "software.remove": "remove", "software.updateAll": "updateAll"}[request.Operation]
 			err = s.softwareMutate(ctx, output, request, software.Mutation{Action: action, Origin: params.Origin, ID: params.ID, Scope: params.Scope, AcceptAgreements: params.AcceptAgreements})
+		case "services.list", "services.listAll":
+			if s.Services == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "Service Control Manager indisponível"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "listagem de serviços não aceita parâmetros"))
+				break
+			}
+			rows, listErr := s.Services.List(ctx, request.Operation == "services.listAll")
+			if listErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", listErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: rows})
+		case "services.start", "services.stop", "services.restart", "services.enable", "services.disable":
+			if s.Elevator == nil || s.Services == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "controle de serviços indisponível"))
+				break
+			}
+			var params struct {
+				Name string `json:"name"`
+			}
+			if decodeErr := decodeParams(request.Params, &params); decodeErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "parâmetros de serviço inválidos"))
+				break
+			}
+			action := strings.TrimPrefix(request.Operation, "services.")
+			if policyErr := servicecontrol.ValidateAction(params.Name, action); policyErr != nil {
+				code := "INVALID_ARGUMENT"
+				if errors.Is(policyErr, servicecontrol.ErrProtected) {
+					code = "UNAUTHORIZED"
+				}
+				err = protocol.Write(output, failure(request.RequestID, code, policyErr.Error()))
+				break
+			}
+			serviceErr := s.Elevator.Service(ctx, params.Name, action)
+			if serviceErr != nil {
+				code := "EXTERNAL_FAILURE"
+				if strings.Contains(serviceErr.Error(), "UAC_CANCELED") {
+					code = "CANCELED"
+				}
+				err = protocol.Write(output, failure(request.RequestID, code, serviceErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
+		case "eventlog.channels":
+			if s.EventLogs == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "Windows Event Log indisponível"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "listagem de canais não aceita parâmetros"))
+				break
+			}
+			channels, readErr := s.EventLogs.ListChannels(ctx)
+			if readErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: channels})
+		case "eventlog.query":
+			if s.EventLogs == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "Windows Event Log indisponível"))
+				break
+			}
+			var params eventlogs.Query
+			if decodeErr := decodeParams(request.Params, &params); decodeErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "filtros do Event Log inválidos"))
+				break
+			}
+			params, validateErr := eventlogs.Validate(params)
+			if validateErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+				break
+			}
+			events, readErr := s.EventLogs.Query(ctx, params)
+			if readErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: events})
 		case "broker.proof":
 			if s.Elevator == nil {
 				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "elevação indisponível"))

@@ -12,8 +12,10 @@ import (
 
 	"github.com/lyraos/vega-agent/internal/agent"
 	"github.com/lyraos/vega-agent/internal/broker"
+	"github.com/lyraos/vega-agent/internal/eventlogs"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/servicecontrol"
 	"github.com/lyraos/vega-agent/internal/winget"
 )
 
@@ -42,6 +44,8 @@ func newAgentServer() agent.Server {
 		Elevator:        broker.Elevator{Executable: executable},
 		Collector:       agent.WindowsCollector{},
 		Processes:       processcontrol.Controller{},
+		Services:        servicecontrol.Manager{},
+		EventLogs:       eventlogs.Reader{},
 	}
 	software, err := winget.New()
 	if err == nil {
