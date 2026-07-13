@@ -61,6 +61,7 @@ documentado também em [`CONTRIBUTING.md`](CONTRIBUTING.md) e
 vega/        UI (Electron + TypeScript + React), roda como usuário comum
 vegad/       Daemon privilegiado (Go), roda como root, exposto via D-Bus
 dbus/        Definições de interface D-Bus (XML de introspecção) — contrato entre vega e vegad
+docs/adr/    Decisões arquiteturais e fronteiras de segurança do projeto
 packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs (Arch), specs RPM (openSUSE, Fedora) e debian/rules (Ubuntu/Debian)
 ```
 
