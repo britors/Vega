@@ -20,6 +20,7 @@ interface PendingRequest {
   resolve: (value: unknown) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
+  onProgress?: (progress: { percent: number; message: string }) => void
 }
 
 export class AgentTransport {
@@ -59,15 +60,20 @@ export class AgentTransport {
     return response.result
   }
 
-  async request<T>(operation: string, params: Record<string, unknown> = {}): Promise<T> {
+  async request<T>(
+    operation: string,
+    params: Record<string, unknown> = {},
+    onProgress?: (progress: { percent: number; message: string }) => void,
+    timeoutMs: number = REQUEST_TIMEOUT_MS
+  ): Promise<T> {
     if (!this.child || !this.nonce) throw new SystemClientError('UNAVAILABLE', 'Agente Windows desconectado.')
     const requestId = randomUUID()
     const result = new Promise<unknown>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId)
         reject(new SystemClientError('EXTERNAL_FAILURE', `Timeout na operação ${operation}.`))
-      }, REQUEST_TIMEOUT_MS)
-      this.pending.set(requestId, { resolve, reject, timer })
+      }, timeoutMs)
+      this.pending.set(requestId, { resolve, reject, timer, onProgress })
     })
     this.write({ version: PROTOCOL_VERSION, kind: 'request', requestId, nonce: this.nonce, operation, params })
     return result as Promise<T>
@@ -118,6 +124,13 @@ export class AgentTransport {
     if (!message.requestId) return
     const pending = this.pending.get(message.requestId)
     if (!pending) return
+    if (message.kind === 'progress') {
+      const progress = message.result as Partial<{ percent: number; message: string }>
+      if (typeof progress?.percent === 'number' && typeof progress.message === 'string') {
+        pending.onProgress?.({ percent: progress.percent, message: progress.message })
+      }
+      return
+    }
     this.pending.delete(message.requestId)
     clearTimeout(pending.timer)
     if (message.kind === 'error') {

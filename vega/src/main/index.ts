@@ -10,6 +10,7 @@ import {
   type UpdatesAvailableEvent,
   type ProxyConfig
 } from './system/types'
+import type { SoftwareInstallOptions } from './system/types'
 import { createSystemClient } from './system/factory'
 import {
   applyDisplayConfig,
@@ -139,7 +140,9 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:getPackageDetails', (_event, origin: string, id: string) =>
     vegaClient.getPackageDetails(origin, id)
   )
-  ipcMain.handle('vega:install', (_event, origin: string, id: string) => vegaClient.install(origin, id))
+  ipcMain.handle('vega:install', (_event, origin: string, id: string, options?: SoftwareInstallOptions) =>
+    vegaClient.install(origin, id, options)
+  )
   ipcMain.handle('vega:getAurPkgbuild', (_event, id: string) => vegaClient.getAurPkgbuild(id))
   ipcMain.handle('vega:remove', (_event, origin: string, id: string) => vegaClient.remove(origin, id))
   ipcMain.handle('vega:updateAll', () => vegaClient.updateAll())

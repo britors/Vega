@@ -28,6 +28,18 @@ normal e abre um broker UAC descartável apenas após `ACCESS_DENIED`.
 Os testes de domínio usam um `Collector` fake com Unicode e não dependem do
 hardware ou das contas do runner de CI.
 
+## Software no Windows
+
+O backend WinGet executa `winget.exe` diretamente, sem shell. IDs são sempre
+combinados com `--id`, `--exact` e uma origem fechada (`winget` ou `msstore`),
+e parâmetros adicionais não fazem parte do protocolo. Instalações continuam
+no token do usuário; o próprio instalador solicita UAC quando necessário.
+
+A UI confirma ID, fornecedor, versão, origem, escopo e contratos antes de
+aceitar licenças. O agente não usa `--allow-reboot`: um reinício requerido é
+reportado ao usuário em vez de reiniciar a máquina. Tabelas e detalhes têm
+parsers cobertos por fixtures `pt-BR`, `en-US` e Unicode.
+
 ## Validação
 
 ```bash

@@ -8,6 +8,7 @@ import (
 
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/software"
 )
 
 func startTestServer(t *testing.T) (net.Conn, context.CancelFunc) {
@@ -66,6 +67,27 @@ func (*fixtureElevator) Proof(context.Context) (map[string]any, error) {
 	return map[string]any{"elevated": true}, nil
 }
 func (e *fixtureElevator) Kill(_ context.Context, pid uint32) error { e.killed = pid; return nil }
+
+type fixtureSoftware struct{ mutation software.Mutation }
+
+func (*fixtureSoftware) Version(context.Context) (string, error) { return "v1.test", nil }
+func (*fixtureSoftware) Search(_ context.Context, query string) ([]software.PackageRef, error) {
+	return []software.PackageRef{{Origin: "winget", ID: "Fábrica.App", Name: query}}, nil
+}
+func (*fixtureSoftware) ListInstalled(context.Context) ([]software.PackageRef, error) {
+	return []software.PackageRef{}, nil
+}
+func (*fixtureSoftware) ListUpdates(context.Context) ([]software.PackageRef, error) {
+	return []software.PackageRef{}, nil
+}
+func (*fixtureSoftware) Details(_ context.Context, origin, id string) (software.PackageDetails, error) {
+	return software.PackageDetails{Origin: origin, ID: id, Name: "Aplicação"}, nil
+}
+func (f *fixtureSoftware) Mutate(_ context.Context, mutation software.Mutation, progress software.Progress) (software.MutationResult, error) {
+	f.mutation = mutation
+	progress(50, "Instalando")
+	return software.MutationResult{Message: "Concluído"}, nil
+}
 
 func request(t *testing.T, conn net.Conn, hello protocol.Message, id, operation string, params []byte) protocol.Message {
 	t.Helper()
@@ -225,6 +247,44 @@ func TestKillProtectsCriticalAndElevatesOnlyAccessDenied(t *testing.T) {
 	}
 
 	invalid := request(t, conn, hello, "invalid", "process.kill", []byte(`{"pid":42,"command":"whoami"}`))
+	if invalid.Error == nil || invalid.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("invalid: %#v", invalid)
+	}
+}
+
+func TestSoftwareUsesClosedParametersAndStreamsProgress(t *testing.T) {
+	manager := &fixtureSoftware{}
+	conn, closeServer := startConfiguredTestServer(t, Server{PlatformVersion: "test", Software: manager})
+	defer closeServer()
+	hello := handshake(t, conn)
+
+	result := request(t, conn, hello, "search", "software.search", []byte(`{"query":"Ágil 日本"}`))
+	if result.Kind != "result" {
+		t.Fatalf("search: %#v", result)
+	}
+
+	if err := protocol.Write(conn, protocol.Message{
+		Version: protocol.Version, Kind: "request", RequestID: "install", Nonce: hello.Nonce,
+		Operation: "software.install", Params: []byte(`{"origin":"winget","id":"Fábrica.App","scope":"user","acceptAgreements":true}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	progress, err := protocol.Read(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finished, err := protocol.Read(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if progress.Kind != "progress" || finished.Kind != "result" {
+		t.Fatalf("progress=%#v result=%#v", progress, finished)
+	}
+	if manager.mutation.ID != "Fábrica.App" || manager.mutation.Scope != "user" || !manager.mutation.AcceptAgreements {
+		t.Fatalf("mutation: %#v", manager.mutation)
+	}
+
+	invalid := request(t, conn, hello, "injection", "software.install", []byte(`{"origin":"winget","id":"Safe.App","scope":"user","acceptAgreements":true,"args":["--override","cmd"]}`))
 	if invalid.Error == nil || invalid.Error.Code != "INVALID_ARGUMENT" {
 		t.Fatalf("invalid: %#v", invalid)
 	}

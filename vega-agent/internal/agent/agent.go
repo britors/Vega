@@ -12,15 +12,18 @@ import (
 
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/software"
 )
 
 const BackendVersion = "0.1.0"
 
 type Server struct {
-	PlatformVersion string
-	Elevator        Elevator
-	Collector       Collector
-	Processes       ProcessController
+	PlatformVersion     string
+	Elevator            Elevator
+	Collector           Collector
+	Processes           ProcessController
+	Software            software.Manager
+	MissingDependencies []protocol.MissingDependency
 }
 
 type Elevator interface {
@@ -48,6 +51,10 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 	readOperations := []string{"ping", "capabilities"}
 	mutations := []string{}
 	elevatedMutations := []string{}
+	missingDependencies := s.MissingDependencies
+	if missingDependencies == nil {
+		missingDependencies = []protocol.MissingDependency{}
+	}
 	if s.Collector != nil {
 		modules = append(modules, "dashboard", "hardware", "monitor", "storage")
 		readOperations = append(readOperations, "diskUsage", "hardwareInventory", "hardwareFirmwareStatus", "systemMetrics", "listProcesses", "listStorageVolumes")
@@ -62,13 +69,20 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 			elevatedMutations = append(elevatedMutations, "killProcess")
 		}
 	}
+	if s.Software != nil || hasMissingDependency(missingDependencies, "winget") {
+		modules = append(modules, "software")
+		readOperations = append(readOperations, "packageManagerName", "search", "listInstalled", "listUpdates", "getPackageDetails")
+		if s.Software != nil {
+			mutations = append(mutations, "install", "remove", "updateAll")
+		}
+	}
 	if err := protocol.Write(output, protocol.Message{
 		Version: protocol.Version, Kind: "hello", Nonce: nonce,
 		Result: protocol.Capabilities{
 			Platform: "windows", PlatformVersion: s.PlatformVersion, BackendVersion: BackendVersion,
 			ProtocolVersion: protocol.Version, Modules: modules,
 			ReadOperations: readOperations, Mutations: mutations, ElevatedMutations: elevatedMutations,
-			MissingDependencies: []protocol.MissingDependency{},
+			MissingDependencies: missingDependencies,
 		},
 	}); err != nil {
 		return err
@@ -165,6 +179,46 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 				break
 			}
 			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"terminated": true}})
+		case "software.version":
+			err = s.softwareRead(output, request, func() (any, error) { return s.Software.Version(ctx) })
+		case "software.search":
+			var params struct {
+				Query string `json:"query"`
+			}
+			if decodeErr := decodeParams(request.Params, &params); decodeErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "consulta inválida"))
+				break
+			}
+			err = s.softwareReadWithParams(output, request, func() (any, error) { return s.Software.Search(ctx, params.Query) })
+		case "software.installed":
+			err = s.softwareRead(output, request, func() (any, error) { return s.Software.ListInstalled(ctx) })
+		case "software.updates":
+			err = s.softwareRead(output, request, func() (any, error) { return s.Software.ListUpdates(ctx) })
+		case "software.details":
+			var params struct {
+				Origin string `json:"origin"`
+				ID     string `json:"id"`
+			}
+			if decodeErr := decodeParams(request.Params, &params); decodeErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "pacote inválido"))
+				break
+			}
+			err = s.softwareReadWithParams(output, request, func() (any, error) { return s.Software.Details(ctx, params.Origin, params.ID) })
+		case "software.install", "software.remove", "software.updateAll":
+			var params struct {
+				Origin           string `json:"origin"`
+				ID               string `json:"id"`
+				Scope            string `json:"scope"`
+				AcceptAgreements bool   `json:"acceptAgreements"`
+			}
+			if !emptyParams(request.Params) {
+				if decodeErr := decodeParams(request.Params, &params); decodeErr != nil {
+					err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "parâmetros de software inválidos"))
+					break
+				}
+			}
+			action := map[string]string{"software.install": "install", "software.remove": "remove", "software.updateAll": "updateAll"}[request.Operation]
+			err = s.softwareMutate(ctx, output, request, software.Mutation{Action: action, Origin: params.Origin, ID: params.ID, Scope: params.Scope, AcceptAgreements: params.AcceptAgreements})
 		case "broker.proof":
 			if s.Elevator == nil {
 				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "elevação indisponível"))
@@ -201,7 +255,48 @@ func (s Server) collect(output io.Writer, request protocol.Message, operation fu
 	return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: result})
 }
 
+func (s Server) softwareRead(output io.Writer, request protocol.Message, operation func() (any, error)) error {
+	if !emptyParams(request.Params) {
+		return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "operação não aceita parâmetros"))
+	}
+	return s.softwareReadWithParams(output, request, operation)
+}
+
+func (s Server) softwareReadWithParams(output io.Writer, request protocol.Message, operation func() (any, error)) error {
+	if s.Software == nil {
+		return protocol.Write(output, failure(request.RequestID, "UNAVAILABLE", "WinGet indisponível"))
+	}
+	result, err := operation()
+	if err != nil {
+		return protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", err.Error()))
+	}
+	return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: result})
+}
+
+func (s Server) softwareMutate(ctx context.Context, output io.Writer, request protocol.Message, mutation software.Mutation) error {
+	if s.Software == nil {
+		return protocol.Write(output, failure(request.RequestID, "UNAVAILABLE", "WinGet indisponível"))
+	}
+	progress := func(percent int, message string) {
+		_ = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "progress", RequestID: request.RequestID, Result: map[string]any{"percent": percent, "message": message}})
+	}
+	result, err := s.Software.Mutate(ctx, mutation, progress)
+	if err != nil {
+		return protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", err.Error()))
+	}
+	return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: result})
+}
+
 func emptyParams(params []byte) bool { return len(params) == 0 || string(params) == "{}" }
+
+func hasMissingDependency(dependencies []protocol.MissingDependency, id string) bool {
+	for _, dependency := range dependencies {
+		if dependency.ID == id {
+			return true
+		}
+	}
+	return false
+}
 
 func decodeParams(params []byte, target any) error {
 	decoder := json.NewDecoder(strings.NewReader(string(params)))

@@ -59,7 +59,9 @@ export interface PackageDetails {
   origin: string; id: string; name: string; description: string; installed: boolean
   installedVersion: string; availableVersion: string; downloadSize: string; installedSize: string
   dependencies: string[]; licenses: string[]; url: string; maintainer: string
+  scopes?: string[]; agreements?: string[]; interactive?: boolean
 }
+export interface SoftwareInstallOptions { scope?: 'user' | 'machine'; acceptAgreements?: boolean }
 export interface TransactionProgress { transactionId: number; percent: number; message: string }
 export interface TransactionFinished { transactionId: number; success: boolean; message: string }
 export interface BackupTransactionProgress { transactionId: number; percent: number; message: string }

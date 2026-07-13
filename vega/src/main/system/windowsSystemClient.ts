@@ -5,10 +5,12 @@ import {
   SystemClientError, type HardwareInventory, type ProcessInfo, type StorageVolumeInfo,
   type SystemCapabilities, type SystemMetrics, type VegaSystemInfo
 } from './types'
+import type { PackageDetails, PackageRef, SoftwareInstallOptions } from './types'
 
 class WindowsSystemClientBase extends EventEmitter {
   private readonly transport = new AgentTransport()
   private capabilities: SystemCapabilities | null = null
+  private transactionId = 0
 
   async connect(): Promise<void> { this.capabilities = await this.transport.connect() }
   disconnect(): void { this.transport.disconnect(); this.capabilities = null }
@@ -23,7 +25,10 @@ class WindowsSystemClientBase extends EventEmitter {
     return { version: result.version, connected: result.connected, distro: windows, build: result.build, architecture: result.architecture }
   }
   async distroLogo(): Promise<string> { return '' }
-  async packageManagerName(): Promise<string> { return 'WinGet' }
+  async packageManagerName(): Promise<string> {
+    const version = await this.transport.request<string>('software.version')
+    return `WinGet ${version}`
+  }
   async communityLayerName(): Promise<string> { return 'indisponível' }
   async diskUsage(): Promise<{ used: string; total: string; percent: number }> {
     return this.transport.request('system.diskUsage')
@@ -37,6 +42,34 @@ class WindowsSystemClientBase extends EventEmitter {
     await this.transport.request('process.kill', { pid })
   }
   async listStorageVolumes(): Promise<StorageVolumeInfo[]> { return this.transport.request('storage.volumes') }
+  async search(query: string): Promise<PackageRef[]> { return this.transport.request('software.search', { query }) }
+  async listInstalled(): Promise<PackageRef[]> { return this.transport.request('software.installed') }
+  async listUpdates(): Promise<PackageRef[]> { return this.transport.request('software.updates') }
+  async getPackageDetails(origin: string, id: string): Promise<PackageDetails> {
+    return this.transport.request('software.details', { origin, id })
+  }
+  async install(origin: string, id: string, options: SoftwareInstallOptions = {}): Promise<number> {
+    return this.startTransaction('software.install', { origin, id, scope: options.scope || '', acceptAgreements: options.acceptAgreements === true })
+  }
+  async remove(origin: string, id: string): Promise<number> {
+    return this.startTransaction('software.remove', { origin, id })
+  }
+  async updateAll(): Promise<number> { return this.startTransaction('software.updateAll') }
+
+  private async startTransaction(operation: string, params: Record<string, unknown> = {}): Promise<number> {
+    const transactionId = ++this.transactionId
+    void this.transport.request<{ rebootRequired?: boolean; message?: string }>(
+      operation,
+      params,
+      (progress) => this.emit('transaction-progress', { transactionId, ...progress }),
+      30 * 60_000
+    ).then((result) => {
+      this.emit('transaction-finished', { transactionId, success: true, message: result.message || 'Operação concluída.' })
+    }).catch((error: Error) => {
+      this.emit('transaction-finished', { transactionId, success: false, message: error.message })
+    })
+    return transactionId
+  }
 }
 
 export function createWindowsSystemClient(): SystemClient {

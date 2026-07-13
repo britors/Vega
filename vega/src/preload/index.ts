@@ -18,6 +18,7 @@ import type {
   StorageVolumeInfo,
   SystemMetrics
 } from '../main/system/types'
+import type { SoftwareInstallOptions } from '../main/system/types'
 import type { SystemCapabilities } from '../main/system/types'
 import type { DisplayConfig, DisplayOutputInfo, WallpaperInfo } from '../main/sessionSettings'
 import type {
@@ -42,7 +43,8 @@ const api = {
   listInstalled: (): Promise<PackageRef[]> => ipcRenderer.invoke('vega:listInstalled'),
   getPackageDetails: (origin: string, id: string): Promise<PackageDetails> =>
     ipcRenderer.invoke('vega:getPackageDetails', origin, id),
-  install: (origin: string, id: string): Promise<number> => ipcRenderer.invoke('vega:install', origin, id),
+  install: (origin: string, id: string, options?: SoftwareInstallOptions): Promise<number> =>
+    ipcRenderer.invoke('vega:install', origin, id, options),
   getAurPkgbuild: (id: string): Promise<string> => ipcRenderer.invoke('vega:getAurPkgbuild', id),
   remove: (origin: string, id: string): Promise<number> => ipcRenderer.invoke('vega:remove', origin, id),
   updateAll: (): Promise<number> => ipcRenderer.invoke('vega:updateAll'),

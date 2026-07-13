@@ -5,6 +5,7 @@ import type {
   ProcessInfo, ProxyConfig, SnapshotInfo, StorageVolumeInfo, SystemCapabilities, SystemMetrics, UserInfo,
   VegaSystemInfo, WifiNetworkInfo
 } from './types'
+import type { SoftwareInstallOptions } from './types'
 
 export interface SystemClient extends EventEmitter {
   connect(): Promise<void>
@@ -20,7 +21,7 @@ export interface SystemClient extends EventEmitter {
   listUpdates(): Promise<PackageRef[]>
   listInstalled(): Promise<PackageRef[]>
   getPackageDetails(origin: string, id: string): Promise<PackageDetails>
-  install(origin: string, id: string): Promise<number>
+  install(origin: string, id: string, options?: SoftwareInstallOptions): Promise<number>
   getAurPkgbuild(id: string): Promise<string>
   remove(origin: string, id: string): Promise<number>
   updateAll(): Promise<number>

@@ -30,6 +30,9 @@ interface PackageDetails {
   licenses: string[]
   url: string
   maintainer: string
+  scopes?: string[]
+  agreements?: string[]
+  interactive?: boolean
 }
 
 interface Transaction {
@@ -56,7 +59,9 @@ interface TransactionFinishedEvent {
 const originLabel: Record<string, string> = {
   official: 'Oficial',
   flathub: 'Flathub',
-  aur: 'Comunidade'
+  aur: 'Comunidade',
+  winget: 'WinGet',
+  msstore: 'Microsoft Store'
 }
 
 type Tab = 'search' | 'installed' | 'updates'
@@ -74,7 +79,7 @@ function packageKey(pkg: PackageRef): string {
 }
 
 function preferredPackage(items: PackageRef[]): PackageRef {
-  const order = ['official', 'flathub', 'aur']
+  const order = ['official', 'winget', 'msstore', 'flathub', 'aur']
   return [...items].sort((a, b) => order.indexOf(a.origin) - order.indexOf(b.origin))[0] ?? items[0]
 }
 
@@ -136,6 +141,7 @@ export default function Software(): JSX.Element {
   const dialogs = useDialogs()
   const [status, setStatus] = useState<Status | null>(null)
   const [pkgManagerName, setPkgManagerName] = useState('')
+  const [platform, setPlatform] = useState<'linux' | 'windows' | null>(null)
   const [tab, setTab] = useState<Tab>('search')
   const [viewMode, setViewMode] = useState<ViewMode>('list')
 
@@ -170,7 +176,8 @@ export default function Software(): JSX.Element {
 
   useEffect(() => {
     window.vega.ping().then(setStatus)
-    window.vega.packageManagerName().then(setPkgManagerName)
+    window.vega.packageManagerName().then(setPkgManagerName).catch((err: Error) => setError(err.message))
+    window.vega.getCapabilities().then((value) => setPlatform(value.platform))
 
     const offProgress = window.vega.onTransactionProgress((evt: TransactionProgressEvent) => {
       setTransactions((prev) => ({
@@ -306,7 +313,7 @@ export default function Software(): JSX.Element {
     setDetailLoading(false)
   }
 
-  async function handleInstall(pkg: PackageRef): Promise<void> {
+  async function handleInstall(pkg: PackageRef, requestedScope?: 'user' | 'machine'): Promise<void> {
     if (pkg.origin === 'aur') {
       let pkgbuild = ''
       try {
@@ -326,7 +333,37 @@ export default function Software(): JSX.Element {
       if (!ok) return
     }
 
-    const txId = await window.vega.install(pkg.origin, pkg.id)
+    const activePlatform = platform ?? (await window.vega.getCapabilities()).platform
+    let options: { scope?: 'user' | 'machine'; acceptAgreements?: boolean } | undefined
+    if (activePlatform === 'windows') {
+      try {
+        const packageDetails = await window.vega.getPackageDetails(pkg.origin, pkg.id)
+        const supportedScopes = packageDetails.scopes?.filter((scope): scope is 'user' | 'machine' => scope === 'user' || scope === 'machine') ?? []
+        const scope = requestedScope ?? (supportedScopes.includes('user') ? 'user' : supportedScopes[0])
+        const agreements = [...packageDetails.licenses, ...(packageDetails.agreements ?? [])].filter(Boolean)
+        const ok = await dialogs.confirm({
+          title: `${pkg.installed ? 'Atualizar' : 'Instalar'} ${packageDetails.name || pkg.id}`,
+          message: [
+            `ID: ${packageDetails.id}`,
+            `Fornecedor: ${packageDetails.maintainer || 'não informado'}`,
+            `Versão: ${packageDetails.availableVersion || 'mais recente'}`,
+            `Origem: ${originLabel[packageDetails.origin] ?? packageDetails.origin}`,
+            `Escopo: ${scope === 'machine' ? 'todos os usuários (machine)' : scope === 'user' ? 'somente esta conta (user)' : 'definido pelo instalador'}`,
+            agreements.length > 0 ? `Contratos/licenças: ${agreements.join(' · ')}` : 'Nenhum contrato adicional reportado.',
+            packageDetails.interactive ? 'O instalador poderá abrir uma interface própria.' : ''
+          ].filter(Boolean).join('\n'),
+          variant: 'warning',
+          confirmLabel: pkg.installed ? 'Atualizar' : 'Aceitar e instalar'
+        })
+        if (!ok) return
+        options = { scope, acceptAgreements: agreements.length > 0 }
+      } catch (err) {
+        setError((err as Error).message)
+        return
+      }
+    }
+
+    const txId = await window.vega.install(pkg.origin, pkg.id, options)
     labelForTx.current.set(txId, `Instalando ${pkg.name || pkg.id}`)
     setTransactions((prev) => ({
       ...prev,
@@ -353,7 +390,7 @@ export default function Software(): JSX.Element {
   async function handleUpdateAll(): Promise<void> {
     const ok = await dialogs.confirm({
       title: 'Atualizar tudo',
-      message: 'Executar atualização completa do sistema e dos Flatpaks agora?',
+      message: platform === 'windows' ? 'Atualizar todos os aplicativos reconhecidos pelo WinGet agora?' : 'Executar atualização completa do sistema e dos Flatpaks agora?',
       variant: 'warning',
       confirmLabel: 'Atualizar'
     })
@@ -397,12 +434,12 @@ export default function Software(): JSX.Element {
         <div>
           <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Software</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-            Oficial ({pkgManagerName || '...'}) e Flathub em um só lugar
+            {platform === 'windows' ? `${pkgManagerName || 'WinGet'} e Microsoft Store` : `Oficial (${pkgManagerName || '...'}) e Flathub em um só lugar`}
           </p>
         </div>
         {status && (
           <span className={`status-pill ${status.connected ? 'status-pill--ok' : 'status-pill--warn'}`}>
-            {status.connected ? `vegad ${status.version}` : 'vegad indisponível'}
+            {status.connected ? `${platform === 'windows' ? 'agente' : 'vegad'} ${status.version}` : 'backend indisponível'}
           </span>
         )}
       </div>
@@ -515,7 +552,7 @@ export default function Software(): JSX.Element {
             Atualizar tudo
           </button>
         )}
-        {tab === 'search' && (
+        {tab === 'search' && platform === 'linux' && (
           <button
             onClick={handleClearCache}
             style={{
@@ -565,7 +602,7 @@ export default function Software(): JSX.Element {
       )}
 
       {tab === 'search' && activeList === null && !error && (
-        <EmptyState title="Busca de pacotes" message="Digite um termo e busque nas origens Oficial, Flathub e Comunidade." />
+        <EmptyState title="Busca de pacotes" message={platform === 'windows' ? 'Digite um termo e busque no WinGet e na Microsoft Store.' : 'Digite um termo e busque nas origens Oficial, Flathub e Comunidade.'} />
       )}
 
       {tab === 'updates' && listLoading && activeList === null && (
@@ -795,6 +832,12 @@ export default function Software(): JSX.Element {
                       <div>{detail.maintainer}</div>
                     </div>
                   )}
+                  {detail.scopes && detail.scopes.length > 0 && (
+                    <div>
+                      <div style={{ color: 'var(--lyra-text-muted)' }}>Escopos</div>
+                      <div>{detail.scopes.join(', ')}</div>
+                    </div>
+                  )}
                 </div>
 
                 {detail.dependencies.length > 0 && (
@@ -846,6 +889,19 @@ export default function Software(): JSX.Element {
                     >
                       Remover
                     </button>
+                  ) : platform === 'windows' ? (
+                    (detail.scopes?.filter((scope): scope is 'user' | 'machine' => scope === 'user' || scope === 'machine').length
+                      ? detail.scopes.filter((scope): scope is 'user' | 'machine' => scope === 'user' || scope === 'machine')
+                      : ['user' as const]
+                    ).map((scope) => (
+                      <button
+                        key={scope}
+                        className="dialog__button dialog__button--primary"
+                        onClick={() => { closeDetails(); handleInstall(detail, scope) }}
+                      >
+                        {scope === 'machine' ? 'Instalar para todos' : 'Instalar para mim'}
+                      </button>
+                    ))
                   ) : (
                     <button
                       className="dialog__button dialog__button--primary"

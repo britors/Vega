@@ -8,10 +8,13 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/lyraos/vega-agent/internal/agent"
 	"github.com/lyraos/vega-agent/internal/broker"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
+	"github.com/lyraos/vega-agent/internal/protocol"
+	"github.com/lyraos/vega-agent/internal/winget"
 )
 
 func runPlatformMode(args []string) bool {
@@ -34,10 +37,22 @@ func runPlatformMode(args []string) bool {
 
 func newAgentServer() agent.Server {
 	executable, _ := os.Executable()
-	return agent.Server{
+	server := agent.Server{
 		PlatformVersion: runtime.GOOS + "/" + runtime.GOARCH,
 		Elevator:        broker.Elevator{Executable: executable},
 		Collector:       agent.WindowsCollector{},
 		Processes:       processcontrol.Controller{},
 	}
+	software, err := winget.New()
+	if err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		_, err = software.Version(ctx)
+		cancel()
+	}
+	if err == nil {
+		server.Software = software
+	} else {
+		server.MissingDependencies = []protocol.MissingDependency{{ID: "winget", Modules: []string{"software"}, Detail: err.Error()}}
+	}
+	return server
 }
