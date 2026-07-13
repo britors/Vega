@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import EmptyState from '../components/EmptyState'
 import { useDialogs } from '../components/dialogs/useDialogs'
+import { settingsFailure, type SettingsFeedback } from './assistantSettingsFeedback'
 
 type AIProviderId = 'anthropic' | 'openai' | 'gemini'
 
@@ -209,7 +210,7 @@ export default function Assistant(): JSX.Element {
     gemini: ''
   })
   const [settingsBusy, setSettingsBusy] = useState(false)
-  const [settingsError, setSettingsError] = useState<string | null>(null)
+  const [settingsFeedback, setSettingsFeedback] = useState<SettingsFeedback | null>(null)
   const [maxRoundsDraft, setMaxRoundsDraft] = useState('8')
   const [maxMessagesDraft, setMaxMessagesDraft] = useState('200')
   const [dailyUsage, setDailyUsage] = useState<AIDailyUsage | null>(null)
@@ -251,14 +252,18 @@ export default function Assistant(): JSX.Element {
 
   async function saveMaxRounds(): Promise<void> {
     const parsed = Number(maxRoundsDraft)
-    if (!Number.isFinite(parsed) || parsed < 1) return
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 20) {
+      setSettingsFeedback({ kind: 'error', message: 'Informe um limite de rodadas entre 1 e 20.' })
+      return
+    }
     setSettingsBusy(true)
-    setSettingsError(null)
+    setSettingsFeedback(null)
     try {
       await window.vega.aiSetMaxRoundsPerMessage(parsed)
       await refreshSettings()
+      setSettingsFeedback({ kind: 'success', message: 'Configurações salvas: limite de rodadas atualizado.' })
     } catch (err) {
-      setSettingsError((err as Error).message)
+      setSettingsFeedback(settingsFailure('Não foi possível salvar o limite de rodadas.', err))
     } finally {
       setSettingsBusy(false)
     }
@@ -266,21 +271,27 @@ export default function Assistant(): JSX.Element {
 
   async function saveMaxMessages(): Promise<void> {
     const parsed = Number(maxMessagesDraft)
-    if (!Number.isFinite(parsed) || parsed < 1) return
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 5000) {
+      setSettingsFeedback({ kind: 'error', message: 'Informe um limite diário entre 1 e 5000 mensagens.' })
+      return
+    }
     setSettingsBusy(true)
-    setSettingsError(null)
+    setSettingsFeedback(null)
     try {
       await window.vega.aiSetMaxMessagesPerDay(parsed)
       await refreshSettings()
+      setSettingsFeedback({ kind: 'success', message: 'Configurações salvas: limite diário atualizado.' })
     } catch (err) {
-      setSettingsError((err as Error).message)
+      setSettingsFeedback(settingsFailure('Não foi possível salvar o limite diário.', err))
     } finally {
       setSettingsBusy(false)
     }
   }
 
   useEffect(() => {
-    refreshSettings()
+    refreshSettings().catch((err) => {
+      setSettingsFeedback(settingsFailure('Não foi possível carregar as configurações.', err))
+    })
     window.vega.aiGetStarterPrompts()
       .then((prompts) => setPromptSuggestions(pickSuggestions(prompts, 6)))
       .catch(() => setPromptSuggestions([]))
@@ -371,7 +382,7 @@ export default function Assistant(): JSX.Element {
     const apiKey = apiKeyDrafts[provider].trim()
     if (!apiKey) return
     setSettingsBusy(true)
-    setSettingsError(null)
+    setSettingsFeedback(null)
     try {
       await window.vega.aiSaveApiKey(provider, apiKey)
       setApiKeyDrafts((prev) => ({ ...prev, [provider]: '' }))
@@ -379,8 +390,14 @@ export default function Assistant(): JSX.Element {
       // A key now exists — fetch the real model catalog instead of the
       // single-entry placeholder shown before the key was saved.
       if (selectedProvider === provider) await loadAgentOptions(provider)
+      setSettingsFeedback({
+        kind: 'success',
+        message: settings?.activeProvider === provider
+          ? `Configurações salvas. Assistente ativado com ${providerLabel[provider]}.`
+          : `Configurações salvas: chave de ${providerLabel[provider]} protegida no dispositivo.`
+      })
     } catch (err) {
-      setSettingsError((err as Error).message)
+      setSettingsFeedback(settingsFailure(`Não foi possível salvar a chave de ${providerLabel[provider]}.`, err))
     } finally {
       setSettingsBusy(false)
     }
@@ -388,12 +405,13 @@ export default function Assistant(): JSX.Element {
 
   async function setActiveProvider(provider: AIProviderId): Promise<void> {
     setSettingsBusy(true)
-    setSettingsError(null)
+    setSettingsFeedback(null)
     try {
       await window.vega.aiSetActiveProvider(provider)
       await refreshSettings()
+      setSettingsFeedback({ kind: 'success', message: `Assistente ativado com ${providerLabel[provider]}.` })
     } catch (err) {
-      setSettingsError((err as Error).message)
+      setSettingsFeedback(settingsFailure('Não foi possível ativar o assistente.', err))
     } finally {
       setSettingsBusy(false)
     }
@@ -401,12 +419,12 @@ export default function Assistant(): JSX.Element {
 
   async function loadAgentOptions(provider: AIProviderId): Promise<void> {
     setLoadingAgents(true)
-    setSettingsError(null)
+    setSettingsFeedback(null)
     try {
       const models = await window.vega.aiListModels(provider)
       setAgentOptions(models)
     } catch (err) {
-      setSettingsError((err as Error).message)
+      setSettingsFeedback(settingsFailure('Não foi possível carregar os modelos disponíveis.', err))
       setAgentOptions(settings ? [settings.models[provider]] : [])
     } finally {
       setLoadingAgents(false)
@@ -429,12 +447,43 @@ export default function Assistant(): JSX.Element {
   async function chooseAgent(provider: AIProviderId, model: string): Promise<void> {
     setSelectedAgent(model)
     setSettingsBusy(true)
-    setSettingsError(null)
+    setSettingsFeedback(null)
     try {
       await window.vega.aiSetModel(provider, model)
       await refreshSettings()
+      setSettingsFeedback({ kind: 'success', message: `Configurações salvas: modelo alterado para ${model}.` })
     } catch (err) {
-      setSettingsError((err as Error).message)
+      setSettingsFeedback(settingsFailure('Não foi possível alterar o modelo.', err))
+    } finally {
+      setSettingsBusy(false)
+    }
+  }
+
+  async function deactivateProvider(provider: AIProviderId): Promise<void> {
+    const isActive = settings?.activeProvider === provider
+    const confirmed = await dialogs.confirm({
+      title: isActive ? 'Desativar assistente' : 'Remover chave de API',
+      message: `Remover do dispositivo a chave de ${providerLabel[provider]}? Para usar esse provedor novamente, será necessário informar uma nova chave.`,
+      variant: 'warning',
+      confirmLabel: 'Remover chave',
+      cancelLabel: 'Cancelar'
+    })
+    if (!confirmed) return
+
+    setSettingsBusy(true)
+    setSettingsFeedback(null)
+    try {
+      await window.vega.aiClearApiKey(provider)
+      await refreshSettings()
+      setAgentOptions(settings ? [settings.models[provider]] : [])
+      setSettingsFeedback({
+        kind: 'info',
+        message: isActive
+          ? `Assistente desativado. A chave de ${providerLabel[provider]} foi removida.`
+          : `Chave de ${providerLabel[provider]} removida.`
+      })
+    } catch (err) {
+      setSettingsFeedback(settingsFailure('Não foi possível remover a chave de API.', err))
     } finally {
       setSettingsBusy(false)
     }
@@ -448,7 +497,11 @@ export default function Assistant(): JSX.Element {
         <div>
           <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Assistente</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-            {settings ? `Provedor ativo: ${providerLabel[settings.activeProvider]}` : 'Carregando...'}
+            {settings
+              ? hasActiveKey
+                ? `Provedor ativo: ${providerLabel[settings.activeProvider]}`
+                : 'Assistente desativado · configure uma chave de API'
+              : 'Carregando...'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -522,7 +575,31 @@ export default function Assistant(): JSX.Element {
 
       {showSettings && (
         <div className="card" style={{ display: 'grid', gap: 14 }}>
-          {settingsError && <div style={{ color: 'var(--lyra-danger)' }}>Falha: {settingsError}</div>}
+          {settingsFeedback && (
+            <div
+              role={settingsFeedback.kind === 'error' ? 'alert' : 'status'}
+              aria-live="polite"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '9px 12px',
+                borderRadius: 'var(--lyra-radius-sm)',
+                border: `1px solid ${settingsFeedback.kind === 'error' ? 'var(--lyra-danger)' : settingsFeedback.kind === 'success' ? 'var(--lyra-success)' : 'var(--lyra-blue)'}`,
+                color: settingsFeedback.kind === 'error' ? 'var(--lyra-danger)' : settingsFeedback.kind === 'success' ? 'var(--lyra-success)' : 'var(--lyra-text)'
+              }}
+            >
+              <span>{settingsFeedback.message}</span>
+              <button
+                type="button"
+                aria-label="Fechar mensagem"
+                onClick={() => setSettingsFeedback(null)}
+                style={{ border: 0, background: 'transparent', color: 'inherit', cursor: 'pointer' }}
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {!selectedProvider ? (
             <>
@@ -715,6 +792,22 @@ export default function Assistant(): JSX.Element {
                   >
                     Usar como ativo
                   </button>
+                  {configuredProviders.includes(selectedProvider) && (
+                    <button
+                      onClick={() => deactivateProvider(selectedProvider)}
+                      disabled={settingsBusy}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: 'var(--lyra-radius-sm)',
+                        border: '1px solid var(--lyra-danger)',
+                        background: 'transparent',
+                        color: 'var(--lyra-danger)',
+                        cursor: settingsBusy ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {settings?.activeProvider === selectedProvider ? 'Desativar assistente' : 'Remover chave'}
+                    </button>
+                  )}
                 </div>
               </div>
             </>

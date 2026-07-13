@@ -22,6 +22,7 @@ import {
 import { AgentLoop } from './ai/agentLoop'
 import { rejectAllPending, resolveProposal } from './ai/proposalStore'
 import {
+  clearApiKey,
   getApiKey,
   getSettings,
   listConfiguredProviders,
@@ -290,6 +291,7 @@ app.whenReady().then(async () => {
     dailyUsage: await getDailyUsage()
   }))
   ipcMain.handle('ai:saveApiKey', (_event, provider: AIProviderId, apiKey: string) => saveApiKey(provider, apiKey))
+  ipcMain.handle('ai:clearApiKey', (_event, provider: AIProviderId) => clearApiKey(provider))
   ipcMain.handle('ai:setActiveProvider', (_event, provider: AIProviderId) => setActiveProvider(provider))
   ipcMain.handle('ai:setModel', (_event, provider: AIProviderId, model: string) => setModel(provider, model))
   ipcMain.handle('ai:setMaxRoundsPerMessage', (_event, maxRounds: number) => setMaxRoundsPerMessage(maxRounds))

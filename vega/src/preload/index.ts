@@ -220,6 +220,7 @@ const api = {
     ipcRenderer.invoke('ai:getSettings'),
   aiSaveApiKey: (provider: AIProviderId, apiKey: string): Promise<void> =>
     ipcRenderer.invoke('ai:saveApiKey', provider, apiKey),
+  aiClearApiKey: (provider: AIProviderId): Promise<void> => ipcRenderer.invoke('ai:clearApiKey', provider),
   aiSetActiveProvider: (provider: AIProviderId): Promise<void> =>
     ipcRenderer.invoke('ai:setActiveProvider', provider),
   aiSetModel: (provider: AIProviderId, model: string): Promise<void> =>
