@@ -87,6 +87,8 @@ const api = {
     ipcRenderer.invoke('vega:firewallListServices'),
   firewallSetServiceEnabled: (name: string, enabled: boolean): Promise<void> =>
     ipcRenderer.invoke('vega:firewallSetServiceEnabled', name, enabled),
+  firewallCreateRule: (spec: import('../main/system/types').FirewallRuleSpec): Promise<void> =>
+    ipcRenderer.invoke('vega:firewallCreateRule', spec),
   dateTimeStatus: (): Promise<{ timezone: string; ntp: boolean; locale: string; keymap: string }> =>
     ipcRenderer.invoke('vega:dateTimeStatus'),
   listTimezones: (): Promise<string[]> => ipcRenderer.invoke('vega:listTimezones'),
@@ -109,6 +111,7 @@ const api = {
       signal: number
       device: string
       autoconf: boolean
+      remoteSession?: boolean
     }[]
   > => ipcRenderer.invoke('vega:listNetworkInterfaces'),
   listWifi: (): Promise<{ ssid: string; security: string; signal: number; active: boolean; device: string }[]> =>

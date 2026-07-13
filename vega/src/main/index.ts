@@ -10,6 +10,7 @@ import {
   type UpdatesAvailableEvent,
   type ProxyConfig
 } from './system/types'
+import type { FirewallRuleSpec } from './system/types'
 import type { SoftwareInstallOptions } from './system/types'
 import { createSystemClient } from './system/factory'
 import {
@@ -169,6 +170,7 @@ app.whenReady().then(async () => {
     (_event, snapshotId: string, targetPath: string, mode: string) =>
       vegaClient.restoreBackupSnapshot(snapshotId, targetPath, mode)
   )
+  ipcMain.handle('vega:firewallCreateRule', (_event, spec: FirewallRuleSpec) => vegaClient.firewallCreateRule(spec))
   ipcMain.handle(
     'vega:restoreBackupItems',
     (_event, snapshotId: string, targetPath: string, mode: string, paths: string[]) =>

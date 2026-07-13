@@ -4,7 +4,7 @@ import { release } from 'node:os'
 import type { SystemClient } from './system/systemClient'
 import type {
   BackupAlertEvent, BackupConfig, BackupSnapshotInfo, BackupTransactionFinished, BackupTransactionProgress,
-  BluetoothDeviceInfo, BluetoothStatus, BootStatus, DateTimeStatus, FirewallServiceInfo, HardwareInventory,
+  BluetoothDeviceInfo, BluetoothStatus, BootStatus, DateTimeStatus, FirewallRuleSpec, FirewallServiceInfo, HardwareInventory,
   ManagedServiceInfo, NetworkInterfaceInfo, PackageDetails, PackageRef, ProcessInfo, ProxyConfig, SnapshotInfo,
   StorageVolumeInfo, SystemCapabilities, SystemMetrics, TransactionFinished, TransactionProgress, UpdatesAvailableEvent, UserInfo,
   VegaSystemInfo, WifiNetworkInfo
@@ -472,6 +472,10 @@ export class LinuxSystemClient extends EventEmitter implements SystemClient {
   async firewallSetServiceEnabled(name: string, enabled: boolean): Promise<void> {
     const iface = await this.getInterface('Firewall')
     await iface.SetServiceEnabled(name, enabled)
+  }
+
+  async firewallCreateRule(_spec: FirewallRuleSpec): Promise<void> {
+    throw new Error('Criação de regras tipadas está disponível apenas no backend Windows.')
   }
 
   async dateTimeStatus(): Promise<DateTimeStatus> {

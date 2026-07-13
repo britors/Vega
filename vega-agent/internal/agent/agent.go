@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/lyraos/vega-agent/internal/eventlogs"
+	"github.com/lyraos/vega-agent/internal/networking"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
 	"github.com/lyraos/vega-agent/internal/servicecontrol"
@@ -27,6 +28,8 @@ type Server struct {
 	Software            software.Manager
 	Services            ServiceManager
 	EventLogs           EventLogReader
+	Network             NetworkManager
+	Wifi                WifiManager
 	MissingDependencies []protocol.MissingDependency
 }
 
@@ -34,6 +37,9 @@ type Elevator interface {
 	Proof(context.Context) (map[string]any, error)
 	Kill(context.Context, uint32) error
 	Service(context.Context, string, string) error
+	StaticIPv4(context.Context, networking.StaticIPv4) error
+	SetFirewallRule(context.Context, string, bool) error
+	CreateFirewallRule(context.Context, networking.FirewallRuleSpec) (string, error)
 }
 
 type ProcessController interface{ Kill(uint32) error }
@@ -43,6 +49,17 @@ type ServiceManager interface {
 type EventLogReader interface {
 	ListChannels(context.Context) ([]string, error)
 	Query(context.Context, eventlogs.Query) ([]eventlogs.Event, error)
+}
+type NetworkManager interface {
+	Interfaces(context.Context) ([]networking.InterfaceInfo, error)
+	Firewall(context.Context) ([]networking.FirewallProfile, []networking.FirewallRule, error)
+	Proxy(context.Context) (networking.ProxyConfig, error)
+	SetUserProxy(context.Context, networking.ProxyConfig) error
+}
+type WifiManager interface {
+	List(context.Context) ([]networking.WifiNetwork, error)
+	Connect(context.Context, string, string) error
+	Disconnect(context.Context, string) error
 }
 
 func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) error {
@@ -99,6 +116,19 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 	if s.EventLogs != nil {
 		modules = append(modules, "logs")
 		readOperations = append(readOperations, "listLogUnits", "queryLogs")
+	}
+	if s.Network != nil {
+		modules = append(modules, "network")
+		readOperations = append(readOperations, "listNetworkInterfaces", "getProxy", "firewallStatus", "firewallListServices")
+		mutations = append(mutations, "setProxy")
+		if s.Elevator != nil {
+			mutations = append(mutations, "setStaticIPv4", "firewallSetServiceEnabled", "firewallCreateRule")
+			elevatedMutations = append(elevatedMutations, "setStaticIPv4", "firewallSetServiceEnabled", "firewallCreateRule")
+		}
+	}
+	if s.Wifi != nil {
+		readOperations = append(readOperations, "listWifi")
+		mutations = append(mutations, "connectWifi", "disconnectNetwork")
 	}
 	if err := protocol.Write(output, protocol.Message{
 		Version: protocol.Version, Kind: "hello", Nonce: nonce,
@@ -325,6 +355,89 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 				break
 			}
 			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: events})
+		case "network.interfaces":
+			err = s.networkRead(output, request, func() (any, error) { return s.Network.Interfaces(ctx) })
+		case "network.wifi":
+			if s.Wifi == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "Wi-Fi indisponível"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "listagem Wi-Fi não aceita parâmetros"))
+				break
+			}
+			rows, readErr := s.Wifi.List(ctx)
+			if readErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: rows})
+		case "network.proxy":
+			err = s.networkRead(output, request, func() (any, error) { return s.Network.Proxy(ctx) })
+		case "network.firewall":
+			if s.Network == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "firewall indisponível"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "leitura do firewall não aceita parâmetros"))
+				break
+			}
+			profiles, rules, readErr := s.Network.Firewall(ctx)
+			if readErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", readErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"profiles": profiles, "rules": rules}})
+		case "network.wifiConnect":
+			var params struct {
+				SSID     string `json:"ssid"`
+				Password string `json:"password"`
+			}
+			if s.Wifi == nil || decodeParams(request.Params, &params) != nil || networking.ValidateSSID(params.SSID, params.Password) != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "parâmetros Wi-Fi inválidos"))
+				break
+			}
+			networking.AuditMutation("wifi.connect", "before", nil)
+			if connectErr := s.Wifi.Connect(ctx, params.SSID, params.Password); connectErr != nil {
+				networking.AuditMutation("wifi.connect", "after", connectErr)
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", connectErr.Error()))
+				break
+			}
+			networking.AuditMutation("wifi.connect", "after", nil)
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
+		case "network.wifiDisconnect":
+			var params struct {
+				Device string `json:"device"`
+			}
+			if s.Wifi == nil || decodeParams(request.Params, &params) != nil || len(params.Device) < 2 || len(params.Device) > 64 {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "adaptador Wi-Fi inválido"))
+				break
+			}
+			networking.AuditMutation("wifi.disconnect", "before", nil)
+			if disconnectErr := s.Wifi.Disconnect(ctx, params.Device); disconnectErr != nil {
+				networking.AuditMutation("wifi.disconnect", "after", disconnectErr)
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", disconnectErr.Error()))
+				break
+			}
+			networking.AuditMutation("wifi.disconnect", "after", nil)
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
+		case "network.proxySet":
+			var params networking.ProxyConfig
+			if s.Network == nil || decodeParams(request.Params, &params) != nil || networking.ValidateProxy(params) != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "configuração de proxy inválida"))
+				break
+			}
+			networking.AuditMutation("proxy.set", "before", nil)
+			if proxyErr := s.Network.SetUserProxy(ctx, params); proxyErr != nil {
+				networking.AuditMutation("proxy.set", "after", proxyErr)
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", proxyErr.Error()))
+				break
+			}
+			networking.AuditMutation("proxy.set", "after", nil)
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
+		case "network.staticIPv4", "network.firewallRuleSet", "network.firewallRuleCreate":
+			err = s.networkElevated(ctx, output, request)
 		case "broker.proof":
 			if s.Elevator == nil {
 				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "elevação indisponível"))
@@ -345,6 +458,73 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 			return err
 		}
 	}
+}
+
+func (s Server) networkRead(output io.Writer, request protocol.Message, operation func() (any, error)) error {
+	if s.Network == nil {
+		return protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "rede indisponível"))
+	}
+	if !emptyParams(request.Params) {
+		return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "operação de rede não aceita parâmetros"))
+	}
+	result, err := operation()
+	if err != nil {
+		return protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", err.Error()))
+	}
+	return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: result})
+}
+
+func (s Server) networkElevated(ctx context.Context, output io.Writer, request protocol.Message) error {
+	if s.Network == nil || s.Elevator == nil {
+		return protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "mutação de rede elevada indisponível"))
+	}
+	var err error
+	result := map[string]any{"changed": true}
+	action := strings.TrimPrefix(request.Operation, "network.")
+	switch request.Operation {
+	case "network.staticIPv4":
+		var params networking.StaticIPv4
+		if decodeParams(request.Params, &params) != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "configuração IPv4 inválida"))
+		}
+		valid, validateErr := networking.ValidateStaticIPv4(params)
+		if validateErr != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+		}
+		networking.AuditMutation(action, "before", nil)
+		err = s.Elevator.StaticIPv4(ctx, valid)
+	case "network.firewallRuleSet":
+		var params struct {
+			Name    string `json:"name"`
+			Enabled bool   `json:"enabled"`
+		}
+		if decodeParams(request.Params, &params) != nil || networking.ValidateManagedRuleName(params.Name) != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "regra de firewall inválida"))
+		}
+		networking.AuditMutation(action, "before", nil)
+		err = s.Elevator.SetFirewallRule(ctx, params.Name, params.Enabled)
+	case "network.firewallRuleCreate":
+		var params networking.FirewallRuleSpec
+		if decodeParams(request.Params, &params) != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "regra de firewall inválida"))
+		}
+		valid, validateErr := networking.ValidateFirewallRule(params)
+		if validateErr != nil {
+			return protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+		}
+		networking.AuditMutation(action, "before", nil)
+		result["name"], err = s.Elevator.CreateFirewallRule(ctx, valid)
+	}
+	if err != nil {
+		networking.AuditMutation(action, "after", err)
+		code := "EXTERNAL_FAILURE"
+		if strings.Contains(err.Error(), "UAC_CANCELED") {
+			code = "CANCELED"
+		}
+		return protocol.Write(output, failure(request.RequestID, code, err.Error()))
+	}
+	networking.AuditMutation(action, "after", nil)
+	return protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: result})
 }
 
 func (s Server) collect(output io.Writer, request protocol.Message, operation func() (any, error)) error {

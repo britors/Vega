@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import type {
   BackupConfig, BackupSnapshotInfo, BluetoothDeviceInfo, BluetoothStatus, BootStatus, DateTimeStatus,
-  FirewallServiceInfo, HardwareInventory, ManagedServiceInfo, NetworkInterfaceInfo, PackageDetails, PackageRef,
+  FirewallRuleSpec, FirewallServiceInfo, HardwareInventory, ManagedServiceInfo, NetworkInterfaceInfo, PackageDetails, PackageRef,
   ProcessInfo, ProxyConfig, SnapshotInfo, StorageVolumeInfo, SystemCapabilities, SystemMetrics, UserInfo,
   VegaSystemInfo, WifiNetworkInfo
 } from './types'
@@ -54,6 +54,7 @@ export interface SystemClient extends EventEmitter {
   firewallStatus(): Promise<{ enabled: boolean; activeZone: string }>
   firewallListServices(): Promise<FirewallServiceInfo[]>
   firewallSetServiceEnabled(name: string, enabled: boolean): Promise<void>
+  firewallCreateRule(spec: FirewallRuleSpec): Promise<void>
   dateTimeStatus(): Promise<DateTimeStatus>
   listTimezones(): Promise<string[]>
   listLocales(): Promise<string[]>

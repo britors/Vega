@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/lyraos/vega-agent/internal/eventlogs"
+	"github.com/lyraos/vega-agent/internal/networking"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
 	"github.com/lyraos/vega-agent/internal/servicecontrol"
@@ -80,6 +81,11 @@ func (e *fixtureElevator) Service(_ context.Context, name, action string) error 
 	e.serviceName, e.serviceAction = name, action
 	return nil
 }
+func (*fixtureElevator) StaticIPv4(context.Context, networking.StaticIPv4) error { return nil }
+func (*fixtureElevator) SetFirewallRule(context.Context, string, bool) error     { return nil }
+func (*fixtureElevator) CreateFirewallRule(context.Context, networking.FirewallRuleSpec) (string, error) {
+	return "Vega-test", nil
+}
 
 type fixtureServices struct{}
 
@@ -92,6 +98,27 @@ type fixtureEventLogs struct{}
 func (fixtureEventLogs) ListChannels(context.Context) ([]string, error) {
 	return []string{"Application", "System"}, nil
 }
+
+type fixtureNetwork struct{}
+
+func (fixtureNetwork) Interfaces(context.Context) ([]networking.InterfaceInfo, error) {
+	return []networking.InterfaceInfo{{Name: "Ethernet_日本", IPv4: "192.0.2.10/24"}}, nil
+}
+func (fixtureNetwork) Firewall(context.Context) ([]networking.FirewallProfile, []networking.FirewallRule, error) {
+	return []networking.FirewallProfile{{Name: "Private", Enabled: true}}, []networking.FirewallRule{{Name: "Vega-test", Label: "Teste", Enabled: true}}, nil
+}
+func (fixtureNetwork) Proxy(context.Context) (networking.ProxyConfig, error) {
+	return networking.ProxyConfig{HTTP: "proxy.test:8080"}, nil
+}
+func (fixtureNetwork) SetUserProxy(context.Context, networking.ProxyConfig) error { return nil }
+
+type fixtureWifi struct{}
+
+func (fixtureWifi) List(context.Context) ([]networking.WifiNetwork, error) {
+	return []networking.WifiNetwork{{SSID: "Café_日本", Signal: 90}}, nil
+}
+func (fixtureWifi) Connect(context.Context, string, string) error { return nil }
+func (fixtureWifi) Disconnect(context.Context, string) error      { return nil }
 func (fixtureEventLogs) Query(_ context.Context, query eventlogs.Query) ([]eventlogs.Event, error) {
 	return []eventlogs.Event{{Timestamp: "2026-01-01T00:00:00Z", Provider: "Teste", EventID: 42, Level: "Information", Message: "mensagem 日本語 " + query.Channel}}, nil
 }
@@ -345,5 +372,30 @@ func TestServicesAndEventLogUseClosedContracts(t *testing.T) {
 	missing := request(t, conn, hello, "missing-service", "services.start", []byte(`{"name":"MissingService"}`))
 	if missing.Error == nil || missing.Error.Code != "EXTERNAL_FAILURE" {
 		t.Fatalf("missing service: %#v", missing)
+	}
+}
+
+func TestNetworkUsesClosedContractsAndKeepsWifiPasswordOutOfResults(t *testing.T) {
+	elevator := &fixtureElevator{}
+	conn, closeServer := startConfiguredTestServer(t, Server{PlatformVersion: "test", Network: fixtureNetwork{}, Wifi: fixtureWifi{}, Elevator: elevator})
+	defer closeServer()
+	hello := handshake(t, conn)
+
+	for index, operation := range []string{"network.interfaces", "network.wifi", "network.proxy", "network.firewall"} {
+		if result := request(t, conn, hello, "network-read-"+string(rune('a'+index)), operation, nil); result.Kind != "result" {
+			t.Fatalf("%s: %#v", operation, result)
+		}
+	}
+	connected := request(t, conn, hello, "wifi-connect", "network.wifiConnect", []byte(`{"ssid":"Café_日本","password":"senha-segura"}`))
+	if connected.Kind != "result" {
+		t.Fatalf("wifi: %#v", connected)
+	}
+	invalid := request(t, conn, hello, "network-injection", "network.staticIPv4", []byte(`{"interface":"Ethernet","address":"192.0.2.2/24","gateway":"192.0.2.1","dns":"1.1.1.1","command":"whoami"}`))
+	if invalid.Error == nil || invalid.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("injection: %#v", invalid)
+	}
+	created := request(t, conn, hello, "firewall-create", "network.firewallRuleCreate", []byte(`{"label":"Servidor","direction":"inbound","profile":"private","protocol":"tcp","port":8080}`))
+	if created.Kind != "result" {
+		t.Fatalf("firewall: %#v", created)
 	}
 }

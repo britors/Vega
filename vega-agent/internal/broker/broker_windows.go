@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/Microsoft/go-winio"
+	"github.com/lyraos/vega-agent/internal/networking"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
 	"github.com/lyraos/vega-agent/internal/servicecontrol"
@@ -40,6 +41,33 @@ func (e Elevator) Kill(parent context.Context, pid uint32) error {
 func (e Elevator) Service(parent context.Context, name, action string) error {
 	_, err := e.execute(parent, "services."+action, map[string]any{"name": name})
 	return err
+}
+
+func (e Elevator) StaticIPv4(parent context.Context, config networking.StaticIPv4) error {
+	_, err := e.execute(parent, "network.staticIPv4", map[string]any{
+		"interface": config.Interface, "address": config.Address, "gateway": config.Gateway, "dns": config.DNS,
+	})
+	return err
+}
+
+func (e Elevator) SetFirewallRule(parent context.Context, name string, enabled bool) error {
+	_, err := e.execute(parent, "network.firewallRuleSet", map[string]any{"name": name, "enabled": enabled})
+	return err
+}
+
+func (e Elevator) CreateFirewallRule(parent context.Context, spec networking.FirewallRuleSpec) (string, error) {
+	result, err := e.execute(parent, "network.firewallRuleCreate", map[string]any{
+		"label": spec.Label, "direction": spec.Direction, "profile": spec.Profile, "protocol": spec.Protocol,
+		"port": spec.Port, "program": spec.Program, "service": spec.Service,
+	})
+	if err != nil {
+		return "", err
+	}
+	name, _ := result["name"].(string)
+	if name == "" {
+		return "", fmt.Errorf("broker não retornou o identificador da regra")
+	}
+	return name, nil
 }
 
 func (e Elevator) execute(parent context.Context, operation string, params map[string]any) (map[string]any, error) {
@@ -187,6 +215,45 @@ func RunClient(ctx context.Context, pipeName string, serverPID, sessionID uint32
 			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
 		}
 		result["changed"] = true
+	case "network.staticIPv4":
+		var params networking.StaticIPv4
+		if err := decodeClosed(request.Params, &params); err != nil {
+			return fmt.Errorf("invalid network.staticIPv4 parameters")
+		}
+		valid, err := networking.ValidateStaticIPv4(params)
+		if err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "INVALID_ARGUMENT", Message: err.Error()}})
+		}
+		if err := (networking.Reader{}).ApplyStaticIPv4(ctx, valid); err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
+		}
+		result["changed"] = true
+	case "network.firewallRuleSet":
+		var params struct {
+			Name    string `json:"name"`
+			Enabled bool   `json:"enabled"`
+		}
+		if err := decodeClosed(request.Params, &params); err != nil || networking.ValidateManagedRuleName(params.Name) != nil {
+			return fmt.Errorf("invalid network.firewallRuleSet parameters")
+		}
+		if err := (networking.Reader{}).SetFirewallRuleEnabled(ctx, params.Name, params.Enabled); err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
+		}
+		result["changed"] = true
+	case "network.firewallRuleCreate":
+		var params networking.FirewallRuleSpec
+		if err := decodeClosed(request.Params, &params); err != nil {
+			return fmt.Errorf("invalid network.firewallRuleCreate parameters")
+		}
+		valid, err := networking.ValidateFirewallRule(params)
+		if err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "INVALID_ARGUMENT", Message: err.Error()}})
+		}
+		name, err := (networking.Reader{}).CreateFirewallRule(ctx, valid)
+		if err != nil {
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
+		}
+		result["name"] = name
 	default:
 		return fmt.Errorf("broker operation not allowed")
 	}
@@ -194,6 +261,18 @@ func RunClient(ctx context.Context, pipeName string, serverPID, sessionID uint32
 		Version: protocol.Version, Kind: "result", RequestID: request.RequestID,
 		Result: result,
 	})
+}
+
+func decodeClosed(params []byte, target any) error {
+	decoder := json.NewDecoder(strings.NewReader(string(params)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return fmt.Errorf("trailing parameters")
+	}
+	return nil
 }
 
 func randomPipeName() (string, error) {

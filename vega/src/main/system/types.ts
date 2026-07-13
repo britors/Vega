@@ -70,7 +70,11 @@ export interface BackupAlertEvent { configId: string; consecutiveFailures: numbe
 export interface UpdatesAvailableEvent { count: number }
 export interface SnapshotInfo { id: number; timestamp: number; trigger: string; description: string }
 export interface HardwareInventory { cpu: string; gpu: string; ramText: string; manufacturer?: string; model?: string }
-export interface FirewallServiceInfo { name: string; label: string; enabled: boolean }
+export interface FirewallServiceInfo { name: string; label: string; enabled: boolean; profile?: string; readOnly?: boolean }
+export interface FirewallRuleSpec {
+  label: string; direction: 'inbound' | 'outbound'; profile: 'domain' | 'private' | 'public' | 'any'
+  protocol: 'tcp' | 'udp'; port?: number; program?: string; service?: string
+}
 export interface UserInfo { username: string; isAdmin: boolean }
 export interface ManagedServiceInfo {
   name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean
@@ -80,7 +84,7 @@ export interface DateTimeStatus { timezone: string; ntp: boolean; locale: string
 export interface BootStatus { loader: string; defaultEntry: string; timeout: number; cmdline: string }
 export interface NetworkInterfaceInfo {
   name: string; type: string; state: string; ipv4: string; ipv6: string; gateway: string; dns: string
-  mac: string; speed: string; ssid: string; signal: number; device: string; autoconf: boolean
+  mac: string; speed: string; ssid: string; signal: number; device: string; autoconf: boolean; remoteSession?: boolean
 }
 export interface WifiNetworkInfo { ssid: string; security: string; signal: number; active: boolean; device: string }
 export interface BluetoothStatus {
@@ -91,7 +95,7 @@ export interface BluetoothDeviceInfo {
   address: string; name: string; alias: string; icon: string; paired: boolean; trusted: boolean
   connected: boolean; blocked: boolean; rssi: number
 }
-export interface ProxyConfig { http: string; https: string; socks: string; no: string }
+export interface ProxyConfig { http: string; https: string; socks: string; no: string; winHttp?: string; userEnabled?: boolean }
 export interface StorageVolumeInfo {
   name: string; path: string; type: string; fsType: string; size: string; used: string; avail: string
   usePercent: number; mountpoint: string; model: string; removable: boolean; canMount: boolean; canUnmount: boolean

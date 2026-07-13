@@ -2,8 +2,9 @@ import { EventEmitter } from 'node:events'
 import { AgentTransport } from './agentTransport'
 import type { SystemClient } from './systemClient'
 import {
-  SystemClientError, type HardwareInventory, type ManagedServiceInfo, type ProcessInfo, type StorageVolumeInfo,
-  type SystemCapabilities, type SystemMetrics, type VegaSystemInfo
+  SystemClientError, type FirewallRuleSpec, type FirewallServiceInfo, type HardwareInventory, type ManagedServiceInfo,
+  type NetworkInterfaceInfo, type ProcessInfo, type ProxyConfig, type StorageVolumeInfo, type SystemCapabilities,
+  type SystemMetrics, type VegaSystemInfo, type WifiNetworkInfo
 } from './types'
 import type { PackageDetails, PackageRef, SoftwareInstallOptions } from './types'
 
@@ -72,6 +73,35 @@ class WindowsSystemClientBase extends EventEmitter {
       'eventlog.query', { channel: unit || 'System', priority, since, search, limit: maxLines }, undefined, 20_000
     )
     return events.map((event) => `${event.timestamp} [${event.level || 'Nível desconhecido'}] ${event.provider} · ID ${event.eventId}\n${event.message || '[mensagem localizada indisponível]'}`)
+  }
+  async listNetworkInterfaces(): Promise<NetworkInterfaceInfo[]> { return this.transport.request('network.interfaces') }
+  async listWifi(): Promise<WifiNetworkInfo[]> { return this.transport.request('network.wifi') }
+  async connectWifi(ssid: string, password: string): Promise<void> {
+    await this.transport.request('network.wifiConnect', { ssid, password }, undefined, 60_000)
+  }
+  async disconnectNetwork(device: string): Promise<void> {
+    await this.transport.request('network.wifiDisconnect', { device }, undefined, 60_000)
+  }
+  async getProxy(): Promise<ProxyConfig> { return this.transport.request('network.proxy') }
+  async setProxy(config: ProxyConfig): Promise<void> { await this.transport.request('network.proxySet', { ...config }) }
+  async setStaticIPv4(connection: string, address: string, gateway: string, dns: string): Promise<void> {
+    await this.transport.request('network.staticIPv4', { interface: connection, address, gateway, dns }, undefined, 120_000)
+  }
+  private async firewall(): Promise<{
+    profiles: Array<{ name: string; enabled: boolean; readOnly: boolean }>
+    rules: FirewallServiceInfo[]
+  }> { return this.transport.request('network.firewall') }
+  async firewallStatus(): Promise<{ enabled: boolean; activeZone: string }> {
+    const { profiles } = await this.firewall()
+    const enabled = profiles.filter((profile) => profile.enabled)
+    return { enabled: enabled.length > 0, activeZone: enabled.map((profile) => profile.name).join(', ') || 'nenhum perfil' }
+  }
+  async firewallListServices(): Promise<FirewallServiceInfo[]> { return (await this.firewall()).rules }
+  async firewallSetServiceEnabled(name: string, enabled: boolean): Promise<void> {
+    await this.transport.request('network.firewallRuleSet', { name, enabled }, undefined, 120_000)
+  }
+  async firewallCreateRule(spec: FirewallRuleSpec): Promise<void> {
+    await this.transport.request('network.firewallRuleCreate', { ...spec }, undefined, 120_000)
   }
 
   private async startTransaction(operation: string, params: Record<string, unknown> = {}): Promise<number> {

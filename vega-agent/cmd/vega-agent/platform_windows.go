@@ -13,6 +13,7 @@ import (
 	"github.com/lyraos/vega-agent/internal/agent"
 	"github.com/lyraos/vega-agent/internal/broker"
 	"github.com/lyraos/vega-agent/internal/eventlogs"
+	"github.com/lyraos/vega-agent/internal/networking"
 	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
 	"github.com/lyraos/vega-agent/internal/servicecontrol"
@@ -46,6 +47,8 @@ func newAgentServer() agent.Server {
 		Processes:       processcontrol.Controller{},
 		Services:        servicecontrol.Manager{},
 		EventLogs:       eventlogs.Reader{},
+		Network:         networking.Reader{},
+		Wifi:            networking.Wifi{},
 	}
 	software, err := winget.New()
 	if err == nil {
