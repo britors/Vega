@@ -15,6 +15,15 @@ import type {
   ProxyConfig
 } from '../main/dbusClient'
 import type { DisplayConfig, DisplayOutputInfo, WallpaperInfo } from '../main/sessionSettings'
+import type {
+  AIAuditEntry,
+  AIDailyUsage,
+  AIProviderId,
+  AISendMessageResult,
+  AISettings,
+  AIToolOutcome,
+  AIToolProposal
+} from '../main/ai/types'
 
 const api = {
   ping: (): Promise<VegaSystemInfo> => ipcRenderer.invoke('vega:ping'),
@@ -212,6 +221,34 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, evt: BackupTransactionFinished): void => cb(evt)
     ipcRenderer.on('vega:backup-transaction-finished', listener)
     return () => ipcRenderer.removeListener('vega:backup-transaction-finished', listener)
+  },
+
+  aiSendMessage: (text: string): Promise<AISendMessageResult> => ipcRenderer.invoke('ai:sendMessage', text),
+  aiResolveToolProposal: (proposalId: string, approved: boolean, outcome?: AIToolOutcome): Promise<boolean> =>
+    ipcRenderer.invoke('ai:resolveToolProposal', proposalId, approved, outcome),
+  aiGetSettings: (): Promise<{ settings: AISettings; configuredProviders: AIProviderId[]; dailyUsage: AIDailyUsage }> =>
+    ipcRenderer.invoke('ai:getSettings'),
+  aiSaveApiKey: (provider: AIProviderId, apiKey: string): Promise<void> =>
+    ipcRenderer.invoke('ai:saveApiKey', provider, apiKey),
+  aiSetActiveProvider: (provider: AIProviderId): Promise<void> =>
+    ipcRenderer.invoke('ai:setActiveProvider', provider),
+  aiSetModel: (provider: AIProviderId, model: string): Promise<void> =>
+    ipcRenderer.invoke('ai:setModel', provider, model),
+  aiListModels: (provider: AIProviderId): Promise<string[]> => ipcRenderer.invoke('ai:listModels', provider),
+  aiSetMaxRoundsPerMessage: (maxRounds: number): Promise<void> =>
+    ipcRenderer.invoke('ai:setMaxRoundsPerMessage', maxRounds),
+  aiSetMaxMessagesPerDay: (maxMessages: number): Promise<void> =>
+    ipcRenderer.invoke('ai:setMaxMessagesPerDay', maxMessages),
+  aiGetAuditLog: (limit?: number): Promise<AIAuditEntry[]> => ipcRenderer.invoke('ai:getAuditLog', limit),
+  onAiToolProposal: (cb: (proposal: AIToolProposal) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, proposal: AIToolProposal): void => cb(proposal)
+    ipcRenderer.on('ai:toolProposal', listener)
+    return () => ipcRenderer.removeListener('ai:toolProposal', listener)
+  },
+  onAiStatus: (cb: (status: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, status: string): void => cb(status)
+    ipcRenderer.on('ai:status', listener)
+    return () => ipcRenderer.removeListener('ai:status', listener)
   }
 }
 

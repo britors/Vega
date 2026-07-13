@@ -18,9 +18,30 @@ import {
   listWallpapers,
   type DisplayConfig
 } from './sessionSettings'
+import { AgentLoop } from './ai/agentLoop'
+import { rejectAllPending, resolveProposal } from './ai/proposalStore'
+import {
+  getApiKey,
+  getSettings,
+  listConfiguredProviders,
+  saveApiKey,
+  setActiveProvider,
+  setMaxMessagesPerDay,
+  setMaxRoundsPerMessage,
+  setModel
+} from './ai/credentials'
+import { createProvider } from './ai/providers'
+import { readAuditLog } from './ai/auditLog'
+import { getDailyUsage } from './ai/usageTracker'
+import type { AIProviderId, AIToolOutcome, AIToolProposal } from './ai/types'
 
 const vegaClient = new VegaClient()
 let mainWindow: BrowserWindow | null = null
+const agentLoop = new AgentLoop(
+  vegaClient,
+  (proposal: AIToolProposal) => mainWindow?.webContents.send('ai:toolProposal', proposal),
+  (status: string) => mainWindow?.webContents.send('ai:status', status)
+)
 
 function sendWindowState(): void {
   if (!mainWindow) return
@@ -50,6 +71,7 @@ function createWindow(): void {
   mainWindow = win
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
+    rejectAllPending('A janela foi fechada antes da confirmação.')
   })
 
   win.on('ready-to-show', () => win.show())
@@ -251,6 +273,29 @@ app.whenReady().then(async () => {
       vegaClient.queryLogs(unit, priority, since, search, maxLines)
   )
   ipcMain.handle('vega:listLogUnits', () => vegaClient.listLogUnits())
+
+  ipcMain.handle('ai:sendMessage', (_event, text: string) => agentLoop.sendMessage(text))
+  ipcMain.handle('ai:resolveToolProposal', (_event, proposalId: string, approved: boolean, outcome?: AIToolOutcome) =>
+    resolveProposal(proposalId, { approved, outcome })
+  )
+  ipcMain.handle('ai:getSettings', async () => ({
+    settings: await getSettings(),
+    configuredProviders: await listConfiguredProviders(),
+    dailyUsage: await getDailyUsage()
+  }))
+  ipcMain.handle('ai:saveApiKey', (_event, provider: AIProviderId, apiKey: string) => saveApiKey(provider, apiKey))
+  ipcMain.handle('ai:setActiveProvider', (_event, provider: AIProviderId) => setActiveProvider(provider))
+  ipcMain.handle('ai:setModel', (_event, provider: AIProviderId, model: string) => setModel(provider, model))
+  ipcMain.handle('ai:setMaxRoundsPerMessage', (_event, maxRounds: number) => setMaxRoundsPerMessage(maxRounds))
+  ipcMain.handle('ai:setMaxMessagesPerDay', (_event, maxMessages: number) => setMaxMessagesPerDay(maxMessages))
+  ipcMain.handle('ai:listModels', async (_event, provider: AIProviderId) => {
+    const apiKey = await getApiKey(provider)
+    if (!apiKey) throw new Error(`Nenhuma chave de API configurada para o provedor "${provider}".`)
+    const settings = await getSettings()
+    return createProvider(provider, apiKey, settings.models[provider]).listModels()
+  })
+  ipcMain.handle('ai:getAuditLog', (_event, limit?: number) => readAuditLog(limit))
+
   ipcMain.handle('vega:window:minimize', () => mainWindow?.minimize())
   ipcMain.handle('vega:window:toggleMaximize', () => {
     if (!mainWindow) return { maximized: false }

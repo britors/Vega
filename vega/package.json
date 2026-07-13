@@ -1,6 +1,6 @@
 {
   "name": "vega",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Centro de controle unificado para Linux",
   "author": "Rodrigo Brito",
   "license": "GPL-3.0",
@@ -13,7 +13,10 @@
     "start": "electron-vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
+    "@google/genai": "^2.11.0",
     "dbus-next": "^0.10.2",
+    "openai": "^6.46.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

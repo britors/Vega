@@ -12,6 +12,7 @@ import Users from './Users'
 import Services from './Services'
 import Logs from './Logs'
 import About from './About'
+import Assistant from './Assistant'
 import type { ComponentType } from 'react'
 
 export interface VegaModule {
@@ -25,6 +26,7 @@ export interface VegaModule {
 // MVP ISO surface: expose only modules backed by working daemon methods.
 export const modules: VegaModule[] = [
   { id: 'dashboard', label: 'Painel', section: 'principal', Component: Dashboard },
+  { id: 'assistant', label: 'Assistente', section: 'principal', Component: Assistant },
   { id: 'software', label: 'Software', section: 'principal', star: true, Component: Software },
   { id: 'snapshots', label: 'Pontos de Restauração', section: 'principal', Component: Snapshots },
   { id: 'backup', label: 'Backup', section: 'principal', Component: Backup },

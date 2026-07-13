@@ -1,0 +1,65 @@
+name: Publish to AUR
+
+# Publica lyra-vega e vegad no AUR a cada tag empurrada, atualizando
+# pkgver/pkgrel nos PKGBUILDs de packaging/ e deixando a action gerar o
+# .SRCINFO e dar push no repositório git do AUR de cada pacote.
+# Ver docs/release/aur-publish.md para o fluxo manual que isso substitui.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+  aur-vega:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Atualizar pkgver/pkgrel
+        run: |
+          sed -i "s/^pkgver=.*/pkgver=${{ needs.prepare.outputs.version }}/" packaging/vega/PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" packaging/vega/PKGBUILD
+
+      - name: Publicar lyra-vega no AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v4
+        with:
+          pkgname: lyra-vega
+          pkgbuild: packaging/vega/PKGBUILD
+          commit_username: Rodrigo Brito
+          commit_email: rodrigo@w3ti.com.br
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Release v${{ needs.prepare.outputs.version }}"
+
+  aur-vegad:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Atualizar pkgver/pkgrel
+        run: |
+          sed -i "s/^pkgver=.*/pkgver=${{ needs.prepare.outputs.version }}/" packaging/vegad/PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" packaging/vegad/PKGBUILD
+
+      - name: Publicar vegad no AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v4
+        with:
+          pkgname: vegad
+          pkgbuild: packaging/vegad/PKGBUILD
+          assets: packaging/vegad/vegad.install
+          commit_username: Rodrigo Brito
+          commit_email: rodrigo@w3ti.com.br
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Release v${{ needs.prepare.outputs.version }}"

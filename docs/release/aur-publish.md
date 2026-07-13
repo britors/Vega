@@ -28,19 +28,34 @@ instalações Arch-like baseadas em `systemd`.
 Desde a `v1.0.0`, `pkgver` é fixo (não mais calculado via `pkgver()`/VCS) e o
 `source` de cada PKGBUILD aponta para `#tag=v${pkgver}` no GitHub, não para
 `#branch=main`. Ou seja, commits em `main` não mudam mais a versão sozinhos.
-Para lançar uma nova versão:
+Para lançar uma nova versão, basta dar `git tag vX.Y.Z` no commit desejado e
+`git push origin vX.Y.Z` — o workflow abaixo cuida do resto.
 
-1. Dar `git tag vX.Y.Z` no commit desejado e `git push origin vX.Y.Z`
-2. Atualizar `pkgver=X.Y.Z` (e resetar `pkgrel=1`) nos dois PKGBUILDs
-3. Se for só uma correção de empacotamento sem mudar o código (mesma tag),
-   basta subir `pkgrel`
+Uma correção de empacotamento sem mudar o código (mesma tag) ainda exige
+subir `pkgrel` manualmente direto no repositório do AUR, já que o pipeline
+só roda a partir de uma tag nova.
 
-## Fluxo de publicação
+## Fluxo de publicação (automático)
 
-1. Enviar `lyra-vega` e `vegad` para o AUR
-2. Confirmar geração de `.SRCINFO`
-3. Validar instalação limpa em chroot Arch
-4. Validar upgrade in-place sem perder estado do usuário
+[`.github/workflows/release-aur.yml`](../../.github/workflows/release-aur.yml)
+dispara em todo push de tag `v*` e, para `lyra-vega` e `vegad` em paralelo:
+
+1. Atualiza `pkgver` (a partir da tag) e reseta `pkgrel=1` no PKGBUILD
+2. Gera o `.SRCINFO` e dá push no repositório git do pacote em
+   `aur.archlinux.org`, via [`KSXGitHub/github-actions-deploy-aur`](https://github.com/KSXGitHub/github-actions-deploy-aur)
+
+Isso exige o secret `AUR_SSH_PRIVATE_KEY` configurado no repositório GitHub,
+com uma chave SSH já cadastrada na conta do AUR que mantém os dois pacotes.
+O workflow não valida instalação/upgrade de fato — isso continua manual:
+
+1. Validar instalação limpa em chroot Arch
+2. Validar upgrade in-place sem perder estado do usuário
+
+O bump de `pkgver`/`pkgrel` feito pelo workflow é local ao push para o AUR;
+ele **não** volta como commit para `packaging/*/PKGBUILD` neste repositório
+— os PKGBUILDs versionados aqui servem de referência/base para build local
+(`VEGA_SOURCE_DIR`) e ficam alguns releases atrás da versão real publicada
+no AUR até o próximo bump manual.
 
 ## Observações
 
