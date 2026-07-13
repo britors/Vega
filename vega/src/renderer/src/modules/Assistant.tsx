@@ -88,6 +88,31 @@ function nextId(): string {
   return Math.random().toString(36).slice(2)
 }
 
+const suggestedPrompts: string[] = [
+  'Ver serviços em execução',
+  'Preparar uma máquina gamer',
+  'Quanto espaço em disco eu tenho livre?',
+  'Tem atualização de pacote pendente?',
+  'Preparar um ambiente de desenvolvimento web',
+  'Como está o hardware desta máquina?',
+  'Crie um snapshot do sistema antes de eu mexer em algo',
+  'O firewall está ativo?',
+  'Quais processos estão consumindo mais CPU agora?',
+  'Tem kernel novo disponível?',
+  'Limpe o cache de pacotes',
+  'Otimize os espelhos de download'
+]
+
+function pickSuggestions(count: number): string[] {
+  const pool = [...suggestedPrompts]
+  const picked: string[] = []
+  while (picked.length < count && pool.length > 0) {
+    const i = Math.floor(Math.random() * pool.length)
+    picked.push(pool.splice(i, 1)[0])
+  }
+  return picked
+}
+
 function waitForTransaction(txId: number, timeoutMs = 60000): Promise<AIToolOutcome> {
   return new Promise((resolve) => {
     let off: () => void = () => {}
@@ -208,6 +233,8 @@ export default function Assistant(): JSX.Element {
   const [auditEntries, setAuditEntries] = useState<AIAuditEntry[]>([])
   const [loadingAudit, setLoadingAudit] = useState(false)
 
+  const [promptSuggestions] = useState<string[]>(() => pickSuggestions(6))
+
   const listEndRef = useRef<HTMLDivElement>(null)
 
   async function refreshSettings(): Promise<void> {
@@ -324,8 +351,8 @@ export default function Assistant(): JSX.Element {
     if (showAuditLog) loadAuditLog()
   }
 
-  async function handleSend(): Promise<void> {
-    const text = input.trim()
+  async function handleSend(overrideText?: string): Promise<void> {
+    const text = (overrideText ?? input).trim()
     if (!text || sending) return
     setInput('')
     setMessages((prev) => [...prev, { id: nextId(), role: 'user', content: text }])
@@ -707,10 +734,32 @@ export default function Assistant(): JSX.Element {
       <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 2px' }}>
           {messages.length === 0 && (
-            <EmptyState
-              title="Converse com o assistente"
-              message="Pergunte sobre pacotes, hardware ou uso de disco, ou peça para instalar/remover algo."
-            />
+            <>
+              <EmptyState
+                title="Converse com o assistente"
+                message="Pergunte sobre pacotes, hardware ou uso de disco, ou peça para instalar/remover algo."
+              />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', padding: '0 8px' }}>
+                {promptSuggestions.map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => handleSend(prompt)}
+                    disabled={!hasActiveKey || sending}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 999,
+                      border: '1px solid var(--lyra-border)',
+                      background: 'var(--lyra-surface-raised)',
+                      color: 'var(--lyra-text)',
+                      fontSize: '0.82rem',
+                      cursor: hasActiveKey && !sending ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
           {messages.map((msg) => {
             const variantBorderColor: Record<MessageVariant, string> = {
@@ -781,7 +830,7 @@ export default function Assistant(): JSX.Element {
             }}
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!hasActiveKey || sending || !input.trim()}
             style={{
               padding: '6px 18px',
