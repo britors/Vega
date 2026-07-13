@@ -11,6 +11,12 @@ timeout. Ausência, alias não registrado ou App Installer quebrado aparecem em
 `missingDependencies` e mantêm o módulo Software visível com orientação de
 reparo. A versão detectada aparece no cabeçalho da tela.
 
+Na busca de novos aplicativos, o Vega consulta explicitamente a origem
+`msstore`, que representa o catálogo da Microsoft Store. O repositório
+comunitário `winget` só é consultado quando a Store está indisponível ou não
+encontra resultados. Pacotes instalados e atualizações continuam sendo
+enumerados em todas as origens para não ocultar software já presente.
+
 ## Fronteira de argumentos
 
 - origens aceitas: somente `winget` e `msstore`;

@@ -313,7 +313,7 @@ export function toolsForCapabilities(capabilities: SystemCapabilities): AITool[]
 function adaptToolForPlatform(tool: AITool, capabilities: SystemCapabilities): AITool {
   if (capabilities.platform !== 'windows') return tool
   const descriptions: Record<string, string> = {
-    search_packages: 'Busca aplicativos por nome ou palavra-chave nas origens WinGet e Microsoft Store.',
+    search_packages: 'Busca aplicativos primeiro na Microsoft Store e usa o repositório WinGet como fallback.',
     list_installed_packages: 'Lista aplicativos instalados reconhecidos pelo WinGet.',
     list_available_updates: 'Lista atualizações de aplicativos disponíveis pelo WinGet.',
     get_firmware_status: 'Retorna fabricante, versão e data do firmware BIOS/UEFI quando disponíveis.',

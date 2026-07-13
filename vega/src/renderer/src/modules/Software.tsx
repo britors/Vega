@@ -79,7 +79,7 @@ function packageKey(pkg: PackageRef): string {
 }
 
 function preferredPackage(items: PackageRef[]): PackageRef {
-  const order = ['official', 'winget', 'msstore', 'flathub', 'aur']
+  const order = ['official', 'msstore', 'winget', 'flathub', 'aur']
   return [...items].sort((a, b) => order.indexOf(a.origin) - order.indexOf(b.origin))[0] ?? items[0]
 }
 
@@ -434,7 +434,7 @@ export default function Software(): JSX.Element {
         <div>
           <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Software</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-            {platform === 'windows' ? `${pkgManagerName || 'WinGet'} e Microsoft Store` : `Oficial (${pkgManagerName || '...'}) e Flathub em um só lugar`}
+            {platform === 'windows' ? `Microsoft Store com fallback ${pkgManagerName || 'WinGet'}` : `Oficial (${pkgManagerName || '...'}) e Flathub em um só lugar`}
           </p>
         </div>
         {status && (
@@ -602,7 +602,7 @@ export default function Software(): JSX.Element {
       )}
 
       {tab === 'search' && activeList === null && !error && (
-        <EmptyState title="Busca de pacotes" message={platform === 'windows' ? 'Digite um termo e busque no WinGet e na Microsoft Store.' : 'Digite um termo e busque nas origens Oficial, Flathub e Comunidade.'} />
+        <EmptyState title="Busca de pacotes" message={platform === 'windows' ? 'Digite um termo para buscar primeiro na Microsoft Store; se não houver resultado, o Vega consulta o WinGet.' : 'Digite um termo e busque nas origens Oficial, Flathub e Comunidade.'} />
       )}
 
       {tab === 'updates' && listLoading && activeList === null && (

@@ -59,11 +59,24 @@ func (c *Client) Search(ctx context.Context, query string) ([]software.PackageRe
 	if err := validateText(query, "consulta"); err != nil {
 		return nil, err
 	}
-	output, code, err := c.command(ctx, "search", "--query", query, "--accept-source-agreements", "--disable-interactivity")
+
+	return searchMicrosoftStoreFirst(func(origin string) ([]software.PackageRef, error) {
+		return c.searchSource(ctx, query, origin)
+	})
+}
+
+func (c *Client) searchSource(ctx context.Context, query, origin string) ([]software.PackageRef, error) {
+	output, code, err := c.command(
+		ctx,
+		"search", "--query", query,
+		"--source", origin,
+		"--accept-source-agreements",
+		"--disable-interactivity",
+	)
 	if err != nil && code != -1978335212 {
 		return nil, err
 	}
-	return sortedPackages(parseTable(string(output), false, false)), nil
+	return parseTable(string(output), false, false), nil
 }
 
 func (c *Client) ListInstalled(ctx context.Context) ([]software.PackageRef, error) {
