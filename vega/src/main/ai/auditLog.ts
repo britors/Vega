@@ -10,11 +10,23 @@ const TRIM_TO_ENTRIES = 1000
 // apareçam na mensagem do usuário ou num resultado de tool por acidente.
 const REDACT_PATTERNS: Array<[RegExp, string]> = [
   [/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email redigido]'],
-  [/\b(sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{10,}|xox[baprs]-[A-Za-z0-9-]{10,})\b/g, '[chave de API redigida]']
+  [/\b(sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{10,}|xox[baprs]-[A-Za-z0-9-]{10,})\b/g, '[chave de API redigida]'],
+  [/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '[IP redigido]'],
+  [/[A-Za-z]:\\(?:[^\s"\\]+\\)*[^\s"]*/g, '[path redigido]'],
+  [/\/(?:home|Users)\/[^\s"/]+(?:\/[^\s"]*)?/g, '[path redigido]']
 ]
 
 function redactSensitive(text: string): string {
   return REDACT_PATTERNS.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), text)
+}
+
+function redactValue(value: unknown): unknown {
+  if (typeof value === 'string') return redactSensitive(value)
+  if (Array.isArray(value)) return value.map(redactValue)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, redactValue(item)]))
+  }
+  return value
 }
 
 function auditLogPath(): string {
@@ -22,7 +34,8 @@ function auditLogPath(): string {
 }
 
 export async function logAuditEntry(entry: Omit<AIAuditEntry, 'timestamp'>): Promise<void> {
-  const redacted = { ...entry, detail: redactSensitive(entry.detail) }
+  const redactedInput = redactValue(entry.input) as Record<string, unknown>
+  const redacted = { ...entry, input: redactedInput, detail: redactSensitive(entry.detail) }
   const line = JSON.stringify({ timestamp: new Date().toISOString(), ...redacted } satisfies AIAuditEntry)
   try {
     await fs.appendFile(auditLogPath(), line + '\n', { mode: 0o600 })

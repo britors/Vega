@@ -88,23 +88,8 @@ function nextId(): string {
   return Math.random().toString(36).slice(2)
 }
 
-const suggestedPrompts: string[] = [
-  'Ver serviços em execução',
-  'Preparar uma máquina gamer',
-  'Quanto espaço em disco eu tenho livre?',
-  'Tem atualização de pacote pendente?',
-  'Preparar um ambiente de desenvolvimento web',
-  'Como está o hardware desta máquina?',
-  'Crie um snapshot do sistema antes de eu mexer em algo',
-  'O firewall está ativo?',
-  'Quais processos estão consumindo mais CPU agora?',
-  'Tem kernel novo disponível?',
-  'Limpe o cache de pacotes',
-  'Otimize os espelhos de download'
-]
-
-function pickSuggestions(count: number): string[] {
-  const pool = [...suggestedPrompts]
+function pickSuggestions(source: string[], count: number): string[] {
+  const pool = [...source]
   const picked: string[] = []
   while (picked.length < count && pool.length > 0) {
     const i = Math.floor(Math.random() * pool.length)
@@ -113,7 +98,7 @@ function pickSuggestions(count: number): string[] {
   return picked
 }
 
-function waitForTransaction(txId: number, timeoutMs = 60000): Promise<AIToolOutcome> {
+function waitForTransaction(txId: number, timeoutMs = 30 * 60_000): Promise<AIToolOutcome> {
   return new Promise((resolve) => {
     let off: () => void = () => {}
     const timer = setTimeout(() => {
@@ -141,7 +126,10 @@ async function executeMutation(proposal: AIToolProposal): Promise<AIToolOutcome>
       let txId: number
       switch (proposal.name) {
         case 'install_package':
-          txId = await window.vega.install(String(input.origin), String(input.id))
+          txId = await window.vega.install(String(input.origin), String(input.id), {
+            scope: input.scope === 'user' || input.scope === 'machine' ? input.scope : undefined,
+            acceptAgreements: true
+          })
           break
         case 'remove_package':
           txId = await window.vega.remove(String(input.origin), String(input.id))
@@ -233,7 +221,7 @@ export default function Assistant(): JSX.Element {
   const [auditEntries, setAuditEntries] = useState<AIAuditEntry[]>([])
   const [loadingAudit, setLoadingAudit] = useState(false)
 
-  const [promptSuggestions] = useState<string[]>(() => pickSuggestions(6))
+  const [promptSuggestions, setPromptSuggestions] = useState<string[]>([])
 
   const listEndRef = useRef<HTMLDivElement>(null)
 
@@ -293,6 +281,9 @@ export default function Assistant(): JSX.Element {
 
   useEffect(() => {
     refreshSettings()
+    window.vega.aiGetStarterPrompts()
+      .then((prompts) => setPromptSuggestions(pickSuggestions(prompts, 6)))
+      .catch(() => setPromptSuggestions([]))
 
     const offProposal = window.vega.onAiToolProposal((proposal: AIToolProposal) => {
       handleProposal(proposal)

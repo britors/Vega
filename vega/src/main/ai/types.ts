@@ -74,4 +74,5 @@ export interface AIAuditEntry {
   decision?: 'approved' | 'rejected'
   outcome?: 'success' | 'error'
   detail: string
+  system?: import('./platformContext').AIAuditSystemContext
 }

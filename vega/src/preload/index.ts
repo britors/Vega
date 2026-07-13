@@ -220,6 +220,7 @@ const api = {
   aiSetMaxMessagesPerDay: (maxMessages: number): Promise<void> =>
     ipcRenderer.invoke('ai:setMaxMessagesPerDay', maxMessages),
   aiGetAuditLog: (limit?: number): Promise<AIAuditEntry[]> => ipcRenderer.invoke('ai:getAuditLog', limit),
+  aiGetStarterPrompts: (): Promise<string[]> => ipcRenderer.invoke('ai:getStarterPrompts'),
   onAiToolProposal: (cb: (proposal: AIToolProposal) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, proposal: AIToolProposal): void => cb(proposal)
     ipcRenderer.on('ai:toolProposal', listener)

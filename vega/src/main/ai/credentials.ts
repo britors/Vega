@@ -51,9 +51,10 @@ async function writeBlobs(blobs: EncryptedBlobs): Promise<void> {
 
 export async function saveApiKey(provider: AIProviderId, apiKey: string): Promise<void> {
   if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error(
-      'Armazenamento seguro indisponível neste sistema (nenhum serviço de keyring, ex. gnome-keyring ou kwallet, foi detectado). Não é possível salvar a chave com segurança.'
-    )
+    const detail = process.platform === 'win32'
+      ? 'A proteção de dados do Windows (DPAPI) não está disponível para esta conta.'
+      : 'Nenhum serviço de keyring, como gnome-keyring ou KWallet, foi detectado.'
+    throw new Error(`Armazenamento seguro indisponível. ${detail} Não é possível salvar a chave com segurança.`)
   }
   const blobs = await readBlobs()
   blobs[provider] = safeStorage.encryptString(apiKey).toString('base64')

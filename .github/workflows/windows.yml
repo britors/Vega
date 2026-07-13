@@ -46,6 +46,7 @@ jobs:
       - name: Validar Electron
         working-directory: vega
         run: |
+          npm test
           npm run typecheck
           npm run build
 

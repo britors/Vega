@@ -47,7 +47,7 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 	}
 	nonce := base64.RawURLEncoding.EncodeToString(nonceBytes)
 	seenRequests := make(map[string]struct{})
-	modules := []string{"about"}
+	modules := []string{"about", "assistant"}
 	readOperations := []string{"ping", "capabilities"}
 	mutations := []string{}
 	elevatedMutations := []string{}

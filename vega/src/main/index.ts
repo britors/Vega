@@ -35,6 +35,7 @@ import { createProvider } from './ai/providers'
 import { readAuditLog } from './ai/auditLog'
 import { getDailyUsage } from './ai/usageTracker'
 import type { AIProviderId, AIToolOutcome, AIToolProposal } from './ai/types'
+import { starterPromptsForCapabilities } from './ai/platformContext'
 
 const vegaClient = createSystemClient()
 let mainWindow: BrowserWindow | null = null
@@ -299,6 +300,9 @@ app.whenReady().then(async () => {
     return createProvider(provider, apiKey, settings.models[provider]).listModels()
   })
   ipcMain.handle('ai:getAuditLog', (_event, limit?: number) => readAuditLog(limit))
+  ipcMain.handle('ai:getStarterPrompts', async () =>
+    starterPromptsForCapabilities(await vegaClient.getCapabilities())
+  )
 
   ipcMain.handle('vega:window:minimize', () => mainWindow?.minimize())
   ipcMain.handle('vega:window:toggleMaximize', () => {
