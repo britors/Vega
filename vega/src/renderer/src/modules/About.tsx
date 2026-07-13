@@ -4,6 +4,8 @@ interface Status {
   version: string
   connected: boolean
   distro: string
+  build?: string
+  architecture?: string
 }
 
 function fileSrc(path: string): string {
@@ -15,8 +17,10 @@ export default function About(): JSX.Element {
   const [status, setStatus] = useState<Status | null>(null)
   const [logo, setLogo] = useState('')
   const [channel, setChannel] = useState<string | null>(null)
+  const [platform, setPlatform] = useState<'linux' | 'windows'>('linux')
 
   useEffect(() => {
+    window.vega.getCapabilities().then((value) => setPlatform(value.platform))
     window.vega.ping().then(setStatus)
     window.vega.distroLogo().then(setLogo)
     window.vega.communityLayerName().then(setChannel)
@@ -35,14 +39,14 @@ export default function About(): JSX.Element {
           }}
         />
         <h1 style={{ margin: '0 0 4px', fontSize: '1.4rem' }}> Vega </h1>
-        <p style={{ margin: 0, color: 'var(--lyra-text-muted)' }}>Centro de Controle para Linux</p>
+        <p style={{ margin: 0, color: 'var(--lyra-text-muted)' }}>Centro de Controle para Linux e Windows</p>
       </div>
       <div className="card" style={{ display: 'grid', gap: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1rem' }}>Estado</h2>
             <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.85rem' }}>
-              {status ? 'Conexão com o daemon e versão reportada pelo sistema' : 'Consultando o daemon...'}
+              {status ? `Conexão com o ${platform === 'windows' ? 'agente' : 'daemon'} e versão reportada` : 'Consultando o backend...'}
             </div>
           </div>
           <span
@@ -54,17 +58,17 @@ export default function About(): JSX.Element {
               fontSize: '0.8rem'
             }}
           >
-            {status ? (status.connected ? 'vegad conectado' : 'vegad indisponível') : 'carregando'}
+            {status ? (status.connected ? `${platform === 'windows' ? 'agente' : 'vegad'} conectado` : 'backend indisponível') : 'carregando'}
           </span>
         </div>
 
         <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 16px', margin: 0 }}>
-          <dt style={{ color: 'var(--lyra-text-muted)' }}>vega</dt>
+          <dt style={{ color: 'var(--lyra-text-muted)' }}>{platform === 'windows' ? 'vega-agent' : 'vega'}</dt>
           <dd style={{ margin: 0 }}>{status?.version ?? 'carregando...'}</dd>
-          <dt style={{ color: 'var(--lyra-text-muted)' }}>vegad</dt>
-          <dd style={{ margin: 0 }}>{status ? (status.connected ? 'conectado no bus do sistema' : 'não conectado') : 'carregando...'}</dd>
-          <dt style={{ color: 'var(--lyra-text-muted)' }}>D-Bus</dt>
-          <dd style={{ margin: 0 }}>org.lyraos.Vega1</dd>
+          <dt style={{ color: 'var(--lyra-text-muted)' }}>Backend</dt>
+          <dd style={{ margin: 0 }}>{status ? (status.connected ? (platform === 'windows' ? 'agente local conectado' : 'conectado no bus do sistema') : 'não conectado') : 'carregando...'}</dd>
+          <dt style={{ color: 'var(--lyra-text-muted)' }}>{platform === 'windows' ? 'Build' : 'D-Bus'}</dt>
+          <dd style={{ margin: 0 }}>{platform === 'windows' ? `${status?.build || 'indisponível'} · ${status?.architecture || 'arquitetura desconhecida'}` : 'org.lyraos.Vega1'}</dd>
           <dt style={{ color: 'var(--lyra-text-muted)' }}>Canal</dt>
           <dd style={{ margin: 0 }}>{channel === null ? 'carregando...' : channel || 'Nenhum (sem camada de comunidade)'}</dd>
         </dl>
@@ -78,8 +82,8 @@ export default function About(): JSX.Element {
             <strong>Electron + React + TypeScript</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-            <span style={{ color: 'var(--lyra-text-muted)' }}>Daemon</span>
-            <strong>Go + D-Bus + polkit</strong>
+            <span style={{ color: 'var(--lyra-text-muted)' }}>Backend</span>
+            <strong>{platform === 'windows' ? 'Go + CIM + UAC' : 'Go + D-Bus + polkit'}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
             <span style={{ color: 'var(--lyra-text-muted)' }}>Distribuição</span>

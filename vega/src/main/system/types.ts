@@ -53,7 +53,7 @@ export class SystemClientError extends Error {
   }
 }
 
-export interface VegaSystemInfo { version: string; connected: boolean; distro: string }
+export interface VegaSystemInfo { version: string; connected: boolean; distro: string; build?: string; architecture?: string }
 export interface PackageRef { origin: string; id: string; name: string; description: string; installed: boolean; icon: string }
 export interface PackageDetails {
   origin: string; id: string; name: string; description: string; installed: boolean
@@ -67,7 +67,7 @@ export interface BackupTransactionFinished { transactionId: number; success: boo
 export interface BackupAlertEvent { configId: string; consecutiveFailures: number; message: string }
 export interface UpdatesAvailableEvent { count: number }
 export interface SnapshotInfo { id: number; timestamp: number; trigger: string; description: string }
-export interface HardwareInventory { cpu: string; gpu: string; ramText: string }
+export interface HardwareInventory { cpu: string; gpu: string; ramText: string; manufacturer?: string; model?: string }
 export interface FirewallServiceInfo { name: string; label: string; enabled: boolean }
 export interface UserInfo { username: string; isAdmin: boolean }
 export interface ManagedServiceInfo {
@@ -92,12 +92,15 @@ export interface ProxyConfig { http: string; https: string; socks: string; no: s
 export interface StorageVolumeInfo {
   name: string; path: string; type: string; fsType: string; size: string; used: string; avail: string
   usePercent: number; mountpoint: string; model: string; removable: boolean; canMount: boolean; canUnmount: boolean
+  health?: string; system?: boolean
 }
 export interface SystemMetrics {
   cpuPercent: number; memUsed: number; memTotal: number; swapUsed: number; swapTotal: number
   diskReadBytes: number; diskWriteBytes: number; netRxBytes: number; netTxBytes: number
 }
-export interface ProcessInfo { pid: number; name: string; user: string; cpuPercent: number; memory: number; state: string }
+export interface ProcessInfo {
+  pid: number; name: string; user: string; cpuPercent: number; memory: number; state: string; protected?: boolean
+}
 export interface BackupConfig { id: string; paths: string[]; destination: string; destinationUUID: string; frequency: string }
 export interface BackupSnapshotInfo { id: string; timestamp: number; fileCount: number; sizeBytes: number }
 export interface BackupItem { path: string }

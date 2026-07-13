@@ -19,8 +19,14 @@ O contrato e o threat model estão em
 - o broker aceita uma operação, responde e encerra;
 - nenhum payload ou segredo é escrito em stderr/log.
 
-O bootstrap expõe apenas `system.ping` e a prova não destrutiva
-`broker.proof`. Módulos de domínio são adicionados pelas issues específicas.
+O agente expõe coletores somente leitura para sistema, hardware, métricas,
+processos e volumes. As fontes CIM/Storage são isoladas para que uma consulta
+indisponível degrade somente seus campos. A única mutação desse corte é
+`process.kill`: ela bloqueia processos críticos, tenta primeiro com o token
+normal e abre um broker UAC descartável apenas após `ACCESS_DENIED`.
+
+Os testes de domínio usam um `Collector` fake com Unicode e não dependem do
+hardware ou das contas do runner de CI.
 
 ## Validação
 

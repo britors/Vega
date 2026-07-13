@@ -6,7 +6,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -15,6 +18,7 @@ import (
 	"time"
 
 	"github.com/Microsoft/go-winio"
+	"github.com/lyraos/vega-agent/internal/processcontrol"
 	"github.com/lyraos/vega-agent/internal/protocol"
 	"golang.org/x/sys/windows"
 )
@@ -24,6 +28,15 @@ const brokerTimeout = 90 * time.Second
 type Elevator struct{ Executable string }
 
 func (e Elevator) Proof(parent context.Context) (map[string]any, error) {
+	return e.execute(parent, "broker.proof", nil)
+}
+
+func (e Elevator) Kill(parent context.Context, pid uint32) error {
+	_, err := e.execute(parent, "process.kill", map[string]any{"pid": pid})
+	return err
+}
+
+func (e Elevator) execute(parent context.Context, operation string, params map[string]any) (map[string]any, error) {
 	ctx, cancel := context.WithTimeout(parent, brokerTimeout)
 	defer cancel()
 	pipeName, err := randomPipeName()
@@ -64,9 +77,13 @@ func (e Elevator) Proof(parent context.Context) (map[string]any, error) {
 	if err != nil || hello.Kind != "hello" || hello.Version != protocol.Version || len(hello.Nonce) < 32 {
 		return nil, fmt.Errorf("invalid broker handshake")
 	}
-	requestID := "elevation-proof"
+	requestID := "elevated-operation"
+	encodedParams, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
 	if err := protocol.Write(connection, protocol.Message{
-		Version: protocol.Version, Kind: "request", RequestID: requestID, Nonce: hello.Nonce, Operation: "broker.proof",
+		Version: protocol.Version, Kind: "request", RequestID: requestID, Nonce: hello.Nonce, Operation: operation, Params: encodedParams,
 	}); err != nil {
 		return nil, err
 	}
@@ -74,7 +91,16 @@ func (e Elevator) Proof(parent context.Context) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if response.Kind != "result" || response.RequestID != requestID {
+	if response.RequestID != requestID {
+		return nil, fmt.Errorf("invalid broker result")
+	}
+	if response.Kind == "error" && response.Error != nil {
+		if response.Error.Code == "UNAUTHORIZED" {
+			return nil, processcontrol.ErrProtected
+		}
+		return nil, fmt.Errorf("broker: %s", response.Error.Message)
+	}
+	if response.Kind != "result" {
 		return nil, fmt.Errorf("invalid broker result")
 	}
 	result, ok := response.Result.(map[string]any)
@@ -105,15 +131,41 @@ func RunClient(ctx context.Context, pipeName string, serverPID, sessionID uint32
 	if err != nil {
 		return err
 	}
-	if request.Version != protocol.Version || request.Nonce != nonce || request.Operation != "broker.proof" || request.RequestID == "" {
+	if request.Version != protocol.Version || request.Nonce != nonce || request.RequestID == "" {
 		return fmt.Errorf("unauthorized broker request")
 	}
-	if len(request.Params) > 0 && string(request.Params) != "{}" {
-		return fmt.Errorf("broker proof takes no parameters")
+	result := map[string]any{"elevated": true, "pid": os.Getpid()}
+	switch request.Operation {
+	case "broker.proof":
+		if len(request.Params) > 0 && string(request.Params) != "{}" && string(request.Params) != "null" {
+			return fmt.Errorf("broker proof takes no parameters")
+		}
+	case "process.kill":
+		var params struct {
+			PID uint32 `json:"pid"`
+		}
+		decoder := json.NewDecoder(strings.NewReader(string(request.Params)))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&params); err != nil || params.PID == 0 {
+			return fmt.Errorf("invalid process.kill parameters")
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			return fmt.Errorf("invalid process.kill parameters")
+		}
+		if err := processcontrol.Kill(params.PID); err != nil {
+			code := "EXTERNAL_FAILURE"
+			if errors.Is(err, processcontrol.ErrProtected) {
+				code = "UNAUTHORIZED"
+			}
+			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: code, Message: err.Error()}})
+		}
+		result["terminated"] = true
+	default:
+		return fmt.Errorf("broker operation not allowed")
 	}
 	return protocol.Write(connection, protocol.Message{
 		Version: protocol.Version, Kind: "result", RequestID: request.RequestID,
-		Result: map[string]any{"elevated": true, "pid": os.Getpid()},
+		Result: result,
 	})
 }
 

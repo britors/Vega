@@ -123,9 +123,11 @@ export class AgentTransport {
     if (message.kind === 'error') {
       const code = message.error?.code === 'UNSUPPORTED'
         ? 'UNSUPPORTED'
-        : message.error?.code === 'CANCELED'
-          ? 'CANCELED'
-          : 'EXTERNAL_FAILURE'
+        : message.error?.code === 'UNAUTHORIZED'
+          ? 'UNAUTHORIZED'
+          : message.error?.code === 'CANCELED'
+            ? 'CANCELED'
+            : 'EXTERNAL_FAILURE'
       pending.reject(new SystemClientError(code, message.error?.message || 'Falha no agente Windows.'))
     } else if (message.kind === 'result') pending.resolve(message.result)
   }

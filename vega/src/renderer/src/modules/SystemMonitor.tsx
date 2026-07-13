@@ -21,6 +21,7 @@ interface ProcessRow {
   cpuPercent: number
   memory: number
   state: string
+  protected?: boolean
 }
 
 function fmtBytes(value: number): string {
@@ -87,7 +88,7 @@ export default function SystemMonitor(): JSX.Element {
   async function killProcess(row: ProcessRow): Promise<void> {
     const ok = await dialogs.confirm({
       title: 'Encerrar processo',
-      message: `Enviar SIGTERM para ${row.name} (PID ${row.pid})?`,
+      message: `Encerrar ${row.name} (PID ${row.pid})? Dados não salvos nesse processo podem ser perdidos.`,
       variant: 'danger',
       confirmLabel: 'Encerrar'
     })
@@ -143,7 +144,7 @@ export default function SystemMonitor(): JSX.Element {
               <span>{row.user}</span>
               <span>{row.cpuPercent.toFixed(1)}%</span>
               <span>{fmtBytes(row.memory)}</span>
-              <button onClick={() => killProcess(row)} style={{ padding: '5px 10px', borderRadius: 'var(--lyra-radius-sm)', border: '1px solid var(--lyra-border)', background: 'transparent', color: 'var(--lyra-danger)' }}>Encerrar</button>
+              <button disabled={row.protected} title={row.protected ? 'Processo crítico protegido pelo Vega' : 'Encerrar processo'} onClick={() => killProcess(row)} style={{ padding: '5px 10px', borderRadius: 'var(--lyra-radius-sm)', border: '1px solid var(--lyra-border)', background: 'transparent', color: row.protected ? 'var(--lyra-text-muted)' : 'var(--lyra-danger)' }}>{row.protected ? 'Protegido' : 'Encerrar'}</button>
             </div>
           ))}
         </div>

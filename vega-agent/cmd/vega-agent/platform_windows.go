@@ -11,6 +11,7 @@ import (
 
 	"github.com/lyraos/vega-agent/internal/agent"
 	"github.com/lyraos/vega-agent/internal/broker"
+	"github.com/lyraos/vega-agent/internal/processcontrol"
 )
 
 func runPlatformMode(args []string) bool {
@@ -36,5 +37,7 @@ func newAgentServer() agent.Server {
 	return agent.Server{
 		PlatformVersion: runtime.GOOS + "/" + runtime.GOARCH,
 		Elevator:        broker.Elevator{Executable: executable},
+		Collector:       agent.WindowsCollector{},
+		Processes:       processcontrol.Controller{},
 	}
 }

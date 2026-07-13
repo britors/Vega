@@ -12,7 +12,11 @@ import type {
   TransactionFinished,
   BluetoothStatus,
   BluetoothDeviceInfo,
-  ProxyConfig
+  ProxyConfig,
+  HardwareInventory,
+  ProcessInfo,
+  StorageVolumeInfo,
+  SystemMetrics
 } from '../main/system/types'
 import type { SystemCapabilities } from '../main/system/types'
 import type { DisplayConfig, DisplayOutputInfo, WallpaperInfo } from '../main/sessionSettings'
@@ -62,7 +66,7 @@ const api = {
   restoreBackupItems: (snapshotId: string, targetPath: string, mode: string, paths: string[]): Promise<number> =>
     ipcRenderer.invoke('vega:restoreBackupItems', snapshotId, targetPath, mode, paths),
   deleteBackupConfig: (configId: string): Promise<void> => ipcRenderer.invoke('vega:deleteBackupConfig', configId),
-  hardwareInventory: (): Promise<{ cpu: string; gpu: string; ramText: string }> =>
+  hardwareInventory: (): Promise<HardwareInventory> =>
     ipcRenderer.invoke('vega:hardwareInventory'),
   hardwareFirmwareStatus: (): Promise<string> => ipcRenderer.invoke('vega:hardwareFirmwareStatus'),
   switchNvidiaDriver: (driver: string): Promise<void> => ipcRenderer.invoke('vega:switchNvidiaDriver', driver),
@@ -142,39 +146,11 @@ const api = {
   applyDisplayConfig: (config: DisplayConfig): Promise<void> => ipcRenderer.invoke('vega:applyDisplayConfig', config),
   listWallpapers: (): Promise<WallpaperInfo[]> => ipcRenderer.invoke('vega:listWallpapers'),
   applyWallpaper: (path: string): Promise<string> => ipcRenderer.invoke('vega:applyWallpaper', path),
-  listStorageVolumes: (): Promise<
-    {
-      name: string
-      path: string
-      type: string
-      fsType: string
-      size: string
-      used: string
-      avail: string
-      usePercent: number
-      mountpoint: string
-      model: string
-      removable: boolean
-      canMount: boolean
-      canUnmount: boolean
-    }[]
-  > => ipcRenderer.invoke('vega:listStorageVolumes'),
+  listStorageVolumes: (): Promise<StorageVolumeInfo[]> => ipcRenderer.invoke('vega:listStorageVolumes'),
   mountVolume: (path: string): Promise<void> => ipcRenderer.invoke('vega:mountVolume', path),
   unmountVolume: (path: string): Promise<void> => ipcRenderer.invoke('vega:unmountVolume', path),
-  systemMetrics: (): Promise<{
-    cpuPercent: number
-    memUsed: number
-    memTotal: number
-    swapUsed: number
-    swapTotal: number
-    diskReadBytes: number
-    diskWriteBytes: number
-    netRxBytes: number
-    netTxBytes: number
-  }> => ipcRenderer.invoke('vega:systemMetrics'),
-  listProcesses: (): Promise<
-    { pid: number; name: string; user: string; cpuPercent: number; memory: number; state: string }[]
-  > => ipcRenderer.invoke('vega:listProcesses'),
+  systemMetrics: (): Promise<SystemMetrics> => ipcRenderer.invoke('vega:systemMetrics'),
+  listProcesses: (): Promise<ProcessInfo[]> => ipcRenderer.invoke('vega:listProcesses'),
   killProcess: (pid: number): Promise<void> => ipcRenderer.invoke('vega:killProcess', pid),
   listUsers: (): Promise<{ username: string; isAdmin: boolean }[]> => ipcRenderer.invoke('vega:listUsers'),
   createUser: (username: string, isAdmin: boolean): Promise<void> => ipcRenderer.invoke('vega:createUser', username, isAdmin),

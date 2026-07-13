@@ -6,6 +6,8 @@ interface HardwareInventory {
   cpu: string
   gpu: string
   ramText: string
+  manufacturer?: string
+  model?: string
 }
 
 export default function Hardware(): JSX.Element {
@@ -16,15 +18,18 @@ export default function Hardware(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isWindows, setIsWindows] = useState(false)
 
   async function refresh(): Promise<void> {
     setLoading(true)
     setError(null)
     try {
-      const [nextInventory, nextFirmware] = await Promise.all([
+      const [capabilities, nextInventory, nextFirmware] = await Promise.all([
+        window.vega.getCapabilities(),
         window.vega.hardwareInventory(),
         window.vega.hardwareFirmwareStatus()
       ])
+      setIsWindows(capabilities.platform === 'windows')
       setInventory(nextInventory)
       setFirmwareStatus(nextFirmware)
     } catch (err) {
@@ -87,6 +92,10 @@ export default function Hardware(): JSX.Element {
             <strong style={{ fontWeight: 500 }}>{inventory.gpu}</strong>
             <span style={{ color: 'var(--lyra-text-muted)' }}>RAM</span>
             <strong style={{ fontWeight: 500 }}>{inventory.ramText}</strong>
+            {(inventory.manufacturer || inventory.model) && <>
+              <span style={{ color: 'var(--lyra-text-muted)' }}>Fabricante/modelo</span>
+              <strong style={{ fontWeight: 500 }}>{[inventory.manufacturer, inventory.model].filter(Boolean).join(' · ')}</strong>
+            </>}
             <span style={{ color: 'var(--lyra-text-muted)' }}>Firmware</span>
             <strong style={{ fontWeight: 500 }}>{firmwareStatus}</strong>
           </div>
@@ -95,7 +104,7 @@ export default function Hardware(): JSX.Element {
         )}
       </div>
 
-      <div className="card" style={{ display: 'grid', gap: 12 }}>
+      {!isWindows && <div className="card" style={{ display: 'grid', gap: 12 }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Troca de driver NVIDIA</h2>
         <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.85rem' }}>
           {selectedDriver} será aplicado após confirmação.
@@ -126,7 +135,7 @@ export default function Hardware(): JSX.Element {
             {busy ? 'Aplicando...' : 'Aplicar'}
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }

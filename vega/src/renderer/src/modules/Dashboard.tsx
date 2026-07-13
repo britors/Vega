@@ -24,6 +24,15 @@ function formatAge(timestampSeconds: number): string {
   return `há ${days} dias`
 }
 
+function formatBytes(value: number): string {
+  if (!Number.isFinite(value)) return '-'
+  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
+  let amount = value
+  let unit = 0
+  while (amount >= 1024 && unit < units.length - 1) { amount /= 1024; unit++ }
+  return `${amount.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`
+}
+
 export default function Dashboard(): JSX.Element {
   const { navigate } = useNavigation()
   const [cards, setCards] = useState<CardState[] | null>(null)
@@ -35,6 +44,22 @@ export default function Dashboard(): JSX.Element {
     async function load(): Promise<void> {
       setError(null)
       try {
+        const capabilities = await window.vega.getCapabilities()
+        if (capabilities.platform === 'windows') {
+          const [system, metrics, disk] = await Promise.all([
+            window.vega.ping(), window.vega.systemMetrics(), window.vega.diskUsage()
+          ])
+          if (cancelled) return
+          const memoryPercent = metrics.memTotal > 0 ? (metrics.memUsed / metrics.memTotal) * 100 : 0
+          setCards([
+            { title: 'Sistema', value: system.distro, detail: `build ${system.build || 'indisponível'} · ${system.architecture || 'arquitetura desconhecida'}`, tone: 'neutral', moduleId: 'about' },
+            { title: 'Agente Vega', value: system.connected ? 'Conectado' : 'Desconectado', detail: `versão ${system.version}`, tone: system.connected ? 'ok' : 'danger', moduleId: 'about' },
+            { title: 'CPU', value: `${metrics.cpuPercent.toFixed(0)}%`, detail: 'uso geral', tone: metrics.cpuPercent >= 90 ? 'danger' : metrics.cpuPercent >= 75 ? 'warn' : 'ok', moduleId: 'monitor' },
+            { title: 'Memória', value: `${memoryPercent.toFixed(0)}%`, detail: `${formatBytes(metrics.memUsed)} de ${formatBytes(metrics.memTotal)}`, tone: memoryPercent >= 90 ? 'danger' : memoryPercent >= 75 ? 'warn' : 'ok', moduleId: 'monitor' },
+            { title: 'Volume do sistema', value: `${disk.percent}%`, detail: `${disk.used} de ${disk.total} usados`, tone: disk.percent >= 90 ? 'danger' : disk.percent >= 75 ? 'warn' : 'ok', moduleId: 'storage' }
+          ])
+          return
+        }
         const [updates, snapshots, backupConfigs, services, disk] = await Promise.all([
           window.vega.listUpdates(),
           window.vega.listSnapshots(),

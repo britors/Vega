@@ -16,6 +16,8 @@ interface Volume {
   removable: boolean
   canMount: boolean
   canUnmount: boolean
+  health?: string
+  system?: boolean
 }
 
 export default function Storage(): JSX.Element {
@@ -69,21 +71,21 @@ export default function Storage(): JSX.Element {
       <div className="card">
         <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Armazenamento</h1>
         <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-          Visão leve de discos e partições, com montar/desmontar. Sem ações destrutivas.
+          Visão leve de discos, partições e volumes. Sem ações destrutivas.
         </p>
       </div>
       {error && <div className="card" style={{ color: 'var(--lyra-danger)' }}>Falha: {error}</div>}
       {loading && <EmptyState title="Carregando volumes..." />}
       <div className="card" style={{ display: 'grid', gap: 10 }}>
         {volumes.length === 0 ? (
-          <EmptyState title="Nenhum volume listado" message="lsblk não retornou dispositivos de armazenamento." />
+          <EmptyState title="Nenhum volume listado" message="O sistema não retornou dispositivos de armazenamento." />
         ) : (
           volumes.map((volume) => (
             <div key={`${volume.path}-${volume.mountpoint}`} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.8fr auto', gap: 12, alignItems: 'center', borderBottom: '1px solid var(--lyra-border)', paddingBottom: 10 }}>
               <div>
                 <div style={{ fontWeight: 600 }}>{volume.path || volume.name}</div>
                 <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>
-                  {[volume.model, volume.type, volume.fsType, volume.removable ? 'removível' : ''].filter(Boolean).join(' · ')}
+                  {[volume.model, volume.type, volume.fsType, volume.system ? 'sistema' : '', volume.removable ? 'removível' : '', volume.health].filter(Boolean).join(' · ')}
                 </div>
               </div>
               <div>
