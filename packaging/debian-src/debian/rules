@@ -58,3 +58,7 @@ override_dh_auto_install:
 # (not vegad.service, which is bus-activated) is handled explicitly in
 # debian/vegad.postinst/prerm instead.
 override_dh_installsystemd:
+
+# dwz only applies to C/C++ debug info; vegad's Go binary already ships
+# compressed DWARF, which dwz can't re-compress and aborts on.
+override_dh_dwz:
