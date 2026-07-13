@@ -2,8 +2,9 @@
 
 O `vegad` fala com o gerenciador de pacotes por trás de uma camada de abstração
 (`vegad/internal/distro`) com um backend por distro: Pacman+AUR em Arch, Zypper
-em openSUSE Leap e APT em Debian/Ubuntu. As dependências abaixo mudam de
-nome/forma de instalação conforme a distro, mas o papel de cada uma é o mesmo.
+em openSUSE Leap, DNF em Fedora e APT em Debian/Ubuntu. As dependências abaixo
+mudam de nome/forma de instalação conforme a distro, mas o papel de cada uma é
+o mesmo.
 
 ## Arch
 
@@ -90,6 +91,58 @@ sudo systemctl enable --now firewalld
 
 # instala vega/vegad a partir do checkout do repo
 sudo packaging/opensuse/install.sh
+```
+
+## Fedora
+
+Publicado como `.rpm` na GitHub Release de cada tag, via
+[`.github/workflows/release-fedora.yml`](.github/workflows/release-fedora.yml)
+e os specs em [`packaging/fedora/`](packaging/fedora/) (mesmo modelo do
+openSUSE, adaptado pra DNF/nomes de pacote do Fedora). O backend DNF/hardware
+NVIDIA (`vegad/internal/distro/{dnf,kernel_fedora,hardware_fedora}.go`) é
+código novo, não validado ponta a ponta num Fedora real — mesmo aviso de
+"ponto de partida, não garantia" que já vale pro backend openSUSE.
+
+### Necessários só para compilar
+
+- `golang`
+- `nodejs` / `npm`
+
+### Base de sistema (já presente em qualquer Fedora Workstation com systemd/D-Bus/polkit)
+
+- `systemd`
+- `dbus`
+- `polkit`
+- Não há camada de comunidade equivalente à AUR — `distro.Provider.Community()` retorna `nil`, então o módulo Software não tem origem "Comunidade" nessa distro (COPR fica fora do escopo atual).
+
+### Pacotes opcionais (mesmo papel das tabelas acima)
+
+| Pacote (dnf) | Binário verificado | Módulo | Observação |
+| --- | --- | --- | --- |
+| `timeshift` | `timeshift` | Snapshots | Fedora não configura Btrfs+snapshots automaticamente como o openSUSE — mesma ressalva do Timeshift em Ubuntu/Debian (exige configurar um dispositivo de backup antes de funcionar). |
+| `flatpak` | `flatpak` | Software (origem Flathub) | Já vem pré-configurado no Fedora Workstation. |
+| `NetworkManager` | `nmcli` | Rede | — |
+| `restic` | `restic` | Backup | — |
+| `firewalld` | `firewall-cmd` | Firewall | Já vem habilitado por padrão no Fedora Workstation. |
+| `fwupd` | `fwupdmgr` | Hardware (firmware) | — |
+| `bluez` | `bluetoothctl` | Bluetooth | — |
+| `akmod-nvidia` (repo **RPM Fusion nonfree**, não vem no Fedora) | — | Hardware (driver NVIDIA) | Fedora não empacota o driver proprietário; precisa do RPM Fusion nonfree habilitado antes. O módulo de build do akmod roda em segundo plano (serviço `akmods`) — não é imediato após a instalação. |
+
+### Resumo de instalação (Fedora)
+
+```sh
+# dependências de build
+sudo dnf install golang nodejs npm
+
+# opcionais (conforme os módulos desejados)
+sudo dnf install timeshift flatpak NetworkManager restic firewalld fwupd bluez
+
+# driver NVIDIA (requer RPM Fusion nonfree habilitado antes)
+sudo dnf install akmod-nvidia
+
+# instala via RPM da release (ver scripts/install.sh) ou local:
+sudo rpmbuild -bb --define "version $(cat vega/package.json | grep -m1 version | cut -d'"' -f4)" packaging/fedora/vegad.spec
+sudo rpmbuild -bb --define "version $(cat vega/package.json | grep -m1 version | cut -d'"' -f4)" packaging/fedora/vega.spec
 ```
 
 ## Ubuntu / Debian

@@ -9,6 +9,7 @@ Obrigado por contribuir com o Vega. Este projeto combina uma interface Electron/
 - Linux com systemd, D-Bus e polkit para testar integracoes reais.
 - Em Arch, use os scripts em `scripts/` e os PKGBUILDs em `packaging/vega/` e `packaging/vegad/` para validar instalacao local.
 - Em openSUSE Leap, use `packaging/opensuse/install.sh` (e `uninstall.sh`) para validar instalacao local.
+- Em Fedora, use `rpmbuild -bb --define "version X.Y.Z" packaging/fedora/{vegad,vega}.spec` para validar instalacao local (ainda nao ha install.sh/uninstall.sh dedicados, so os specs).
 
 ## Fluxo de trabalho
 

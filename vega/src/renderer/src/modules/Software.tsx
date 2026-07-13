@@ -382,22 +382,6 @@ export default function Software(): JSX.Element {
     }))
   }
 
-  async function handleOptimizeMirrors(): Promise<void> {
-    const ok = await dialogs.confirm({
-      title: 'Otimizar mirrors',
-      message: `Testar a velocidade dos mirrors do ${pkgManagerName || 'gerenciador de pacotes'} e atualizar a lista agora? Pode levar um tempo.`,
-      variant: 'warning',
-      confirmLabel: 'Otimizar'
-    })
-    if (!ok) return
-    const txId = await window.vega.optimizeMirrors()
-    labelForTx.current.set(txId, 'Otimizando mirrors')
-    setTransactions((prev) => ({
-      ...prev,
-      [txId]: { id: txId, label: 'Otimizando mirrors', percent: 0, message: 'Iniciando...', done: false }
-    }))
-  }
-
   const activeList = tab === 'search' ? results : tab === 'installed' ? installed : tab === 'updates' ? updates : null
   const listLoading = tab === 'search' ? searching : tab === 'installed' ? loadingInstalled : loadingUpdates
   const groupedList = useMemo(() => groupPackages(activeList), [activeList])
@@ -532,34 +516,19 @@ export default function Software(): JSX.Element {
           </button>
         )}
         {tab === 'search' && (
-          <>
-            <button
-              onClick={handleOptimizeMirrors}
-              style={{
-                padding: '0 16px',
-                borderRadius: 'var(--lyra-radius-sm)',
-                border: '1px solid var(--lyra-border)',
-                background: 'transparent',
-                color: 'var(--lyra-text-muted)',
-                cursor: 'pointer'
-              }}
-            >
-              Otimizar mirrors
-            </button>
-            <button
-              onClick={handleClearCache}
-              style={{
-                padding: '0 16px',
-                borderRadius: 'var(--lyra-radius-sm)',
-                border: '1px solid var(--lyra-border)',
-                background: 'transparent',
-                color: 'var(--lyra-text-muted)',
-                cursor: 'pointer'
-              }}
-            >
-              Limpar cache
-            </button>
-          </>
+          <button
+            onClick={handleClearCache}
+            style={{
+              padding: '0 16px',
+              borderRadius: 'var(--lyra-radius-sm)',
+              border: '1px solid var(--lyra-border)',
+              background: 'transparent',
+              color: 'var(--lyra-text-muted)',
+              cursor: 'pointer'
+            }}
+          >
+            Limpar cache
+          </button>
         )}
       </div>
 

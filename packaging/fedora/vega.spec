@@ -1,5 +1,5 @@
-# Empacotamento de teste local/CI para openSUSE Leap. Ver vegad.spec neste
-# mesmo diretório para as notas gerais (versionamento via --define version,
+# Empacotamento de teste local/CI para Fedora. Ver vegad.spec neste mesmo
+# diretório para as notas gerais (versionamento via --define version,
 # status do empacotamento).
 %{!?version: %define version 0.0.0}
 
@@ -19,13 +19,14 @@ Recommends:     flatpak
 Recommends:     restic
 
 %description
-UI do Vega (Electron/React) para openSUSE Leap. Não há binário "electron"
-empacotado no Leap, então o Electron da devDependency do npm é empacotado
-junto em /usr/lib/lyra-vega/node_modules/electron — o pacote fica maior que
-o normal por causa disso.
+UI do Vega (Electron/React) para Fedora. Não há pacote "electron" genérico
+nos repositórios do Fedora, então o Electron da devDependency do npm é
+empacotado junto em /usr/lib/lyra-vega/node_modules/electron — o pacote
+fica maior que o normal por causa disso, mesma situação do empacotamento
+openSUSE/Debian.
 
-Empacotamento ainda não validado ponta a ponta num Leap real — trate como
-build de teste.
+Empacotamento ainda não validado ponta a ponta num Fedora real — trate
+como build de teste.
 
 %prep
 %setup -q -c -n vega-src

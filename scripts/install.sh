@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Instalador de conveniência: baixa os pacotes pré-compilados da release mais
 # recente do Vega e instala com o gerenciador de pacotes da distro. Cobre
-# openSUSE Leap (RPM, via .github/workflows/release-opensuse.yml) e
-# Ubuntu/Debian (.deb, via .github/workflows/release-debian.yml). Em Arch use
-# o pacote no AUR (`yay -S lyra-vega`), que já existe e é o caminho
-# recomendado — não há RPM/.deb equivalente pra Arch.
+# openSUSE Leap (RPM, via .github/workflows/release-opensuse.yml), Fedora
+# (RPM, via .github/workflows/release-fedora.yml) e Ubuntu/Debian (.deb, via
+# .github/workflows/release-debian.yml). Em Arch use o pacote no AUR
+# (`yay -S lyra-vega`), que já existe e é o caminho recomendado — não há
+# RPM/.deb equivalente pra Arch.
 #
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
@@ -47,7 +48,7 @@ download_release_assets() {
 
   local urls=()
   mapfile -t urls < <(printf '%s' "$release_json" \
-    | grep -o "\"browser_download_url\": *\"[^\"]*${suffix}\"" \
+    | grep -Eo "\"browser_download_url\": *\"[^\"]*${suffix}\"" \
     | sed -E 's/.*"(https:[^"]+)"/\1/' \
     | grep -Ev 'debuginfo|debugsource')
 
@@ -70,8 +71,8 @@ trap 'rm -rf "$workdir"' EXIT
 case "$distro_id $distro_id_like" in
   *arch*)
     cat >&2 <<'EOF'
-Detectei Arch. Este instalador só empacota RPM/.deb pra openSUSE/Ubuntu;
-em Arch use o pacote do AUR, que já é o caminho suportado:
+Detectei Arch. Este instalador só empacota RPM/.deb pra openSUSE/Fedora/
+Ubuntu; em Arch use o pacote do AUR, que já é o caminho suportado:
 
   yay -S lyra-vega
 
@@ -85,12 +86,33 @@ EOF
       exit 1
     fi
 
-    download_release_assets '\.rpm'
+    # A mesma release do GitHub carrega tanto os RPMs do openSUSE quanto os
+    # do Fedora agora (release-opensuse.yml e release-fedora.yml publicam no
+    # mesmo tag) — um suffix genérico '\.rpm' pegaria os dois conjuntos.
+    # Os specs de packaging/opensuse/*.spec não definem %dist (então o
+    # nome do arquivo termina em "-1.x86_64.rpm"), enquanto os de
+    # packaging/fedora/*.spec definem "dist .fcNN" (terminam em
+    # "-1.fcNN.x86_64.rpm") — usa isso pra distinguir os dois conjuntos.
+    download_release_assets '-1\.x86_64\.rpm'
 
     echo "==> Instalando via zypper"
     echo "Aviso: os RPMs desta release ainda não são assinados (sem chave GPG"
     echo "configurada), então a instalação usa --allow-unsigned-rpm."
     zypper --non-interactive install -y --allow-unsigned-rpm "$workdir"/*.rpm
+    ;;
+  *fedora*)
+    if ! command -v dnf >/dev/null 2>&1; then
+      echo "Erro: 'dnf' não encontrado — isso não parece ser Fedora." >&2
+      exit 1
+    fi
+
+    download_release_assets '-1\.fc[0-9]+\.x86_64\.rpm'
+
+    echo "==> Instalando via dnf"
+    echo "Aviso: empacotamento Fedora ainda é considerado de teste, não"
+    echo "validado ponta a ponta numa instalação real. Os RPMs também não"
+    echo "são assinados (sem chave GPG configurada)."
+    dnf install -y --nogpgcheck "$workdir"/*.rpm
     ;;
   *debian*|*ubuntu*)
     if ! command -v apt-get >/dev/null 2>&1; then
@@ -110,7 +132,7 @@ EOF
     ;;
   *)
     echo "Distro não reconhecida (ID=$distro_id, ID_LIKE=$distro_id_like)." >&2
-    echo "Este instalador cobre openSUSE Leap e Ubuntu/Debian por enquanto." >&2
+    echo "Este instalador cobre openSUSE Leap, Fedora e Ubuntu/Debian por enquanto." >&2
     exit 1
     ;;
 esac

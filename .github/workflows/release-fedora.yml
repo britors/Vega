@@ -1,0 +1,67 @@
+name: Release RPMs (Fedora)
+# Builda vegad.rpm e vega.rpm num container Fedora a partir dos specs em
+# packaging/fedora/ e anexa os dois na GitHub Release da tag empurrada.
+# Empacotamento ainda de teste, ver packaging/fedora/vegad.spec.
+#
+# Usa o container "fedora:latest" (não uma versão fixa como o workflow do
+# openSUSE usa "opensuse/leap:16.0") porque não há uma versão Fedora
+# concreta e atual confiável pra fixar aqui — o dist tag (.fcNN) é
+# calculado em tempo de build via `rpm -E %fedora`, então o workflow segue
+# a versão que o Fedora tiver estável no momento do build.
+on:
+  push:
+    tags:
+      - "v*"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Instalar dependências de build
+        run: |
+          dnf install -y golang nodejs npm rpm-build rpmdevtools
+      - uses: actions/checkout@v4
+      - name: Buildar os RPMs
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          fedora_rel="$(rpm -E %fedora)"
+          rpmdev-setuptree
+          tar czf "$HOME/rpmbuild/SOURCES/vega-src.tar.gz" \
+            --exclude='.git' \
+            --exclude='vega/node_modules' \
+            --exclude='vega/out' \
+            --exclude='vega/.tsbuild' \
+            .
+          rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vegad.spec
+          rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vega.spec
+      - name: Coletar RPMs finais (sem debuginfo/debugsource)
+        run: |
+          mkdir -p dist
+          find "$HOME/rpmbuild/RPMS/x86_64" -maxdepth 1 -name '*.rpm' \
+            ! -name '*debuginfo*' ! -name '*debugsource*' -exec cp {} dist/ \;
+          ls -lh dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fedora-rpms
+          path: dist/*.rpm
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fedora-rpms
+          path: dist
+      - name: Publicar RPMs na release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --generate-notes
+          fi
+          gh release upload "$tag" dist/*.rpm --repo "$GITHUB_REPOSITORY" --clobber
