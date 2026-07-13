@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Sidebar from './components/Sidebar'
 import { modules } from './modules/registry'
 import WindowChrome from './components/window/WindowChrome'
@@ -6,8 +6,28 @@ import { DialogProvider } from './components/dialogs/DialogProvider'
 import { NavigationContext } from './components/navigation/NavigationContext'
 
 export default function App(): JSX.Element {
-  const [activeId, setActiveId] = useState(modules[0].id)
-  const ActiveComponent = modules.find((m) => m.id === activeId)?.Component ?? modules[0].Component
+  const fallbackModules = useMemo(() => modules.filter((module) => module.id === 'about'), [])
+  const [availableModules, setAvailableModules] = useState(fallbackModules)
+  const [activeId, setActiveId] = useState(fallbackModules[0].id)
+  const ActiveComponent =
+    availableModules.find((module) => module.id === activeId)?.Component ?? availableModules[0].Component
+
+  useEffect(() => {
+    let active = true
+    window.vega.getCapabilities().then(
+      (capabilities) => {
+        if (!active) return
+        const supported = modules.filter((module) => capabilities.modules.includes(module.id))
+        const next = supported.length > 0 ? supported : fallbackModules
+        setAvailableModules(next)
+        setActiveId((current) => next.some((module) => module.id === current) ? current : next[0].id)
+      },
+      () => {
+        if (active) setAvailableModules(fallbackModules)
+      }
+    )
+    return () => { active = false }
+  }, [fallbackModules])
 
   return (
     <DialogProvider>
@@ -15,7 +35,7 @@ export default function App(): JSX.Element {
         <div className="app-frame">
           <WindowChrome />
           <div className="app-shell">
-            <Sidebar activeId={activeId} onSelect={setActiveId} />
+            <Sidebar activeId={activeId} onSelect={setActiveId} modules={availableModules} />
             <main className="content">
               <ActiveComponent />
             </main>

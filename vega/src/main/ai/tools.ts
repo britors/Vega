@@ -1,4 +1,5 @@
-import type { VegaClient } from '../dbusClient'
+import type { SystemClient } from '../system/systemClient'
+import type { SystemCapabilities } from '../system/types'
 import type { AITool } from './types'
 
 export const readTools: AITool[] = [
@@ -287,10 +288,30 @@ export const mutatingTools: AITool[] = [
 
 export const allTools: AITool[] = [...readTools, ...mutatingTools]
 
+const toolOperations: Record<string, string> = {
+  search_packages: 'search', list_installed_packages: 'listInstalled', list_available_updates: 'listUpdates',
+  get_hardware_overview: 'hardwareInventory', get_disk_usage: 'diskUsage', get_firmware_status: 'hardwareFirmwareStatus',
+  list_installed_kernels: 'kernelListInstalled', list_available_kernels: 'kernelAvailablePackages',
+  list_network_interfaces: 'listNetworkInterfaces', get_firewall_status: 'firewallStatus',
+  get_datetime_status: 'dateTimeStatus', list_storage_volumes: 'listStorageVolumes', get_system_metrics: 'systemMetrics',
+  list_processes: 'listProcesses', list_users: 'listUsers', list_managed_services: 'listManagedServices',
+  list_snapshots: 'listSnapshots', list_log_units: 'listLogUnits', query_system_logs: 'queryLogs',
+  install_package: 'install', remove_package: 'remove', clear_package_cache: 'clearCache',
+  update_all_packages: 'updateAll', optimize_mirrors: 'optimizeMirrors', create_snapshot: 'createSnapshot',
+  rollback_snapshot: 'rollbackSnapshot', delete_snapshot: 'deleteSnapshot', set_retention_policy: 'setRetentionPolicy',
+  set_service_enabled: 'setServiceEnabled', set_service_running: 'setServiceRunning', restart_service: 'restartService',
+  mount_volume: 'mountVolume', unmount_volume: 'unmountVolume'
+}
+
+export function toolsForCapabilities(capabilities: SystemCapabilities): AITool[] {
+  const available = new Set([...capabilities.readOperations, ...capabilities.mutations])
+  return allTools.filter((tool) => available.has(toolOperations[tool.name]))
+}
+
 export async function executeReadTool(
   name: string,
   input: Record<string, unknown>,
-  vegaClient: VegaClient
+  vegaClient: SystemClient
 ): Promise<string> {
   switch (name) {
     case 'search_packages': {
@@ -390,7 +411,7 @@ export async function executeReadTool(
 export async function describeMutation(
   name: string,
   input: Record<string, unknown>,
-  vegaClient: VegaClient
+  vegaClient: SystemClient
 ): Promise<string> {
   switch (name) {
     case 'install_package':

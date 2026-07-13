@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigation } from '../components/navigation/NavigationContext'
+import type { SystemModule } from '../../../main/system/types'
 
 interface CardState {
   title: string
   value: string
   detail: string
   tone: 'ok' | 'warn' | 'danger' | 'neutral'
-  moduleId: string
+  moduleId: SystemModule
 }
 
 const toneColor: Record<CardState['tone'], string> = {

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { modules } from '../modules/registry'
+import type { VegaModule } from '../modules/registry'
+import type { SystemModule } from '../../../main/system/types'
 
 interface SidebarProps {
-  activeId: string
-  onSelect: (id: string) => void
+  activeId: SystemModule
+  onSelect: (id: SystemModule) => void
+  modules: VegaModule[]
 }
 
 const sectionLabels: Record<string, string> = {
@@ -12,7 +14,7 @@ const sectionLabels: Record<string, string> = {
   outros: 'Outros'
 }
 
-export default function Sidebar({ activeId, onSelect }: SidebarProps): JSX.Element {
+export default function Sidebar({ activeId, onSelect, modules }: SidebarProps): JSX.Element {
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     principal: true,
@@ -22,13 +24,13 @@ export default function Sidebar({ activeId, onSelect }: SidebarProps): JSX.Eleme
 
   const grouped = useMemo(() => {
     const filtered = modules.filter((m) => m.label.toLowerCase().includes(query.toLowerCase()))
-    const groups: Record<string, typeof modules> = {}
+    const groups: Record<string, VegaModule[]> = {}
     for (const mod of filtered) {
       groups[mod.section] = groups[mod.section] ?? []
       groups[mod.section].push(mod)
     }
     return groups
-  }, [query])
+  }, [modules, query])
 
   useEffect(() => {
     if (query.trim()) {
@@ -40,7 +42,7 @@ export default function Sidebar({ activeId, onSelect }: SidebarProps): JSX.Eleme
     }
     const active = modules.find((mod) => mod.id === activeId)
     if (active) setExpanded((current) => ({ ...current, [active.section]: true }))
-  }, [activeId, grouped, query])
+  }, [activeId, grouped, modules, query])
 
   function toggleSection(section: string): void {
     setExpanded((current) => ({ ...current, [section]: !current[section] }))

@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto'
-import type { VegaClient } from '../dbusClient'
+import type { SystemClient } from '../system/systemClient'
 import { getApiKey, getSettings } from './credentials'
 import { createProvider } from './providers'
 import { estimateCostUsd } from './pricing'
 import { createProposal } from './proposalStore'
-import { allTools, describeMutation, executeReadTool } from './tools'
+import { describeMutation, executeReadTool, toolsForCapabilities } from './tools'
 import { logAuditEntry } from './auditLog'
 import { getDailyUsage, incrementDailyMessageCount } from './usageTracker'
-import type { AIConversationEntry, AISendMessageResult, AIToolCall, AIToolProposal, AITokenUsage } from './types'
+import type { AIConversationEntry, AISendMessageResult, AITool, AIToolCall, AIToolProposal, AITokenUsage } from './types'
 
 const SYSTEM_PROMPT = `Você é o assistente de IA integrado ao Vega, um centro de controle para openSUSE.
 Responda sempre em português do Brasil, de forma direta e objetiva.
@@ -48,7 +48,7 @@ export class AgentLoop {
   private failureCounts = new Map<string, number>()
 
   constructor(
-    private readonly vegaClient: VegaClient,
+    private readonly vegaClient: SystemClient,
     private readonly onToolProposal: ToolProposalCallback,
     private readonly onStatus?: StatusCallback
   ) {}
@@ -73,13 +73,14 @@ export class AgentLoop {
     }
     const model = settings.models[settings.activeProvider]
     const provider = createProvider(settings.activeProvider, apiKey, model)
+    const tools = toolsForCapabilities(await this.vegaClient.getCapabilities())
     const maxRounds = settings.maxRoundsPerMessage
     const totalUsage: AITokenUsage = { inputTokens: 0, outputTokens: 0 }
 
     for (let round = 0; round < maxRounds; round++) {
       this.onStatus?.('Pensando...')
       const response = await withTimeout(
-        provider.sendMessage({ system: SYSTEM_PROMPT, history: this.history, tools: allTools }),
+        provider.sendMessage({ system: SYSTEM_PROMPT, history: this.history, tools }),
         REQUEST_TIMEOUT_MS,
         'O provedor de IA'
       )
@@ -98,7 +99,7 @@ export class AgentLoop {
       // Sequencial de propósito: apenas uma proposta de mutação é
       // processada por vez, nunca em paralelo (requisito de segurança do v1).
       for (const toolCall of response.toolCalls) {
-        await this.handleToolCall(toolCall)
+        await this.handleToolCall(toolCall, tools)
       }
     }
 
@@ -113,8 +114,8 @@ export class AgentLoop {
     this.history = []
   }
 
-  private async handleToolCall(toolCall: AIToolCall): Promise<void> {
-    const tool = allTools.find((t) => t.name === toolCall.name)
+  private async handleToolCall(toolCall: AIToolCall, tools: AITool[]): Promise<void> {
+    const tool = tools.find((candidate) => candidate.name === toolCall.name)
     if (!tool) {
       this.history.push({
         role: 'tool_result',

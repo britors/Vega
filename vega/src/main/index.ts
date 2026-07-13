@@ -1,7 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, Notification, dialog, type OpenDialogOptions } from 'electron'
 import { join } from 'node:path'
 import {
-  VegaClient,
   type TransactionProgress,
   type TransactionFinished,
   type BackupTransactionProgress,
@@ -10,7 +9,8 @@ import {
   type BackupConfig,
   type UpdatesAvailableEvent,
   type ProxyConfig
-} from './dbusClient'
+} from './system/types'
+import { createSystemClient } from './system/factory'
 import {
   applyDisplayConfig,
   applyWallpaper,
@@ -35,7 +35,7 @@ import { readAuditLog } from './ai/auditLog'
 import { getDailyUsage } from './ai/usageTracker'
 import type { AIProviderId, AIToolOutcome, AIToolProposal } from './ai/types'
 
-const vegaClient = new VegaClient()
+const vegaClient = createSystemClient()
 let mainWindow: BrowserWindow | null = null
 const agentLoop = new AgentLoop(
   vegaClient,
@@ -128,6 +128,7 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('vega:ping', () => vegaClient.ping())
+  ipcMain.handle('vega:getCapabilities', () => vegaClient.getCapabilities())
   ipcMain.handle('vega:distroLogo', () => vegaClient.distroLogo())
   ipcMain.handle('vega:packageManagerName', () => vegaClient.packageManagerName())
   ipcMain.handle('vega:communityLayerName', () => vegaClient.communityLayerName())

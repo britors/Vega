@@ -14,9 +14,10 @@ import Logs from './Logs'
 import About from './About'
 import Assistant from './Assistant'
 import type { ComponentType } from 'react'
+import type { SystemModule } from '../../../main/system/types'
 
 export interface VegaModule {
-  id: string
+  id: SystemModule
   label: string
   section: 'principal' | 'sistema' | 'outros'
   star?: boolean

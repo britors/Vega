@@ -13,7 +13,8 @@ import type {
   BluetoothStatus,
   BluetoothDeviceInfo,
   ProxyConfig
-} from '../main/dbusClient'
+} from '../main/system/types'
+import type { SystemCapabilities } from '../main/system/types'
 import type { DisplayConfig, DisplayOutputInfo, WallpaperInfo } from '../main/sessionSettings'
 import type {
   AIAuditEntry,
@@ -27,6 +28,7 @@ import type {
 
 const api = {
   ping: (): Promise<VegaSystemInfo> => ipcRenderer.invoke('vega:ping'),
+  getCapabilities: (): Promise<SystemCapabilities> => ipcRenderer.invoke('vega:getCapabilities'),
   distroLogo: (): Promise<string> => ipcRenderer.invoke('vega:distroLogo'),
   packageManagerName: (): Promise<string> => ipcRenderer.invoke('vega:packageManagerName'),
   communityLayerName: (): Promise<string> => ipcRenderer.invoke('vega:communityLayerName'),

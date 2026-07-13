@@ -1,7 +1,8 @@
 import { createContext, useContext } from 'react'
+import type { SystemModule } from '../../../../main/system/types'
 
 interface NavigationContextValue {
-  navigate: (moduleId: string) => void
+  navigate: (moduleId: SystemModule) => void
 }
 
 export const NavigationContext = createContext<NavigationContextValue | null>(null)
