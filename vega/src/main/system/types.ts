@@ -12,6 +12,7 @@ export type SystemModule =
   | 'datetime'
   | 'storage'
   | 'monitor'
+  | 'desktop'
   | 'users'
   | 'services'
   | 'logs'

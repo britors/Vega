@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/lyraos/vega-agent/internal/backup"
+	"github.com/lyraos/vega-agent/internal/bluetooth"
+	"github.com/lyraos/vega-agent/internal/displays"
 	"github.com/lyraos/vega-agent/internal/eventlogs"
 	"github.com/lyraos/vega-agent/internal/localaccounts"
 	"github.com/lyraos/vega-agent/internal/networking"
@@ -164,6 +166,28 @@ func (fixtureBackup) Backup(_ context.Context, _ string, progress backup.Progres
 func (fixtureBackup) Restore(context.Context, backup.RestoreParams, backup.Progress) error {
 	return nil
 }
+
+type fixtureBluetooth struct{}
+
+func (fixtureBluetooth) Status(context.Context) (bluetooth.Status, error) {
+	return bluetooth.Status{Available: true, Powered: true, ControllerName: "Rádio"}, nil
+}
+func (fixtureBluetooth) List(context.Context, bool) ([]bluetooth.Device, error) {
+	return []bluetooth.Device{{Address: "AA:BB:CC:DD:EE:FF", Name: "Fone"}}, nil
+}
+func (fixtureBluetooth) Pair(context.Context, string) error   { return nil }
+func (fixtureBluetooth) Remove(context.Context, string) error { return nil }
+
+type fixtureDisplays struct{}
+
+func (fixtureDisplays) List(context.Context) ([]displays.Output, error) {
+	return []displays.Output{{Name: `\\.\DISPLAY1`, Connected: true, CurrentMode: "1920x1080@60"}}, nil
+}
+func (fixtureDisplays) Apply(context.Context, displays.Config) (displays.ApplyResult, error) {
+	return displays.ApplyResult{Token: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ", RollbackAfterS: 15}, nil
+}
+func (fixtureDisplays) Confirm(context.Context, string) error { return nil }
+func (fixtureDisplays) Revert(context.Context, string) error  { return nil }
 func (fixtureEventLogs) Query(_ context.Context, query eventlogs.Query) ([]eventlogs.Event, error) {
 	return []eventlogs.Event{{Timestamp: "2026-01-01T00:00:00Z", Provider: "Teste", EventID: 42, Level: "Information", Message: "mensagem 日本語 " + query.Channel}}, nil
 }
@@ -495,5 +519,25 @@ func TestBackupUsesClosedContractsAndStreamsProgress(t *testing.T) {
 	unknown := request(t, conn, hello, "backup-unknown", "backup.restore", []byte(`{"snapshotId":"abc123","targetPath":"C:\\Restore","mode":"separate-folder","paths":[],"command":"format"}`))
 	if unknown.Error == nil || unknown.Error.Code != "INVALID_ARGUMENT" {
 		t.Fatalf("unknown: %#v", unknown)
+	}
+}
+
+func TestDesktopContractsRejectBluetoothAndDisplayInjection(t *testing.T) {
+	conn, closeServer := startConfiguredTestServer(t, Server{PlatformVersion: "test", Bluetooth: fixtureBluetooth{}, Displays: fixtureDisplays{}})
+	defer closeServer()
+	hello := handshake(t, conn)
+	if result := request(t, conn, hello, "bluetooth-status", "bluetooth.status", nil); result.Kind != "result" {
+		t.Fatalf("bluetooth: %#v", result)
+	}
+	if result := request(t, conn, hello, "display-list", "display.list", nil); result.Kind != "result" {
+		t.Fatalf("display: %#v", result)
+	}
+	badAddress := request(t, conn, hello, "bad-address", "bluetooth.remove", []byte(`{"address":"AA:BB:CC:DD:EE:FF; calc"}`))
+	if badAddress.Error == nil || badAddress.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("address: %#v", badAddress)
+	}
+	badMode := request(t, conn, hello, "bad-mode", "display.apply", []byte(`{"name":"\\\\.\\DISPLAY1","enabled":true,"mode":"1920x1080@60; calc","x":0,"y":0,"primary":true}`))
+	if badMode.Error == nil || badMode.Error.Code != "INVALID_ARGUMENT" {
+		t.Fatalf("mode: %#v", badMode)
 	}
 }

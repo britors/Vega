@@ -21,7 +21,7 @@ import type {
 } from '../main/system/types'
 import type { SoftwareInstallOptions } from '../main/system/types'
 import type { SystemCapabilities } from '../main/system/types'
-import type { DisplayConfig, DisplayOutputInfo, WallpaperInfo } from '../main/sessionSettings'
+import type { DisplayApplyResult, DisplayConfig, DisplayOutputInfo, WallpaperInfo } from '../main/sessionSettings'
 import type {
   AIAuditEntry,
   AIDailyUsage,
@@ -150,7 +150,9 @@ const api = {
   chooseBluetoothReceiveDirectory: (): Promise<string> =>
     ipcRenderer.invoke('vega:chooseBluetoothReceiveDirectory'),
   listDisplays: (): Promise<DisplayOutputInfo[]> => ipcRenderer.invoke('vega:listDisplays'),
-  applyDisplayConfig: (config: DisplayConfig): Promise<void> => ipcRenderer.invoke('vega:applyDisplayConfig', config),
+  applyDisplayConfig: (config: DisplayConfig): Promise<DisplayApplyResult | void> => ipcRenderer.invoke('vega:applyDisplayConfig', config),
+  confirmDisplayConfig: (token: string): Promise<void> => ipcRenderer.invoke('vega:confirmDisplayConfig', token),
+  revertDisplayConfig: (token: string): Promise<void> => ipcRenderer.invoke('vega:revertDisplayConfig', token),
   listWallpapers: (): Promise<WallpaperInfo[]> => ipcRenderer.invoke('vega:listWallpapers'),
   applyWallpaper: (path: string): Promise<string> => ipcRenderer.invoke('vega:applyWallpaper', path),
   listStorageVolumes: (): Promise<StorageVolumeInfo[]> => ipcRenderer.invoke('vega:listStorageVolumes'),

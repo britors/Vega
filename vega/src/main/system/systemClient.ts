@@ -6,6 +6,7 @@ import type {
   VegaSystemInfo, WifiNetworkInfo
 } from './types'
 import type { SoftwareInstallOptions } from './types'
+import type { DisplayApplyResult, DisplayConfig, DisplayOutputInfo } from '../sessionSettings'
 
 export interface SystemClient extends EventEmitter {
   connect(): Promise<void>
@@ -98,4 +99,8 @@ export interface SystemClient extends EventEmitter {
   listLogUnits(): Promise<string[]>
   setServiceRunning(name: string, running: boolean): Promise<void>
   restartService(name: string): Promise<void>
+  listDisplays?(): Promise<DisplayOutputInfo[]>
+  applyDisplayConfig?(config: DisplayConfig): Promise<DisplayApplyResult>
+  confirmDisplayConfig?(token: string): Promise<void>
+  revertDisplayConfig?(token: string): Promise<void>
 }

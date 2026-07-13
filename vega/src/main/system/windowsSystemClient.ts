@@ -1,17 +1,22 @@
 import { EventEmitter } from 'node:events'
+import { spawn } from 'node:child_process'
+import { stat } from 'node:fs/promises'
+import { shell } from 'electron'
 import { AgentTransport } from './agentTransport'
 import type { SystemClient } from './systemClient'
 import {
-  SystemClientError, type BackupConfig, type BackupSnapshotInfo, type FirewallRuleSpec, type FirewallServiceInfo, type HardwareInventory, type ManagedServiceInfo,
+  SystemClientError, type BackupConfig, type BackupSnapshotInfo, type BluetoothDeviceInfo, type BluetoothStatus, type FirewallRuleSpec, type FirewallServiceInfo, type HardwareInventory, type ManagedServiceInfo,
   type DateTimeStatus, type NetworkInterfaceInfo, type ProcessInfo, type ProxyConfig, type StorageVolumeInfo,
   type SystemCapabilities, type SystemMetrics, type UserInfo, type VegaSystemInfo, type WifiNetworkInfo
 } from './types'
 import type { PackageDetails, PackageRef, SoftwareInstallOptions } from './types'
+import type { DisplayApplyResult, DisplayConfig, DisplayOutputInfo } from '../sessionSettings'
 
 class WindowsSystemClientBase extends EventEmitter {
   private readonly transport = new AgentTransport()
   private capabilities: SystemCapabilities | null = null
   private transactionId = 0
+  private scannedBluetoothDevices: BluetoothDeviceInfo[] | null = null
 
   async connect(): Promise<void> { this.capabilities = await this.transport.connect() }
   disconnect(): void { this.transport.disconnect(); this.capabilities = null }
@@ -120,6 +125,45 @@ class WindowsSystemClientBase extends EventEmitter {
   async applyDateTimeLocale(timezone: string, ntp: boolean, _locale: string, _keymap: string): Promise<void> {
     await this.transport.request('regional.apply', { timezone, ntp }, undefined, 120_000)
   }
+  async bluetoothStatus(): Promise<BluetoothStatus> { return this.transport.request('bluetooth.status') }
+  async listBluetoothDevices(): Promise<BluetoothDeviceInfo[]> {
+    if (this.scannedBluetoothDevices) {
+      const rows = this.scannedBluetoothDevices
+      this.scannedBluetoothDevices = null
+      return rows
+    }
+    return this.transport.request('bluetooth.devices', { scan: false }, undefined, 30_000)
+  }
+  async setBluetoothScanning(scanning: boolean): Promise<void> {
+    if (!scanning) return
+    this.scannedBluetoothDevices = await this.transport.request('bluetooth.devices', { scan: true }, undefined, 30_000)
+  }
+  async pairBluetoothDevice(address: string): Promise<void> {
+    await this.transport.request('bluetooth.pair', { address }, undefined, 120_000)
+  }
+  async removeBluetoothDevice(address: string): Promise<void> {
+    await this.transport.request('bluetooth.remove', { address }, undefined, 30_000)
+  }
+  async setBluetoothPowered(_powered: boolean): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
+  async setBluetoothDiscoverable(_discoverable: boolean): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
+  async setBluetoothPairable(_pairable: boolean): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
+  async trustBluetoothDevice(_address: string, _trusted: boolean): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
+  async connectBluetoothDevice(_address: string): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
+  async disconnectBluetoothDevice(_address: string): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
+  async sendBluetoothFile(_address: string, path: string): Promise<void> {
+    if (!(await stat(path)).isFile()) throw new SystemClientError('EXTERNAL_FAILURE', 'Selecione um arquivo local válido.')
+    spawn('fsquirt.exe', [], { detached: true, stdio: 'ignore', windowsHide: false }).unref()
+  }
+  async startBluetoothFileReceiver(directory: string): Promise<void> {
+    if (!(await stat(directory)).isDirectory()) throw new SystemClientError('EXTERNAL_FAILURE', 'Selecione uma pasta local válida.')
+    spawn('fsquirt.exe', [], { detached: true, stdio: 'ignore', windowsHide: false }).unref()
+  }
+  async listDisplays(): Promise<DisplayOutputInfo[]> { return this.transport.request('display.list') }
+  async applyDisplayConfig(config: DisplayConfig): Promise<DisplayApplyResult> {
+    return this.transport.request('display.apply', { ...config }, undefined, 30_000)
+  }
+  async confirmDisplayConfig(token: string): Promise<void> { await this.transport.request('display.confirm', { token }) }
+  async revertDisplayConfig(token: string): Promise<void> { await this.transport.request('display.revert', { token }) }
   async listBackupConfigs(): Promise<BackupConfig[]> { return this.transport.request('backup.configs') }
   async createBackupConfig(config: BackupConfig): Promise<string> {
     return this.transport.request('backup.create', { ...config }, undefined, 30 * 60_000)

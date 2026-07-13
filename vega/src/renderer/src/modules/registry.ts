@@ -13,6 +13,7 @@ import Services from './Services'
 import Logs from './Logs'
 import About from './About'
 import Assistant from './Assistant'
+import Desktop from './Desktop'
 import type { ComponentType } from 'react'
 import type { SystemModule } from '../../../main/system/types'
 
@@ -37,6 +38,7 @@ export const modules: VegaModule[] = [
   { id: 'datetime', label: 'Data, Hora e Idioma', section: 'sistema', Component: DateTimeLocale },
   { id: 'storage', label: 'Armazenamento', section: 'sistema', Component: Storage },
   { id: 'monitor', label: 'Monitor de Sistema', section: 'sistema', Component: SystemMonitor },
+  { id: 'desktop', label: 'Bluetooth e Personalização', section: 'sistema', Component: Desktop },
   { id: 'users', label: 'Usuários', section: 'sistema', Component: Users },
   { id: 'services', label: 'Serviços', section: 'sistema', Component: Services },
   { id: 'logs', label: 'Log do Sistema', section: 'sistema', Component: Logs },

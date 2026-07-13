@@ -253,8 +253,10 @@ app.whenReady().then(async () => {
     const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options)
     return result.canceled ? '' : result.filePaths[0] ?? ''
   })
-  ipcMain.handle('vega:listDisplays', () => listDisplays())
-  ipcMain.handle('vega:applyDisplayConfig', (_event, config: DisplayConfig) => applyDisplayConfig(config))
+  ipcMain.handle('vega:listDisplays', () => process.platform === 'win32' && vegaClient.listDisplays ? vegaClient.listDisplays() : listDisplays())
+  ipcMain.handle('vega:applyDisplayConfig', (_event, config: DisplayConfig) => process.platform === 'win32' && vegaClient.applyDisplayConfig ? vegaClient.applyDisplayConfig(config) : applyDisplayConfig(config))
+  ipcMain.handle('vega:confirmDisplayConfig', (_event, token: string) => vegaClient.confirmDisplayConfig?.(token))
+  ipcMain.handle('vega:revertDisplayConfig', (_event, token: string) => vegaClient.revertDisplayConfig?.(token))
   ipcMain.handle('vega:listWallpapers', () => listWallpapers())
   ipcMain.handle('vega:applyWallpaper', (_event, path: string) => applyWallpaper(path))
   ipcMain.handle('vega:listStorageVolumes', () => vegaClient.listStorageVolumes())

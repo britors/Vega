@@ -12,7 +12,9 @@ import (
 
 	"github.com/lyraos/vega-agent/internal/agent"
 	"github.com/lyraos/vega-agent/internal/backup"
+	"github.com/lyraos/vega-agent/internal/bluetooth"
 	"github.com/lyraos/vega-agent/internal/broker"
+	"github.com/lyraos/vega-agent/internal/displays"
 	"github.com/lyraos/vega-agent/internal/eventlogs"
 	"github.com/lyraos/vega-agent/internal/localaccounts"
 	"github.com/lyraos/vega-agent/internal/networking"
@@ -69,6 +71,8 @@ func newAgentServer() agent.Server {
 		Accounts:        localaccounts.Manager{},
 		Regional:        regional.Manager{},
 		Backup:          backup.NewManager(executable),
+		Bluetooth:       bluetooth.Manager{},
+		Displays:        displays.NewManager(),
 	}
 	software, err := winget.New()
 	if err == nil {

@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/lyraos/vega-agent/internal/backup"
+	"github.com/lyraos/vega-agent/internal/bluetooth"
+	"github.com/lyraos/vega-agent/internal/displays"
 	"github.com/lyraos/vega-agent/internal/eventlogs"
 	"github.com/lyraos/vega-agent/internal/localaccounts"
 	"github.com/lyraos/vega-agent/internal/networking"
@@ -36,6 +38,8 @@ type Server struct {
 	Accounts            AccountReader
 	Regional            RegionalReader
 	Backup              BackupManager
+	Bluetooth           BluetoothManager
+	Displays            DisplayManager
 	MissingDependencies []protocol.MissingDependency
 }
 
@@ -86,6 +90,18 @@ type BackupManager interface {
 	Paths(context.Context, string, string) ([]string, error)
 	Backup(context.Context, string, backup.Progress) error
 	Restore(context.Context, backup.RestoreParams, backup.Progress) error
+}
+type BluetoothManager interface {
+	Status(context.Context) (bluetooth.Status, error)
+	List(context.Context, bool) ([]bluetooth.Device, error)
+	Pair(context.Context, string) error
+	Remove(context.Context, string) error
+}
+type DisplayManager interface {
+	List(context.Context) ([]displays.Output, error)
+	Apply(context.Context, displays.Config) (displays.ApplyResult, error)
+	Confirm(context.Context, string) error
+	Revert(context.Context, string) error
 }
 
 func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) error {
@@ -176,6 +192,18 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 		modules = append(modules, "backup")
 		readOperations = append(readOperations, "listBackupConfigs", "listBackupSnapshots", "listBackupSnapshotPaths")
 		mutations = append(mutations, "createBackupConfig", "runBackupNow", "restoreBackupSnapshot", "restoreBackupItems", "deleteBackupConfig")
+	}
+	if s.Bluetooth != nil || s.Displays != nil {
+		modules = append(modules, "desktop")
+		mutations = append(mutations, "applyWallpaper")
+	}
+	if s.Bluetooth != nil {
+		readOperations = append(readOperations, "bluetoothStatus", "listBluetoothDevices")
+		mutations = append(mutations, "setBluetoothScanning", "pairBluetoothDevice", "removeBluetoothDevice")
+	}
+	if s.Displays != nil {
+		readOperations = append(readOperations, "listDisplays")
+		mutations = append(mutations, "applyDisplayConfig", "confirmDisplayConfig", "revertDisplayConfig")
 	}
 	if err := protocol.Write(output, protocol.Message{
 		Version: protocol.Version, Kind: "hello", Nonce: nonce,
@@ -620,6 +648,126 @@ func (s Server) Serve(ctx context.Context, input io.Reader, output io.Writer) er
 			}
 			if deleteErr := s.Backup.Delete(ctx, id); deleteErr != nil {
 				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", deleteErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
+		case "bluetooth.status":
+			if s.Bluetooth == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "Bluetooth indisponível"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "bluetooth.status não aceita parâmetros"))
+				break
+			}
+			status, statusErr := s.Bluetooth.Status(ctx)
+			if statusErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", statusErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: status})
+		case "bluetooth.devices":
+			if s.Bluetooth == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "Bluetooth indisponível"))
+				break
+			}
+			var params struct {
+				Scan bool `json:"scan"`
+			}
+			if decodeParams(request.Params, &params) != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "parâmetros Bluetooth inválidos"))
+				break
+			}
+			devices, listErr := s.Bluetooth.List(ctx, params.Scan)
+			if listErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", listErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: devices})
+		case "bluetooth.pair", "bluetooth.remove":
+			if s.Bluetooth == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "Bluetooth indisponível"))
+				break
+			}
+			var params struct {
+				Address string `json:"address"`
+			}
+			if decodeParams(request.Params, &params) != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "endereço Bluetooth inválido"))
+				break
+			}
+			address, validateErr := bluetooth.ValidateAddress(params.Address)
+			if validateErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+				break
+			}
+			var bluetoothErr error
+			if request.Operation == "bluetooth.pair" {
+				bluetoothErr = s.Bluetooth.Pair(ctx, address)
+			} else {
+				bluetoothErr = s.Bluetooth.Remove(ctx, address)
+			}
+			if bluetoothErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", bluetoothErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})
+		case "display.list":
+			if s.Displays == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "monitores indisponíveis"))
+				break
+			}
+			if !emptyParams(request.Params) {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "display.list não aceita parâmetros"))
+				break
+			}
+			outputs, displayErr := s.Displays.List(ctx)
+			if displayErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", displayErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: outputs})
+		case "display.apply":
+			if s.Displays == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "monitores indisponíveis"))
+				break
+			}
+			var params displays.Config
+			if decodeParams(request.Params, &params) != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "configuração de monitor inválida"))
+				break
+			}
+			valid, validateErr := displays.ValidateConfig(params)
+			if validateErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", validateErr.Error()))
+				break
+			}
+			result, applyErr := s.Displays.Apply(ctx, valid)
+			if applyErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", applyErr.Error()))
+				break
+			}
+			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: result})
+		case "display.confirm", "display.revert":
+			if s.Displays == nil {
+				err = protocol.Write(output, failure(request.RequestID, "UNSUPPORTED", "monitores indisponíveis"))
+				break
+			}
+			var params struct {
+				Token string `json:"token"`
+			}
+			if decodeParams(request.Params, &params) != nil || displays.ValidateToken(params.Token) != nil {
+				err = protocol.Write(output, failure(request.RequestID, "INVALID_ARGUMENT", "token de monitor inválido"))
+				break
+			}
+			var displayErr error
+			if request.Operation == "display.confirm" {
+				displayErr = s.Displays.Confirm(ctx, params.Token)
+			} else {
+				displayErr = s.Displays.Revert(ctx, params.Token)
+			}
+			if displayErr != nil {
+				err = protocol.Write(output, failure(request.RequestID, "EXTERNAL_FAILURE", displayErr.Error()))
 				break
 			}
 			err = protocol.Write(output, protocol.Message{Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: map[string]any{"changed": true}})

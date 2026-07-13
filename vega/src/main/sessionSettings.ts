@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
-import { access, readdir, stat } from 'node:fs/promises'
+import { access, readdir, realpath, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
-import { join, basename, extname } from 'node:path'
+import { join, basename, extname, win32 } from 'node:path'
 import { homedir } from 'node:os'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
@@ -19,6 +19,7 @@ export interface DisplayModeInfo {
 
 export interface DisplayOutputInfo {
   name: string
+  label?: string
   connected: boolean
   primary: boolean
   enabled: boolean
@@ -27,6 +28,8 @@ export interface DisplayOutputInfo {
   x: number
   y: number
   currentMode: string
+  scale?: number
+  hdr?: string
   modes: DisplayModeInfo[]
 }
 
@@ -39,6 +42,11 @@ export interface DisplayConfig {
   primary: boolean
 }
 
+export interface DisplayApplyResult {
+  token: string
+  rollbackAfterSeconds: number
+}
+
 export interface WallpaperInfo {
   id: string
   name: string
@@ -48,6 +56,14 @@ export interface WallpaperInfo {
 }
 
 const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp'])
+
+export function validateWallpaperPathInput(path: string, platform: NodeJS.Platform = process.platform): void {
+  const absolute = platform === 'win32' ? win32.isAbsolute(path) : path.startsWith('/')
+  const extension = platform === 'win32' ? win32.extname(path).toLowerCase() : extname(path).toLowerCase()
+  if (!absolute || path.includes('://') || !imageExtensions.has(extension) || /[\r\n\0]/.test(path)) {
+    throw new Error('Selecione uma imagem local JPG, PNG, WebP ou BMP')
+  }
+}
 
 async function commandAvailable(name: string): Promise<boolean> {
   const paths = (process.env.PATH ?? '').split(':').filter(Boolean)
@@ -163,13 +179,20 @@ async function collectWallpapers(dir: string, source: string, depth = 0): Promis
 }
 
 export async function listWallpapers(): Promise<WallpaperInfo[]> {
-  const dirs: Array<[string, string]> = [
-    ['/usr/share/backgrounds', 'Sistema'],
-    ['/usr/share/wallpapers', 'Sistema'],
-    ['/usr/local/share/backgrounds', 'Sistema'],
-    [join(homedir(), 'Pictures', 'Wallpapers'), 'Usuário'],
-    [join(homedir(), 'Imagens', 'Wallpapers'), 'Usuário']
-  ]
+  const dirs: Array<[string, string]> = process.platform === 'win32'
+    ? [
+        [join(process.env.WINDIR || 'C:\\Windows', 'Web', 'Wallpaper'), 'Windows'],
+        [join(homedir(), 'Pictures', 'Wallpapers'), 'Usuário'],
+        [join(homedir(), 'Pictures'), 'Usuário'],
+        [join(homedir(), 'Imagens'), 'Usuário']
+      ]
+    : [
+        ['/usr/share/backgrounds', 'Sistema'],
+        ['/usr/share/wallpapers', 'Sistema'],
+        ['/usr/local/share/backgrounds', 'Sistema'],
+        [join(homedir(), 'Pictures', 'Wallpapers'), 'Usuário'],
+        [join(homedir(), 'Imagens', 'Wallpapers'), 'Usuário']
+      ]
   const rows = (await Promise.all(dirs.map(([dir, source]) => collectWallpapers(dir, source)))).flat()
   const unique = new Map<string, WallpaperInfo>()
   for (const row of rows) unique.set(row.path, row)
@@ -177,6 +200,19 @@ export async function listWallpapers(): Promise<WallpaperInfo[]> {
 }
 
 export async function applyWallpaper(path: string): Promise<string> {
+  if (process.platform === 'win32') {
+    validateWallpaperPathInput(path)
+    const resolved = await realpath(path)
+    const info = await stat(resolved)
+    if (!info.isFile() || info.size === 0) throw new Error('Wallpaper local inválido')
+    const script = `$ErrorActionPreference='Stop';Add-Type @'\nusing System.Runtime.InteropServices;\npublic static class VegaWallpaper { [DllImport("user32.dll", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool SystemParametersInfo(uint action, uint param, string value, uint flags); }\n'@\nif(-not [VegaWallpaper]::SystemParametersInfo(20,0,$env:VEGA_WALLPAPER_PATH,3)){throw 'O Windows recusou o wallpaper'}`
+    const encoded = Buffer.from(script, 'utf16le').toString('base64')
+    await execFileAsync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
+      windowsHide: true,
+      env: { ...process.env, VEGA_WALLPAPER_PATH: resolved }
+    })
+    return 'Windows'
+  }
   const uri = pathToFileURL(path).toString()
   if (await commandAvailable('plasma-apply-wallpaperimage')) {
     await run('plasma-apply-wallpaperimage', [path])
