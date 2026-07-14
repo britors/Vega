@@ -13,7 +13,7 @@ if ($installerName -notmatch "^Vega-Setup-$escapedVersion-x64\.exe$") {
 }
 if (!(Test-Path $Executable)) { throw "Executável não encontrado: $Executable" }
 $productVersion = (Get-Item $Executable).VersionInfo.ProductVersion
-$normalizedProductVersion = ($productVersion -split '[+-]')[0]
+$normalizedProductVersion = (($productVersion -split '[+-]')[0] -replace '\.0$', '')
 if ($normalizedProductVersion -ne $packageVersion) {
   throw "ProductVersion $productVersion não corresponde ao package.json $packageVersion"
 }
