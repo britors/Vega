@@ -36,6 +36,7 @@ openSUSE/Debian.
 %build
 cd vega
 npm install --no-audit --no-fund
+node node_modules/electron/install.js
 npm run build
 
 %install
