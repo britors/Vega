@@ -2,6 +2,9 @@
 # mesmo diretório para as notas gerais (versionamento via --define version,
 # status do empacotamento).
 %{!?version: %define version 0.0.0}
+# Electron ships prebuilt native addons for multiple architectures. Do not
+# derive host RPM dependencies from those foreign binaries.
+%global __requires_exclude_from ^%{_prefix}/lib/lyra-vega/node_modules/.*
 
 Name:           vega
 Version:        %{version}

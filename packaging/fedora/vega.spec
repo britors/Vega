@@ -5,6 +5,7 @@
 # binários pré-compilados que find-debuginfo tentaria escanear).
 %{!?version: %define version 0.0.0}
 %global debug_package %{nil}
+%global __requires_exclude_from ^%{_prefix}/lib/lyra-vega/node_modules/.*
 
 Name:           vega
 Version:        %{version}
