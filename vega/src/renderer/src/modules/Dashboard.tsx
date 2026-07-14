@@ -2,15 +2,19 @@ import { useEffect, useState } from 'react'
 import { useNavigation } from '../components/navigation/NavigationContext'
 import type { SystemModule } from '../../../main/system/types'
 
-interface CardState {
+type CardTone = 'ok' | 'warn' | 'danger' | 'neutral'
+
+interface CardSlot {
   title: string
-  value: string
-  detail: string
-  tone: 'ok' | 'warn' | 'danger' | 'neutral'
   moduleId: SystemModule
+  loading: boolean
+  error?: string
+  value?: string
+  detail?: string
+  tone?: CardTone
 }
 
-const toneColor: Record<CardState['tone'], string> = {
+const toneColor: Record<CardTone, string> = {
   ok: 'var(--lyra-success)',
   warn: 'var(--lyra-warning)',
   danger: 'var(--lyra-danger)',
@@ -35,99 +39,196 @@ function formatBytes(value: number): string {
 
 export default function Dashboard(): JSX.Element {
   const { navigate } = useNavigation()
-  const [cards, setCards] = useState<CardState[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+
+  const [snapshotsSupported, setSnapshotsSupported] = useState<boolean | null>(null)
+  const [capError, setCapError] = useState<string | null>(null)
+
+  const [updatesCard, setUpdatesCard] = useState<CardSlot>({
+    title: 'Atualizações',
+    moduleId: 'software',
+    loading: true
+  })
+  const [snapshotsCard, setSnapshotsCard] = useState<CardSlot>({
+    title: 'Pontos de Restauração',
+    moduleId: 'snapshots',
+    loading: true
+  })
+  const [backupCard, setBackupCard] = useState<CardSlot>({
+    title: 'Backup',
+    moduleId: 'backup',
+    loading: true
+  })
+  const [servicesCard, setServicesCard] = useState<CardSlot>({
+    title: 'Serviços',
+    moduleId: 'services',
+    loading: true
+  })
+  const [diskCard, setDiskCard] = useState<CardSlot>({
+    title: 'Disco (/)',
+    moduleId: 'hardware',
+    loading: true
+  })
+
+  // Each card fetches and renders its own data independently, so a slow
+  // request only keeps its own card in "Carregando..." instead of blocking
+  // the whole panel.
 
   useEffect(() => {
     let cancelled = false
-
-    async function load(): Promise<void> {
-      setError(null)
-      try {
-        const capabilities = await window.vega.getCapabilities()
-        const [updates, snapshots, backupConfigs, services, disk] = await Promise.all([
-          window.vega.listUpdates(),
-          capabilities.modules.includes('snapshots') ? window.vega.listSnapshots() : Promise.resolve([]),
-          window.vega.listBackupConfigs(),
-          window.vega.listManagedServices(),
-          window.vega.diskUsage()
-        ])
-
-        let backupCard: CardState
-        if (backupConfigs.length === 0) {
-          backupCard = {
-            title: 'Backup',
-            value: 'Não configurado',
-            detail: 'Nenhum destino de backup cadastrado',
-            tone: 'warn',
-            moduleId: 'backup'
-          }
-        } else {
-          const runs = await window.vega.listBackupSnapshots(backupConfigs[0].id)
-          const latest = runs.reduce<number | null>(
-            (max, run) => (max === null || run.timestamp > max ? run.timestamp : max),
-            null
-          )
-          backupCard = {
-            title: 'Backup',
-            value: latest === null ? 'Nunca rodou' : formatAge(latest),
-            detail: `${backupConfigs.length} destino(s) configurado(s)`,
-            tone: latest === null ? 'warn' : 'ok',
-            moduleId: 'backup'
-          }
-        }
-
-        const oldestSnapshot = snapshots.reduce<number | null>(
-          (min, snap) => (min === null || snap.timestamp < min ? snap.timestamp : min),
-          null
-        )
-        const strugglingServices = services.filter((s) => s.available && s.enabled && !s.active)
-
-        if (cancelled) return
-        setCards([
-          {
-            title: 'Atualizações',
-            value: String(updates.length),
-            detail: updates.length === 0 ? 'Tudo em dia' : 'pacote(s) pendente(s)',
-            tone: updates.length === 0 ? 'ok' : 'warn',
-            moduleId: 'software'
-          },
-          ...(capabilities.modules.includes('snapshots') ? [{
-            title: 'Pontos de Restauração',
-            value: String(snapshots.length),
-            detail: oldestSnapshot === null ? 'Nenhum snapshot ainda' : `mais antigo: ${formatAge(oldestSnapshot)}`,
-            tone: snapshots.length === 0 ? 'warn' as const : 'neutral' as const,
-            moduleId: 'snapshots' as const
-          }] : []),
-          backupCard,
-          {
-            title: 'Serviços',
-            value: strugglingServices.length === 0 ? 'OK' : String(strugglingServices.length),
-            detail:
-              strugglingServices.length === 0
-                ? 'Nenhum serviço com problema'
-                : 'habilitado(s) mas parado(s)',
-            tone: strugglingServices.length === 0 ? 'ok' : 'danger',
-            moduleId: 'services'
-          },
-          {
-            title: 'Disco (/)',
-            value: `${disk.percent}%`,
-            detail: `${disk.used} de ${disk.total} usados`,
-            tone: disk.percent >= 90 ? 'danger' : disk.percent >= 75 ? 'warn' : 'ok',
-            moduleId: 'hardware'
-          }
-        ])
-      } catch (err) {
-        if (!cancelled) setError((err as Error).message)
-      }
-    }
-
-    load()
+    window.vega
+      .getCapabilities()
+      .then((capabilities) => {
+        if (!cancelled) setSnapshotsSupported(capabilities.modules.includes('snapshots'))
+      })
+      .catch((err) => {
+        if (!cancelled) setCapError((err as Error).message)
+      })
     return () => {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    window.vega
+      .listUpdates()
+      .then((updates) => {
+        if (cancelled) return
+        setUpdatesCard((prev) => ({
+          ...prev,
+          loading: false,
+          value: String(updates.length),
+          detail: updates.length === 0 ? 'Tudo em dia' : 'pacote(s) pendente(s)',
+          tone: updates.length === 0 ? 'ok' : 'warn'
+        }))
+      })
+      .catch((err) => {
+        if (!cancelled) setUpdatesCard((prev) => ({ ...prev, loading: false, error: (err as Error).message }))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (snapshotsSupported !== true) return
+    let cancelled = false
+    window.vega
+      .listSnapshots()
+      .then((snapshots) => {
+        if (cancelled) return
+        const oldestSnapshot = snapshots.reduce<number | null>(
+          (min, snap) => (min === null || snap.timestamp < min ? snap.timestamp : min),
+          null
+        )
+        setSnapshotsCard((prev) => ({
+          ...prev,
+          loading: false,
+          value: String(snapshots.length),
+          detail: oldestSnapshot === null ? 'Nenhum snapshot ainda' : `mais antigo: ${formatAge(oldestSnapshot)}`,
+          tone: snapshots.length === 0 ? 'warn' : 'neutral'
+        }))
+      })
+      .catch((err) => {
+        if (!cancelled) setSnapshotsCard((prev) => ({ ...prev, loading: false, error: (err as Error).message }))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [snapshotsSupported])
+
+  useEffect(() => {
+    let cancelled = false
+    window.vega
+      .listBackupConfigs()
+      .then(async (backupConfigs) => {
+        if (backupConfigs.length === 0) {
+          if (!cancelled) {
+            setBackupCard((prev) => ({
+              ...prev,
+              loading: false,
+              value: 'Não configurado',
+              detail: 'Nenhum destino de backup cadastrado',
+              tone: 'warn'
+            }))
+          }
+          return
+        }
+        const runs = await window.vega.listBackupSnapshots(backupConfigs[0].id)
+        if (cancelled) return
+        const latest = runs.reduce<number | null>(
+          (max, run) => (max === null || run.timestamp > max ? run.timestamp : max),
+          null
+        )
+        setBackupCard((prev) => ({
+          ...prev,
+          loading: false,
+          value: latest === null ? 'Nunca rodou' : formatAge(latest),
+          detail: `${backupConfigs.length} destino(s) configurado(s)`,
+          tone: latest === null ? 'warn' : 'ok'
+        }))
+      })
+      .catch((err) => {
+        if (!cancelled) setBackupCard((prev) => ({ ...prev, loading: false, error: (err as Error).message }))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    window.vega
+      .listManagedServices()
+      .then((services) => {
+        if (cancelled) return
+        const strugglingServices = services.filter((s) => s.available && s.enabled && !s.active)
+        setServicesCard((prev) => ({
+          ...prev,
+          loading: false,
+          value: strugglingServices.length === 0 ? 'OK' : String(strugglingServices.length),
+          detail:
+            strugglingServices.length === 0 ? 'Nenhum serviço com problema' : 'habilitado(s) mas parado(s)',
+          tone: strugglingServices.length === 0 ? 'ok' : 'danger'
+        }))
+      })
+      .catch((err) => {
+        if (!cancelled) setServicesCard((prev) => ({ ...prev, loading: false, error: (err as Error).message }))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    window.vega
+      .diskUsage()
+      .then((disk) => {
+        if (cancelled) return
+        setDiskCard((prev) => ({
+          ...prev,
+          loading: false,
+          value: `${disk.percent}%`,
+          detail: `${disk.used} de ${disk.total} usados`,
+          tone: disk.percent >= 90 ? 'danger' : disk.percent >= 75 ? 'warn' : 'ok'
+        }))
+      })
+      .catch((err) => {
+        if (!cancelled) setDiskCard((prev) => ({ ...prev, loading: false, error: (err as Error).message }))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const visibleCards = [
+    updatesCard,
+    ...(snapshotsSupported === false ? [] : [snapshotsCard]),
+    backupCard,
+    servicesCard,
+    diskCard
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -136,47 +237,54 @@ export default function Dashboard(): JSX.Element {
         <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>Visão geral do sistema</p>
       </div>
 
-      {error && (
+      {capError && (
         <div className="card" style={{ color: 'var(--lyra-danger)' }}>
-          Falha: {error}
+          Falha: {capError}
         </div>
       )}
 
-      {cards === null && !error && (
-        <div className="card" style={{ color: 'var(--lyra-text-muted)' }}>
-          Carregando...
-        </div>
-      )}
-
-      {cards && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 14
-          }}
-        >
-          {cards.map((card) => (
-            <button
-              key={card.title}
-              onClick={() => navigate(card.moduleId)}
-              className="card"
-              style={{
-                textAlign: 'left',
-                cursor: 'pointer',
-                border: '1px solid var(--lyra-border)',
-                background: 'var(--lyra-surface)',
-                color: 'inherit',
-                font: 'inherit'
-              }}
-            >
-              <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>{card.title}</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 700, color: toneColor[card.tone] }}>{card.value}</div>
-              <div style={{ marginTop: 4, fontSize: '0.82rem', color: 'var(--lyra-text-muted)' }}>{card.detail}</div>
-            </button>
-          ))}
-        </div>
-      )}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: 14
+        }}
+      >
+        {visibleCards.map((card) => (
+          <button
+            key={card.title}
+            onClick={() => !card.loading && !card.error && navigate(card.moduleId)}
+            className="card"
+            disabled={card.loading}
+            style={{
+              textAlign: 'left',
+              cursor: card.loading ? 'default' : 'pointer',
+              border: '1px solid var(--lyra-border)',
+              background: 'var(--lyra-surface)',
+              color: 'inherit',
+              font: 'inherit'
+            }}
+          >
+            <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>{card.title}</div>
+            {card.loading ? (
+              <div style={{ marginTop: 4, color: 'var(--lyra-text-muted)' }}>Carregando...</div>
+            ) : card.error ? (
+              <div style={{ marginTop: 4, color: 'var(--lyra-danger)', fontSize: '0.82rem' }}>
+                Falha: {card.error}
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: '1.6rem', fontWeight: 700, color: toneColor[card.tone ?? 'neutral'] }}>
+                  {card.value}
+                </div>
+                <div style={{ marginTop: 4, fontSize: '0.82rem', color: 'var(--lyra-text-muted)' }}>
+                  {card.detail}
+                </div>
+              </>
+            )}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
