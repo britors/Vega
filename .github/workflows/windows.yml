@@ -33,7 +33,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         working-directory: vega
         shell: pwsh
-        run: npm version $env:GITHUB_REF_NAME.Substring(1) --no-git-tag-version
+        run: npm version $env:GITHUB_REF_NAME.Substring(1) --no-git-tag-version --allow-same-version
 
       - name: Instalar dependências
         working-directory: vega

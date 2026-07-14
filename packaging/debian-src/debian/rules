@@ -69,3 +69,9 @@ override_dh_dwz:
 # in the build container, and bundling them isn't what shlibs:Depends is for.
 override_dh_shlibdeps:
 	dh_shlibdeps -X usr/lib/lyra-vega/node_modules
+
+# Electron bundles native addons for several architectures. They are already
+# prebuilt third-party artifacts; the host binutils cannot strip every target
+# format (for example linux-arm64) in the amd64 Debian build container.
+override_dh_strip:
+	dh_strip -X usr/lib/lyra-vega/node_modules
