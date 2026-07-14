@@ -25,6 +25,7 @@ jobs:
       - name: Buildar os RPMs
         run: |
           version="${GITHUB_REF_NAME#v}"
+          version="${version%%-*}"
           rpmdev-setuptree
           tar czf "$HOME/rpmbuild/SOURCES/vega-src.tar.gz" \
             --exclude='.git' \

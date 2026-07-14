@@ -18,7 +18,7 @@ export DH_VERBOSE=1
 	dh $@
 
 override_dh_auto_build:
-	cd vega && npm ci && npm run build
+	cd vega && npm install --no-audit --no-fund && npm run build
 	cd vegad && go build -trimpath -buildvcs=false \
 		-ldflags "-X github.com/lyraos/vegad/internal/version.Version=$(DEB_VERSION_UPSTREAM)" \
 		-o vegad ./cmd/vegad

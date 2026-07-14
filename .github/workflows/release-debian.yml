@@ -29,7 +29,10 @@ jobs:
 
       - name: Preparar árvore debian/ e versão
         run: |
+          # Debian accepts the test suffix; keep the package version numeric
+          # so it remains compatible with RPM/DPKG metadata and Electron.
           version="${GITHUB_REF_NAME#v}"
+          version="${version%%-*}"
           cp -r packaging/debian-src/debian .
           cp packaging/debian-src/vega-wrapper.sh .
           sed -i "1s/^vega ([^)]*)/vega (${version}-1)/" debian/changelog

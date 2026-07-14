@@ -33,7 +33,7 @@ openSUSE/Debian.
 
 %build
 cd vega
-npm ci
+npm install --no-audit --no-fund
 npm run build
 
 %install
