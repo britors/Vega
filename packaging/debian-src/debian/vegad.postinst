@@ -5,7 +5,13 @@ set -e
 # systemctl-enabled) — only the update-check timer is enabled here, same
 # logic as packaging/vegad/vegad.install (Arch) and vegad.spec's %post
 # (openSUSE).
-if [ "$1" = "configure" ]; then
+#
+# Guarded on /run/systemd/system (the same check dh_installsystemd's
+# generated maintainer scripts use) because systems that don't boot with
+# systemd as PID 1 — e.g. MX Linux's default SysVinit — otherwise print
+# scary "Can't operate" / "Failed to connect to system scope bus" errors
+# to stderr even though the || true made them harmless.
+if [ "$1" = "configure" ] && [ -d /run/systemd/system ]; then
 	systemctl daemon-reload || true
 	systemctl reload dbus.service 2>/dev/null || true
 	systemctl enable --now vegad-update-check.timer 2>/dev/null || true
