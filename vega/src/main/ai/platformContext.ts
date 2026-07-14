@@ -23,7 +23,7 @@ export function auditSystemContext(capabilities: SystemCapabilities): AIAuditSys
 }
 
 export function buildSystemPrompt(capabilities: SystemCapabilities, system?: VegaSystemInfo): string {
-  const platform = capabilities.platform === 'windows' ? 'Windows' : 'Linux'
+  const platform = 'Linux'
   const systemName = system?.distro || `${platform} ${capabilities.platformVersion}`
   const limitations = capabilities.missingDependencies.length > 0
     ? capabilities.missingDependencies.map((item) => `${item.id}: ${item.detail}`).join('; ')
@@ -72,8 +72,6 @@ function redactSensitiveText(value: string): string {
     .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email redigido]')
     .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '[IP redigido]')
     .replace(/\b(?:[A-Fa-f0-9]{1,4}:){2,}[A-Fa-f0-9:]{1,4}\b/g, '[IP redigido]')
-    .replace(/[A-Za-z]:\\(?:[^\s"\\]+\\)*[^\s"]*/g, '[path redigido]')
-    .replace(/\\\\[^\s"\\]+\\[^\s"]+/g, '[path UNC redigido]')
     .replace(/\/(?:home|Users)\/[^\s"/]+(?:\/[^\s"]*)?/g, '[path redigido]')
 }
 
@@ -84,17 +82,8 @@ const linuxPrompts = [
   'Otimize os espelhos de download'
 ]
 
-const windowsPrompts = [
-  'Quanto espaço há no volume do sistema?', 'Há atualizações de aplicativos no WinGet?',
-  'Como está o hardware deste computador?', 'Quais processos estão consumindo mais CPU?',
-  'Mostre os volumes e discos disponíveis', 'Qual é a versão e o build do Windows?',
-  'Quais aplicativos o WinGet reconhece?', 'A memória e o pagefile estão saudáveis?'
-]
-
 export function starterPromptsForCapabilities(capabilities: SystemCapabilities): string[] {
-  const source = capabilities.platform === 'windows' ? windowsPrompts : linuxPrompts
-  return source.filter((prompt) => {
-    if (prompt.includes('WinGet') || prompt.includes('aplicativos')) return capabilities.modules.includes('software')
+  return linuxPrompts.filter((prompt) => {
     if (prompt.includes('snapshot')) return capabilities.modules.includes('snapshots')
     if (prompt.includes('serviços')) return capabilities.modules.includes('services')
     if (prompt.includes('firewall')) return capabilities.modules.includes('network')

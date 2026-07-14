@@ -127,10 +127,7 @@ async function executeMutation(proposal: AIToolProposal): Promise<AIToolOutcome>
       let txId: number
       switch (proposal.name) {
         case 'install_package':
-          txId = await window.vega.install(String(input.origin), String(input.id), {
-            scope: input.scope === 'user' || input.scope === 'machine' ? input.scope : undefined,
-            acceptAgreements: true
-          })
+          txId = await window.vega.install(String(input.origin), String(input.id))
           break
         case 'remove_package':
           txId = await window.vega.remove(String(input.origin), String(input.id))

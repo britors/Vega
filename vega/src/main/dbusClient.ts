@@ -4,10 +4,10 @@ import { release } from 'node:os'
 import type { SystemClient } from './system/systemClient'
 import type {
   BackupAlertEvent, BackupConfig, BackupSnapshotInfo, BackupTransactionFinished, BackupTransactionProgress,
-  BluetoothDeviceInfo, BluetoothStatus, BootStatus, DateTimeStatus, FirewallRuleSpec, FirewallServiceInfo, HardwareInventory,
+  BluetoothDeviceInfo, BluetoothStatus, BootStatus, DateTimeStatus, FirewallServiceInfo, HardwareInventory,
   ManagedServiceInfo, NetworkInterfaceInfo, PackageDetails, PackageRef, ProcessInfo, ProxyConfig, SnapshotInfo,
-  StorageVolumeInfo, SystemCapabilities, SystemMetrics, TransactionFinished, TransactionProgress, UpdatesAvailableEvent, UserInfo,
-  VegaSystemInfo, WifiNetworkInfo
+  StorageVolumeInfo, SystemCapabilities, SystemMetrics, SystemModule, TransactionFinished, TransactionProgress,
+  UpdatesAvailableEvent, UserInfo, VegaSystemInfo, WifiNetworkInfo
 } from './system/types'
 
 const SERVICE_NAME = 'org.lyraos.Vega1'
@@ -112,15 +112,22 @@ export class LinuxSystemClient extends EventEmitter implements SystemClient {
 
   async getCapabilities(): Promise<SystemCapabilities> {
     const status = await this.ping()
+    const modules: SystemModule[] = [
+      'dashboard', 'assistant', 'software', 'backup', 'hardware', 'kernel', 'network',
+      'datetime', 'storage', 'monitor', 'users', 'services', 'logs', 'about'
+    ]
+    // Snapshots only works against snapper (see vegad/internal/dbusserver/
+    // snapshots.go) — hide the module rather than show a menu entry that
+    // always errors on distros without it.
+    if (await this.snapshotsAvailable()) {
+      modules.splice(3, 0, 'snapshots')
+    }
     return {
       platform: 'linux',
       platformVersion: release(),
       backendVersion: status.version,
       protocolVersion: 1,
-      modules: [
-        'dashboard', 'assistant', 'software', 'snapshots', 'backup', 'hardware', 'kernel', 'network',
-        'datetime', 'storage', 'monitor', 'users', 'services', 'logs', 'about'
-      ],
+      modules,
       readOperations: [
         'ping', 'distroLogo', 'packageManagerName', 'communityLayerName', 'diskUsage', 'search', 'listUpdates',
         'listInstalled', 'getPackageDetails', 'getAurPkgbuild', 'listSnapshots', 'diffPackages',
@@ -312,6 +319,16 @@ export class LinuxSystemClient extends EventEmitter implements SystemClient {
     return iface.OptimizeMirrors()
   }
 
+  private async snapshotsAvailable(): Promise<boolean> {
+    try {
+      const iface = await this.getInterface('Snapshots')
+      return await iface.Available()
+    } catch (err) {
+      console.warn('vegad Snapshots.Available check failed:', (err as Error).message)
+      return false
+    }
+  }
+
   async listSnapshots(): Promise<SnapshotInfo[]> {
     const iface = await this.getInterface('Snapshots')
     // timestamp is D-Bus type 'x' (int64) — dbus-next hands those back as
@@ -472,10 +489,6 @@ export class LinuxSystemClient extends EventEmitter implements SystemClient {
   async firewallSetServiceEnabled(name: string, enabled: boolean): Promise<void> {
     const iface = await this.getInterface('Firewall')
     await iface.SetServiceEnabled(name, enabled)
-  }
-
-  async firewallCreateRule(_spec: FirewallRuleSpec): Promise<void> {
-    throw new Error('Criação de regras tipadas está disponível apenas no backend Windows.')
   }
 
   async dateTimeStatus(): Promise<DateTimeStatus> {
@@ -734,12 +747,12 @@ export class LinuxSystemClient extends EventEmitter implements SystemClient {
     return rows.map(([username, isAdmin]) => ({ username, isAdmin }))
   }
 
-  async createUser(username: string, isAdmin: boolean, _password?: string): Promise<void> {
+  async createUser(username: string, isAdmin: boolean): Promise<void> {
     const iface = await this.getInterface('Users')
     await iface.CreateUser(username, isAdmin)
   }
 
-  async removeUser(username: string, _removeProfile?: boolean): Promise<void> {
+  async removeUser(username: string): Promise<void> {
     const iface = await this.getInterface('Users')
     await iface.RemoveUser(username)
   }

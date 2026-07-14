@@ -119,7 +119,6 @@ código novo, não validado ponta a ponta num Fedora real — mesmo aviso de
 
 | Pacote (dnf) | Binário verificado | Módulo | Observação |
 | --- | --- | --- | --- |
-| `timeshift` | `timeshift` | Snapshots | Fedora não configura Btrfs+snapshots automaticamente como o openSUSE — mesma ressalva do Timeshift em Ubuntu/Debian (exige configurar um dispositivo de backup antes de funcionar). |
 | `flatpak` | `flatpak` | Software (origem Flathub) | Já vem pré-configurado no Fedora Workstation. |
 | `NetworkManager` | `nmcli` | Rede | — |
 | `restic` | `restic` | Backup | — |
@@ -135,7 +134,7 @@ código novo, não validado ponta a ponta num Fedora real — mesmo aviso de
 sudo dnf install golang nodejs npm
 
 # opcionais (conforme os módulos desejados)
-sudo dnf install timeshift flatpak NetworkManager restic firewalld fwupd bluez
+sudo dnf install flatpak NetworkManager restic firewalld fwupd bluez
 
 # driver NVIDIA (requer RPM Fusion nonfree habilitado antes)
 sudo dnf install akmod-nvidia
@@ -150,9 +149,13 @@ sudo rpmbuild -bb --define "version $(cat vega/package.json | grep -m1 version |
 Ainda não existe pacote publicado (nem PPA, nem `.deb` numa release); veja
 [`packaging/debian-src/`](packaging/debian-src/) pro empacotamento local. O
 backend APT/hardware NVIDIA (`vegad/internal/distro/{apt,kernel_debian,hardware_debian}.go`)
-e os backends de Firewall/Snapshots (`vegad/internal/dbusserver/{ufw,timeshift}.go`)
-são código novo, não validados ponta a ponta num Ubuntu real — mesmo aviso
-de "ponto de partida, não garantia" que já vale pro backend openSUSE.
+e o backend de Firewall (`vegad/internal/dbusserver/ufw.go`) são código novo,
+não validados ponta a ponta num Ubuntu real — mesmo aviso de "ponto de
+partida, não garantia" que já vale pro backend openSUSE. O módulo Snapshots
+depende do snapper (veja abaixo) — sem ele, o menu "Pontos de Restauração"
+fica oculto, já que o Timeshift deixou de ser um backend suportado
+(issue #48: a saída do `timeshift --list` nunca bateu com uma instalação
+real).
 
 ### Necessários só para compilar
 
@@ -170,7 +173,6 @@ de "ponto de partida, não garantia" que já vale pro backend openSUSE.
 
 | Pacote (apt) | Binário verificado | Módulo | Observação |
 | --- | --- | --- | --- |
-| `timeshift` | `timeshift` | Snapshots | Ao contrário do snapper, exige rodar o assistente do Timeshift primeiro pra configurar um dispositivo de backup — não funciona "de fábrica" mesmo instalado. Sem diff de pacotes como o snapper. |
 | `flatpak` | `flatpak` | Software (origem Flathub) | — |
 | `network-manager` | `nmcli` | Rede | — |
 | `restic` | `restic` | Backup | — |
@@ -186,11 +188,8 @@ de "ponto de partida, não garantia" que já vale pro backend openSUSE.
 sudo apt install golang-go nodejs npm
 
 # opcionais (conforme os módulos desejados)
-sudo apt install timeshift flatpak network-manager restic ufw fwupd bluez ubuntu-drivers-common
+sudo apt install flatpak network-manager restic ufw fwupd bluez ubuntu-drivers-common
 sudo ufw enable
-
-# configurar o Timeshift antes de usar o módulo Snapshots
-sudo timeshift --list   # confirma se já existe backup_device_uuid configurado
 ```
 
 ## Requisitos de sistema comuns a todas as distros
@@ -204,7 +203,6 @@ sudo timeshift --list   # confirma se já existe backup_device_uuid configurado
   que precisa pedir ao systemd para subir o daemon.
 - **polkit ativo** — autoriza as ações privilegiadas que o `vegad` expõe
   (`org.lyraos.vega.policy`).
-- Sistema de arquivos raiz em **Btrfs**, se o módulo de Snapshots for usado
-  via snapper (Arch/openSUSE). No backend Timeshift (Ubuntu/Debian) isso não
-  é obrigatório — o modo padrão (`rsync`) funciona em ext4, desde que um
-  dispositivo de backup já tenha sido configurado.
+- Sistema de arquivos raiz em **Btrfs** e `snapper` instalado, para o módulo
+  de Snapshots (Arch/openSUSE por padrão) — sem snapper o menu "Pontos de
+  Restauração" fica oculto em qualquer distro.

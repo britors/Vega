@@ -18,20 +18,17 @@ export default function DateTimeLocale(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isWindows, setIsWindows] = useState(false)
 
   async function refresh(): Promise<void> {
     setLoading(true)
     setError(null)
     try {
-      const [capabilities, nextStatus, nextTimezones, nextLocales, nextKeymaps] = await Promise.all([
-        window.vega.getCapabilities(),
+      const [nextStatus, nextTimezones, nextLocales, nextKeymaps] = await Promise.all([
         window.vega.dateTimeStatus(),
         window.vega.listTimezones(),
         window.vega.listLocales(),
         window.vega.listKeymaps()
       ])
-      setIsWindows(capabilities.platform === 'windows')
       setStatus(nextStatus)
       setTimezones(nextTimezones)
       setLocales(nextLocales)
@@ -50,7 +47,7 @@ export default function DateTimeLocale(): JSX.Element {
   async function apply(): Promise<void> {
     const ok = await dialogs.confirm({
       title: 'Aplicar configurações regionais',
-      message: isWindows ? `Alterar o fuso horário para ${status.timezone} e ${status.ntp ? 'ativar' : 'desativar'} a sincronização automática?` : `Alterar timezone para ${status.timezone}, locale para ${status.locale} e teclado para ${status.keymap}? Isso afeta todo o sistema.`,
+      message: `Alterar timezone para ${status.timezone}, locale para ${status.locale} e teclado para ${status.keymap}? Isso afeta todo o sistema.`,
       variant: 'warning',
       confirmLabel: 'Aplicar'
     })
@@ -81,7 +78,7 @@ export default function DateTimeLocale(): JSX.Element {
       <div className="card">
         <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Data, Hora e Idioma</h1>
         <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-          {isWindows ? 'Fuso horário nativo do Windows e sincronização W32Time' : 'Timezone, NTP, locale do sistema e layout XKB persistente'}
+          Timezone, NTP, locale do sistema e layout XKB persistente
         </p>
       </div>
 
@@ -106,7 +103,6 @@ export default function DateTimeLocale(): JSX.Element {
           <label>
             <div style={{ marginBottom: 6, color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>Locale</div>
             <select
-              disabled={isWindows}
               value={status.locale}
               onChange={(event) => setStatus({ ...status, locale: event.target.value })}
               style={selectStyle}
@@ -120,7 +116,6 @@ export default function DateTimeLocale(): JSX.Element {
           <label>
             <div style={{ marginBottom: 6, color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>Layout de teclado</div>
             <select
-              disabled={isWindows}
               value={status.keymap}
               onChange={(event) => setStatus({ ...status, keymap: event.target.value })}
               style={selectStyle}
@@ -131,8 +126,6 @@ export default function DateTimeLocale(): JSX.Element {
             </select>
           </label>
         </div>
-
-        {isWindows && <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>Idioma de exibição e teclado estão em modo somente leitura neste corte, pois alterações podem exigir download de pacote de idioma e novo login.</div>}
 
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
           <input

@@ -5,7 +5,6 @@ import WindowChrome from './components/window/WindowChrome'
 import { DialogProvider } from './components/dialogs/DialogProvider'
 import { NavigationContext } from './components/navigation/NavigationContext'
 import { isModuleVisible } from './modules/platformVisibility'
-import UpdateNotification from './components/UpdateNotification'
 
 export default function App(): JSX.Element {
   const fallbackModules = useMemo(() => modules.filter((module) => module.id === 'about'), [])
@@ -41,7 +40,6 @@ export default function App(): JSX.Element {
             <main className="content">
               <ActiveComponent />
             </main>
-            <UpdateNotification />
           </div>
         </div>
       </NavigationContext.Provider>

@@ -10,8 +10,6 @@ import {
   type UpdatesAvailableEvent,
   type ProxyConfig
 } from './system/types'
-import type { FirewallRuleSpec } from './system/types'
-import type { SoftwareInstallOptions } from './system/types'
 import { createSystemClient } from './system/factory'
 import {
   applyDisplayConfig,
@@ -38,7 +36,6 @@ import { readAuditLog } from './ai/auditLog'
 import { getDailyUsage } from './ai/usageTracker'
 import type { AIProviderId, AIToolOutcome, AIToolProposal } from './ai/types'
 import { starterPromptsForCapabilities } from './ai/platformContext'
-import { initUpdater } from './updater'
 import { secureWebPreferences } from './windowSecurity'
 
 const vegaClient = createSystemClient()
@@ -140,9 +137,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:getPackageDetails', (_event, origin: string, id: string) =>
     vegaClient.getPackageDetails(origin, id)
   )
-  ipcMain.handle('vega:install', (_event, origin: string, id: string, options?: SoftwareInstallOptions) =>
-    vegaClient.install(origin, id, options)
-  )
+  ipcMain.handle('vega:install', (_event, origin: string, id: string) => vegaClient.install(origin, id))
   ipcMain.handle('vega:getAurPkgbuild', (_event, id: string) => vegaClient.getAurPkgbuild(id))
   ipcMain.handle('vega:remove', (_event, origin: string, id: string) => vegaClient.remove(origin, id))
   ipcMain.handle('vega:updateAll', () => vegaClient.updateAll())
@@ -166,7 +161,6 @@ app.whenReady().then(async () => {
     (_event, snapshotId: string, targetPath: string, mode: string) =>
       vegaClient.restoreBackupSnapshot(snapshotId, targetPath, mode)
   )
-  ipcMain.handle('vega:firewallCreateRule', (_event, spec: FirewallRuleSpec) => vegaClient.firewallCreateRule(spec))
   ipcMain.handle(
     'vega:restoreBackupItems',
     (_event, snapshotId: string, targetPath: string, mode: string, paths: string[]) =>
@@ -249,8 +243,8 @@ app.whenReady().then(async () => {
     const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options)
     return result.canceled ? '' : result.filePaths[0] ?? ''
   })
-  ipcMain.handle('vega:listDisplays', () => process.platform === 'win32' && vegaClient.listDisplays ? vegaClient.listDisplays() : listDisplays())
-  ipcMain.handle('vega:applyDisplayConfig', (_event, config: DisplayConfig) => process.platform === 'win32' && vegaClient.applyDisplayConfig ? vegaClient.applyDisplayConfig(config) : applyDisplayConfig(config))
+  ipcMain.handle('vega:listDisplays', () => listDisplays())
+  ipcMain.handle('vega:applyDisplayConfig', (_event, config: DisplayConfig) => applyDisplayConfig(config))
   ipcMain.handle('vega:confirmDisplayConfig', (_event, token: string) => vegaClient.confirmDisplayConfig?.(token))
   ipcMain.handle('vega:revertDisplayConfig', (_event, token: string) => vegaClient.revertDisplayConfig?.(token))
   ipcMain.handle('vega:listWallpapers', () => listWallpapers())
@@ -262,8 +256,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:listProcesses', () => vegaClient.listProcesses())
   ipcMain.handle('vega:killProcess', (_event, pid: number) => vegaClient.killProcess(pid))
   ipcMain.handle('vega:listUsers', () => vegaClient.listUsers())
-  ipcMain.handle('vega:createUser', (_event, username: string, isAdmin: boolean, password?: string) => vegaClient.createUser(username, isAdmin, password))
-  ipcMain.handle('vega:removeUser', (_event, username: string, removeProfile?: boolean) => vegaClient.removeUser(username, removeProfile))
+  ipcMain.handle('vega:createUser', (_event, username: string, isAdmin: boolean) => vegaClient.createUser(username, isAdmin))
+  ipcMain.handle('vega:removeUser', (_event, username: string) => vegaClient.removeUser(username))
   ipcMain.handle('vega:setAdmin', (_event, username: string, isAdmin: boolean) => vegaClient.setAdmin(username, isAdmin))
   ipcMain.handle('vega:listManagedServices', () => vegaClient.listManagedServices())
   ipcMain.handle('vega:listAllManagedServices', () => vegaClient.listAllManagedServices())
@@ -322,7 +316,6 @@ app.whenReady().then(async () => {
   ipcMain.handle('vega:window:isMaximized', () => Boolean(mainWindow?.isMaximized()))
 
   createWindow()
-  initUpdater(() => mainWindow)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

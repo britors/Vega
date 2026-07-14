@@ -1,7 +1,7 @@
 {
   "name": "vega",
-  "version": "1.7.10",
-  "description": "Centro de controle unificado para Linux e Windows",
+  "version": "1.8.0",
+  "description": "Centro de controle unificado para Linux",
   "author": "Rodrigo Brito",
   "license": "GPL-3.0",
   "homepage": "https://github.com/britors/Vega",
@@ -13,81 +13,15 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "build:agent:windows": "node scripts/build-windows-agent.mjs",
-    "package:windows": "npm run build:agent:windows && npm run build && electron-builder --win nsis --x64 --publish never",
     "test": "vitest run --exclude **/.tsbuild/**",
     "typecheck": "tsc -b tsconfig.json",
     "lint": "eslint . --ext .ts,.tsx",
     "start": "electron-vite preview"
   },
-  "build": {
-    "appId": "org.lyraos.vega",
-    "productName": "Vega",
-    "copyright": "Copyright © Rodrigo Brito",
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "npmRebuild": false,
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "britors",
-        "repo": "Vega",
-        "releaseType": "release"
-      }
-    ],
-    "files": [
-      "out/**/*",
-      "package.json",
-      "!node_modules/dbus-next/**/*",
-      "!node_modules/usocket/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "../dist/windows/vega-agent.exe",
-        "to": "bin/vega-agent.exe"
-      }
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "build/icon.ico",
-      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
-      "executableName": "Vega",
-      "signExts": [
-        ".exe"
-      ],
-      "signtoolOptions": {
-        "signingHashAlgorithms": [
-          "sha256"
-        ],
-        "rfc3161TimeStampServer": "http://timestamp.digicert.com"
-      }
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": true,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": false,
-      "createDesktopShortcut": false,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Vega",
-      "deleteAppDataOnUninstall": false,
-      "include": "build/installer.nsh"
-    }
-  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
     "@google/genai": "^2.11.0",
     "dbus-next": "^0.10.2",
-    "electron-updater": "^6.8.9",
     "openai": "^6.46.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -97,7 +31,6 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^43.1.0",
-    "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.0",

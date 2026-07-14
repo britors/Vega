@@ -19,7 +19,6 @@ import type {
   SystemMetrics,
   UserInfo
 } from '../main/system/types'
-import type { SoftwareInstallOptions } from '../main/system/types'
 import type { SystemCapabilities } from '../main/system/types'
 import type { DisplayApplyResult, DisplayConfig, DisplayOutputInfo, WallpaperInfo } from '../main/sessionSettings'
 import type {
@@ -31,7 +30,6 @@ import type {
   AIToolOutcome,
   AIToolProposal
 } from '../main/ai/types'
-import type { UpdateStatus } from '../main/updater'
 
 const api = {
   ping: (): Promise<VegaSystemInfo> => ipcRenderer.invoke('vega:ping'),
@@ -45,8 +43,7 @@ const api = {
   listInstalled: (): Promise<PackageRef[]> => ipcRenderer.invoke('vega:listInstalled'),
   getPackageDetails: (origin: string, id: string): Promise<PackageDetails> =>
     ipcRenderer.invoke('vega:getPackageDetails', origin, id),
-  install: (origin: string, id: string, options?: SoftwareInstallOptions): Promise<number> =>
-    ipcRenderer.invoke('vega:install', origin, id, options),
+  install: (origin: string, id: string): Promise<number> => ipcRenderer.invoke('vega:install', origin, id),
   getAurPkgbuild: (id: string): Promise<string> => ipcRenderer.invoke('vega:getAurPkgbuild', id),
   remove: (origin: string, id: string): Promise<number> => ipcRenderer.invoke('vega:remove', origin, id),
   updateAll: (): Promise<number> => ipcRenderer.invoke('vega:updateAll'),
@@ -88,8 +85,6 @@ const api = {
     ipcRenderer.invoke('vega:firewallListServices'),
   firewallSetServiceEnabled: (name: string, enabled: boolean): Promise<void> =>
     ipcRenderer.invoke('vega:firewallSetServiceEnabled', name, enabled),
-  firewallCreateRule: (spec: import('../main/system/types').FirewallRuleSpec): Promise<void> =>
-    ipcRenderer.invoke('vega:firewallCreateRule', spec),
   dateTimeStatus: (): Promise<{ timezone: string; ntp: boolean; locale: string; keymap: string }> =>
     ipcRenderer.invoke('vega:dateTimeStatus'),
   listTimezones: (): Promise<string[]> => ipcRenderer.invoke('vega:listTimezones'),
@@ -162,8 +157,8 @@ const api = {
   listProcesses: (): Promise<ProcessInfo[]> => ipcRenderer.invoke('vega:listProcesses'),
   killProcess: (pid: number): Promise<void> => ipcRenderer.invoke('vega:killProcess', pid),
   listUsers: (): Promise<UserInfo[]> => ipcRenderer.invoke('vega:listUsers'),
-  createUser: (username: string, isAdmin: boolean, password?: string): Promise<void> => ipcRenderer.invoke('vega:createUser', username, isAdmin, password),
-  removeUser: (username: string, removeProfile?: boolean): Promise<void> => ipcRenderer.invoke('vega:removeUser', username, removeProfile),
+  createUser: (username: string, isAdmin: boolean): Promise<void> => ipcRenderer.invoke('vega:createUser', username, isAdmin),
+  removeUser: (username: string): Promise<void> => ipcRenderer.invoke('vega:removeUser', username),
   setAdmin: (username: string, isAdmin: boolean): Promise<void> => ipcRenderer.invoke('vega:setAdmin', username, isAdmin),
   listManagedServices: (): Promise<
     { name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean; startupType?: string; serviceType?: string; protected?: boolean }[]
@@ -179,15 +174,6 @@ const api = {
   queryLogs: (unit: string, priority: string, since: string, search: string, maxLines: number): Promise<string[]> =>
     ipcRenderer.invoke('vega:queryLogs', unit, priority, since, search, maxLines),
   listLogUnits: (): Promise<string[]> => ipcRenderer.invoke('vega:listLogUnits'),
-  updaterGetStatus: (): Promise<UpdateStatus> => ipcRenderer.invoke('updater:getStatus'),
-  updaterCheck: (): Promise<void> => ipcRenderer.invoke('updater:check'),
-  updaterDownload: (): Promise<void> => ipcRenderer.invoke('updater:download'),
-  updaterInstall: (): Promise<void> => ipcRenderer.invoke('updater:install'),
-  onUpdaterStatus: (cb: (status: UpdateStatus) => void): (() => void) => {
-    const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void => cb(status)
-    ipcRenderer.on('updater:status', listener)
-    return () => ipcRenderer.removeListener('updater:status', listener)
-  },
   windowMinimize: (): Promise<void> => ipcRenderer.invoke('vega:window:minimize'),
   windowToggleMaximize: (): Promise<{ maximized: boolean }> => ipcRenderer.invoke('vega:window:toggleMaximize'),
   windowClose: (): Promise<void> => ipcRenderer.invoke('vega:window:close'),

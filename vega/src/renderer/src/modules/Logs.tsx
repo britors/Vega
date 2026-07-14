@@ -35,14 +35,8 @@ export default function Logs(): JSX.Element {
   const [lines, setLines] = useState<string[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isWindows, setIsWindows] = useState(false)
 
   useEffect(() => {
-    window.vega.getCapabilities().then((value) => {
-      const windows = value.platform === 'windows'
-      setIsWindows(windows)
-      if (windows) setUnit('System')
-    })
     window.vega
       .listLogUnits()
       .then(setUnits)
@@ -78,13 +72,13 @@ export default function Logs(): JSX.Element {
       <div className="card">
         <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Log do Sistema</h1>
         <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-          {isWindows ? 'Consulta somente leitura no Windows Event Log, usando as permissões da sua conta' : 'Consulta somente leitura do journal (journalctl)'}
+          Consulta somente leitura do journal (journalctl)
         </p>
       </div>
 
       <form onSubmit={onSubmit} className="card" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <select value={unit} onChange={(e) => setUnit(e.target.value)} style={selectStyle}>
-          <option value="">{isWindows ? 'System (padrão)' : 'Todas as unidades'}</option>
+          <option value="">Todas as unidades</option>
           {units.map((u) => (
             <option key={u} value={u}>
               {u}
@@ -131,12 +125,6 @@ export default function Logs(): JSX.Element {
       {error && (
         <div className="card" style={{ color: 'var(--lyra-danger)' }}>
           Falha: {error}
-        </div>
-      )}
-
-      {isWindows && (
-        <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.82rem' }}>
-          Canais sem permissão retornam erro; o Vega não eleva nem amplia a leitura silenciosamente.
         </div>
       )}
 

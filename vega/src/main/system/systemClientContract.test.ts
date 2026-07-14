@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SystemClient } from './systemClient'
 import { createMockSystemClient } from './mockSystemClient'
-import { createWindowsSystemClient } from './windowsSystemClient'
 
 function verifiesMinimumContract(name: string, create: () => SystemClient): void {
   describe(name, () => {
@@ -27,4 +26,3 @@ function verifiesMinimumContract(name: string, create: () => SystemClient): void
 }
 
 verifiesMinimumContract('mock SystemClient', createMockSystemClient)
-verifiesMinimumContract('Windows SystemClient', createWindowsSystemClient)

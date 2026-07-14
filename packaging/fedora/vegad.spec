@@ -33,7 +33,6 @@ Requires(post):   systemd
 Requires(preun):  systemd
 Requires(postun): systemd
 
-Recommends:     timeshift
 Recommends:     flatpak
 Recommends:     NetworkManager
 Recommends:     restic
@@ -43,9 +42,10 @@ Recommends:     bluez
 
 %description
 Daemon privilegiado do Vega para Fedora. Expõe operações de sistema
-(pacotes via DNF, snapshots via Timeshift, kernel, hardware, rede,
-firewall, usuários) via D-Bus, autorizadas por polkit. Ativado sob demanda
-pelo D-Bus (Type=dbus), não roda como serviço permanente.
+(pacotes via DNF, snapshots via snapper quando disponível, kernel,
+hardware, rede, firewall, usuários) via D-Bus, autorizadas por polkit.
+Ativado sob demanda pelo D-Bus (Type=dbus), não roda como serviço
+permanente.
 
 %prep
 %setup -q -c -n vega-src

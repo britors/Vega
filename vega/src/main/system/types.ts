@@ -1,4 +1,4 @@
-export type SystemPlatform = 'linux' | 'windows'
+export type SystemPlatform = 'linux'
 
 export type SystemModule =
   | 'dashboard'
@@ -54,15 +54,13 @@ export class SystemClientError extends Error {
   }
 }
 
-export interface VegaSystemInfo { version: string; connected: boolean; distro: string; build?: string; architecture?: string }
+export interface VegaSystemInfo { version: string; connected: boolean; distro: string }
 export interface PackageRef { origin: string; id: string; name: string; description: string; installed: boolean; icon: string }
 export interface PackageDetails {
   origin: string; id: string; name: string; description: string; installed: boolean
   installedVersion: string; availableVersion: string; downloadSize: string; installedSize: string
   dependencies: string[]; licenses: string[]; url: string; maintainer: string
-  scopes?: string[]; agreements?: string[]; interactive?: boolean
 }
-export interface SoftwareInstallOptions { scope?: 'user' | 'machine'; acceptAgreements?: boolean }
 export interface TransactionProgress { transactionId: number; percent: number; message: string }
 export interface TransactionFinished { transactionId: number; success: boolean; message: string }
 export interface BackupTransactionProgress { transactionId: number; percent: number; message: string }
@@ -72,17 +70,11 @@ export interface UpdatesAvailableEvent { count: number }
 export interface SnapshotInfo { id: number; timestamp: number; trigger: string; description: string }
 export interface HardwareInventory { cpu: string; gpu: string; ramText: string; manufacturer?: string; model?: string }
 export interface FirewallServiceInfo { name: string; label: string; enabled: boolean; profile?: string; readOnly?: boolean }
-export interface FirewallRuleSpec {
-  label: string; direction: 'inbound' | 'outbound'; profile: 'domain' | 'private' | 'public' | 'any'
-  protocol: 'tcp' | 'udp'; port?: number; program?: string; service?: string
-}
 export interface UserInfo {
-  username: string; isAdmin: boolean; sid?: string; accountType?: 'local' | 'microsoft' | 'domain'
-  readOnly?: boolean; protected?: boolean
+  username: string; isAdmin: boolean
 }
 export interface ManagedServiceInfo {
   name: string; label: string; description: string; enabled: boolean; active: boolean; available: boolean
-  startupType?: string; serviceType?: string; protected?: boolean
 }
 export interface DateTimeStatus { timezone: string; ntp: boolean; locale: string; keymap: string }
 export interface BootStatus { loader: string; defaultEntry: string; timeout: number; cmdline: string }

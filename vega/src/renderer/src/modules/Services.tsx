@@ -9,9 +9,6 @@ interface ManagedServiceInfo {
   enabled: boolean
   active: boolean
   available: boolean
-  startupType?: string
-  serviceType?: string
-  protected?: boolean
 }
 
 export default function Services(): JSX.Element {
@@ -21,7 +18,6 @@ export default function Services(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isWindows, setIsWindows] = useState(false)
 
   async function refresh(): Promise<void> {
     setLoading(true)
@@ -37,7 +33,6 @@ export default function Services(): JSX.Element {
   }
 
   useEffect(() => {
-    window.vega.getCapabilities().then((value) => setIsWindows(value.platform === 'windows'))
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAll])
@@ -109,9 +104,7 @@ export default function Services(): JSX.Element {
         <div>
           <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Serviços</h1>
           <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>
-            {isWindows
-              ? (showAll ? 'Todos os serviços Win32 acessíveis pelo Service Control Manager' : 'Lista curada de Windows Services; drivers permanecem ocultos')
-              : (showAll ? 'Todas as units service conhecidas pelo systemctl' : 'Lista curada de units systemd com start/stop e enable/disable')}
+            {showAll ? 'Todas as units service conhecidas pelo systemctl' : 'Lista curada de units systemd com start/stop e enable/disable'}
           </p>
         </div>
         <button
@@ -155,11 +148,11 @@ export default function Services(): JSX.Element {
       {loading && <EmptyState title="Carregando serviços..." />}
 
       <div className="card" style={{ display: 'grid', gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: '1rem' }}>{showAll ? (isWindows ? 'Todos os serviços' : 'Todas as units') : (isWindows ? 'Serviços principais' : 'Units principais')}</h2>
+        <h2 style={{ margin: 0, fontSize: '1rem' }}>{showAll ? 'Todas as units' : 'Units principais'}</h2>
         {services.length === 0 ? (
           <EmptyState
             title="Nenhum serviço disponível"
-            message={isWindows ? 'O Service Control Manager não retornou serviços acessíveis.' : (showAll ? 'O systemctl não retornou services para esta máquina.' : 'O daemon não retornou units curadas para esta máquina.')}
+            message={showAll ? 'O systemctl não retornou services para esta máquina.' : 'O daemon não retornou units curadas para esta máquina.'}
           />
         ) : (
           services.map((service) => (
@@ -213,14 +206,6 @@ export default function Services(): JSX.Element {
                       indisponível
                     </span>
                   )}
-                  {service.protected && (
-                    <span style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(255, 184, 77, 0.14)', color: 'var(--lyra-warning)', fontSize: '0.78rem' }}>
-                      protegido
-                    </span>
-                  )}
-                  {service.startupType && (
-                    <span style={{ color: 'var(--lyra-text-muted)', fontSize: '0.78rem' }}>startup: {service.startupType}</span>
-                  )}
                 </div>
                 <div style={{ marginTop: 4, color: 'var(--lyra-text-muted)', fontSize: '0.86rem' }}>
                   {service.description}
@@ -229,7 +214,7 @@ export default function Services(): JSX.Element {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button
                   onClick={() => setRunning(service)}
-                  disabled={busy || !service.available || (service.protected && service.active)}
+                  disabled={busy || !service.available}
                   style={{
                     padding: '6px 14px',
                     borderRadius: 'var(--lyra-radius-sm)',
@@ -243,7 +228,7 @@ export default function Services(): JSX.Element {
                 </button>
                 <button
                   onClick={() => restart(service)}
-                  disabled={busy || !service.available || !service.active || service.protected}
+                  disabled={busy || !service.available || !service.active}
                   style={{
                     padding: '6px 14px',
                     borderRadius: 'var(--lyra-radius-sm)',
@@ -257,7 +242,7 @@ export default function Services(): JSX.Element {
                 </button>
                 <button
                   onClick={() => setEnabled(service)}
-                  disabled={busy || !service.available || (service.protected && service.enabled)}
+                  disabled={busy || !service.available}
                   style={{
                     padding: '6px 14px',
                     borderRadius: 'var(--lyra-radius-sm)',

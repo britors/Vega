@@ -1,11 +1,10 @@
 import { EventEmitter } from 'node:events'
 import type {
   BackupConfig, BackupSnapshotInfo, BluetoothDeviceInfo, BluetoothStatus, BootStatus, DateTimeStatus,
-  FirewallRuleSpec, FirewallServiceInfo, HardwareInventory, ManagedServiceInfo, NetworkInterfaceInfo, PackageDetails, PackageRef,
+  FirewallServiceInfo, HardwareInventory, ManagedServiceInfo, NetworkInterfaceInfo, PackageDetails, PackageRef,
   ProcessInfo, ProxyConfig, SnapshotInfo, StorageVolumeInfo, SystemCapabilities, SystemMetrics, UserInfo,
   VegaSystemInfo, WifiNetworkInfo
 } from './types'
-import type { SoftwareInstallOptions } from './types'
 import type { DisplayApplyResult, DisplayConfig, DisplayOutputInfo } from '../sessionSettings'
 
 export interface SystemClient extends EventEmitter {
@@ -22,7 +21,7 @@ export interface SystemClient extends EventEmitter {
   listUpdates(): Promise<PackageRef[]>
   listInstalled(): Promise<PackageRef[]>
   getPackageDetails(origin: string, id: string): Promise<PackageDetails>
-  install(origin: string, id: string, options?: SoftwareInstallOptions): Promise<number>
+  install(origin: string, id: string): Promise<number>
   getAurPkgbuild(id: string): Promise<string>
   remove(origin: string, id: string): Promise<number>
   updateAll(): Promise<number>
@@ -55,7 +54,6 @@ export interface SystemClient extends EventEmitter {
   firewallStatus(): Promise<{ enabled: boolean; activeZone: string }>
   firewallListServices(): Promise<FirewallServiceInfo[]>
   firewallSetServiceEnabled(name: string, enabled: boolean): Promise<void>
-  firewallCreateRule(spec: FirewallRuleSpec): Promise<void>
   dateTimeStatus(): Promise<DateTimeStatus>
   listTimezones(): Promise<string[]>
   listLocales(): Promise<string[]>
@@ -89,8 +87,8 @@ export interface SystemClient extends EventEmitter {
   listProcesses(): Promise<ProcessInfo[]>
   killProcess(pid: number): Promise<void>
   listUsers(): Promise<UserInfo[]>
-  createUser(username: string, isAdmin: boolean, password?: string): Promise<void>
-  removeUser(username: string, removeProfile?: boolean): Promise<void>
+  createUser(username: string, isAdmin: boolean): Promise<void>
+  removeUser(username: string): Promise<void>
   setAdmin(username: string, isAdmin: boolean): Promise<void>
   listManagedServices(): Promise<ManagedServiceInfo[]>
   listAllManagedServices(): Promise<ManagedServiceInfo[]>

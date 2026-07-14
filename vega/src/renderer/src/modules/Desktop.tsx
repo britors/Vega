@@ -60,7 +60,7 @@ export default function Desktop(): JSX.Element {
       if (!result?.token) throw new Error('O agente não retornou a confirmação temporária do monitor.')
       const confirmed = await dialogs.confirm({
         title: 'Manter esta configuração?',
-        message: `A imagem está correta? Confirme em até ${result.rollbackAfterSeconds} segundos. Sem confirmação, o Windows volta automaticamente à configuração anterior.`,
+        message: `A imagem está correta? Confirme em até ${result.rollbackAfterSeconds} segundos. Sem confirmação, o sistema volta automaticamente à configuração anterior.`,
         variant: 'warning', confirmLabel: 'Manter configuração'
       })
       if (confirmed) {
@@ -79,7 +79,7 @@ export default function Desktop(): JSX.Element {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div className="card">
         <h1 style={{ margin: 0, fontSize: '1.3rem' }}>Bluetooth e Personalização</h1>
-        <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>Integrações de sessão do Windows, sem exigir Electron elevado</p>
+        <p style={{ margin: '4px 0 0', color: 'var(--lyra-text-muted)' }}>Integrações de sessão do desktop, sem exigir Electron elevado</p>
       </div>
 
       {error && <div className="card" style={{ color: 'var(--lyra-danger)' }}>Falha: {error}</div>}
@@ -118,7 +118,7 @@ export default function Desktop(): JSX.Element {
 
       <div className="card" style={{ display: 'grid', gap: 12 }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Wallpaper</h2>
-        <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.84rem' }}>Imagens locais do Windows e da pasta Imagens. URIs remotas são recusadas; o fallback atual aplica a mesma imagem em todos os monitores.</div>
+        <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.84rem' }}>Imagens locais do sistema e da pasta Imagens. URIs remotas são recusadas; o fallback atual aplica a mesma imagem em todos os monitores.</div>
         {wallpapers.length === 0 ? <EmptyState title="Nenhum wallpaper local encontrado" /> : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8, maxHeight: 300, overflow: 'auto' }}>
             {wallpapers.map((wallpaper) => <button key={wallpaper.id} style={{ ...buttonStyle, textAlign: 'left' }} disabled={busy} onClick={() => action(async () => { await window.vega.applyWallpaper(wallpaper.path) }, `Wallpaper “${wallpaper.name}” aplicado.`)}><strong>{wallpaper.name}</strong><div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.78rem' }}>{wallpaper.source}</div></button>)}

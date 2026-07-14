@@ -45,27 +45,9 @@ export default function Dashboard(): JSX.Element {
       setError(null)
       try {
         const capabilities = await window.vega.getCapabilities()
-        if (capabilities.platform === 'windows') {
-          const [system, metrics, disk, backupConfigs] = await Promise.all([
-            window.vega.ping(), window.vega.systemMetrics(), window.vega.diskUsage(),
-            capabilities.modules.includes('backup') ? window.vega.listBackupConfigs() : Promise.resolve([])
-          ])
-          if (cancelled) return
-          const memoryPercent = metrics.memTotal > 0 ? (metrics.memUsed / metrics.memTotal) * 100 : 0
-          setCards([
-            // Pontos de Restauração/Snapper é deliberadamente ausente no Windows.
-            { title: 'Sistema', value: system.distro, detail: `build ${system.build || 'indisponível'} · ${system.architecture || 'arquitetura desconhecida'}`, tone: 'neutral', moduleId: 'about' },
-            { title: 'Agente Vega', value: system.connected ? 'Conectado' : 'Desconectado', detail: `versão ${system.version}`, tone: system.connected ? 'ok' : 'danger', moduleId: 'about' },
-            { title: 'CPU', value: `${metrics.cpuPercent.toFixed(0)}%`, detail: 'uso geral', tone: metrics.cpuPercent >= 90 ? 'danger' : metrics.cpuPercent >= 75 ? 'warn' : 'ok', moduleId: 'monitor' },
-            { title: 'Memória', value: `${memoryPercent.toFixed(0)}%`, detail: `${formatBytes(metrics.memUsed)} de ${formatBytes(metrics.memTotal)}`, tone: memoryPercent >= 90 ? 'danger' : memoryPercent >= 75 ? 'warn' : 'ok', moduleId: 'monitor' },
-            { title: 'Volume do sistema', value: `${disk.percent}%`, detail: `${disk.used} de ${disk.total} usados`, tone: disk.percent >= 90 ? 'danger' : disk.percent >= 75 ? 'warn' : 'ok', moduleId: 'storage' },
-            ...(capabilities.modules.includes('backup') ? [{ title: 'Backup', value: backupConfigs.length ? `${backupConfigs.length} configurado(s)` : 'Não configurado', detail: backupConfigs.length ? 'Restic protegido por DPAPI' : 'Nenhum destino cadastrado', tone: backupConfigs.length ? 'ok' as const : 'warn' as const, moduleId: 'backup' as const }] : [])
-          ])
-          return
-        }
         const [updates, snapshots, backupConfigs, services, disk] = await Promise.all([
           window.vega.listUpdates(),
-          window.vega.listSnapshots(),
+          capabilities.modules.includes('snapshots') ? window.vega.listSnapshots() : Promise.resolve([]),
           window.vega.listBackupConfigs(),
           window.vega.listManagedServices(),
           window.vega.diskUsage()
@@ -110,13 +92,13 @@ export default function Dashboard(): JSX.Element {
             tone: updates.length === 0 ? 'ok' : 'warn',
             moduleId: 'software'
           },
-          {
+          ...(capabilities.modules.includes('snapshots') ? [{
             title: 'Pontos de Restauração',
             value: String(snapshots.length),
             detail: oldestSnapshot === null ? 'Nenhum snapshot ainda' : `mais antigo: ${formatAge(oldestSnapshot)}`,
-            tone: snapshots.length === 0 ? 'warn' : 'neutral',
-            moduleId: 'snapshots'
-          },
+            tone: snapshots.length === 0 ? 'warn' as const : 'neutral' as const,
+            moduleId: 'snapshots' as const
+          }] : []),
           backupCard,
           {
             title: 'Serviços',

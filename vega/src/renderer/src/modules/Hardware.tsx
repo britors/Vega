@@ -18,18 +18,15 @@ export default function Hardware(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isWindows, setIsWindows] = useState(false)
 
   async function refresh(): Promise<void> {
     setLoading(true)
     setError(null)
     try {
-      const [capabilities, nextInventory, nextFirmware] = await Promise.all([
-        window.vega.getCapabilities(),
+      const [nextInventory, nextFirmware] = await Promise.all([
         window.vega.hardwareInventory(),
         window.vega.hardwareFirmwareStatus()
       ])
-      setIsWindows(capabilities.platform === 'windows')
       setInventory(nextInventory)
       setFirmwareStatus(nextFirmware)
     } catch (err) {
@@ -104,7 +101,7 @@ export default function Hardware(): JSX.Element {
         )}
       </div>
 
-      {!isWindows && <div className="card" style={{ display: 'grid', gap: 12 }}>
+      <div className="card" style={{ display: 'grid', gap: 12 }}>
         <h2 style={{ margin: 0, fontSize: '1rem' }}>Troca de driver NVIDIA</h2>
         <div style={{ color: 'var(--lyra-text-muted)', fontSize: '0.85rem' }}>
           {selectedDriver} será aplicado após confirmação.
@@ -135,7 +132,7 @@ export default function Hardware(): JSX.Element {
             {busy ? 'Aplicando...' : 'Aplicar'}
           </button>
         </div>
-      </div>}
+      </div>
     </div>
   )
 }
