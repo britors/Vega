@@ -5,6 +5,7 @@
 # Electron ships prebuilt native addons for multiple architectures. Do not
 # derive host RPM dependencies from those foreign binaries.
 %global __requires_exclude_from ^%{_prefix}/lib/lyra-vega/node_modules/.*
+%global __requires_exclude ^/usr/lib/lyra-vega/node_modules/.*
 
 Name:           vega
 Version:        %{version}
