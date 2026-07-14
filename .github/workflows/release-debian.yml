@@ -23,7 +23,9 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             build-essential debhelper dpkg-dev fakeroot \
-            golang-go nodejs npm ca-certificates git
+            golang-go ca-certificates curl git
+          curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+          apt-get install -y --no-install-recommends nodejs
 
       - uses: actions/checkout@v4
 
