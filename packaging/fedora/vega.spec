@@ -1,4 +1,4 @@
-# Empacotamento de teste local/CI para Fedora. Ver vegad.spec neste mesmo
+# Empacotamento para Fedora. Ver vegad.spec neste mesmo
 # diretório para as notas gerais (versionamento via --define version,
 # status do empacotamento e por que debug_package é desabilitado — mesmo
 # problema aqui, agravado pelo Electron bundled trazendo seus próprios
@@ -27,9 +27,6 @@ nos repositórios do Fedora, então o Electron da devDependency do npm é
 empacotado junto em /usr/lib/lyra-vega/node_modules/electron — o pacote
 fica maior que o normal por causa disso, mesma situação do empacotamento
 openSUSE/Debian.
-
-Empacotamento ainda não validado ponta a ponta num Fedora real — trate
-como build de teste.
 
 %prep
 %setup -q -c -n vega-src

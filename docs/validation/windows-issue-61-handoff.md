@@ -1,7 +1,21 @@
 # Handoff — conclusão da migração Windows (#61)
 
-Atualizado em 2026-07-13. Este arquivo registra o ponto exato para retomar o
+Atualizado em 2026-07-14. Este arquivo registra o ponto exato para retomar o
 trabalho sem depender do histórico da conversa.
+
+## Estado automatizável concluído
+
+O lote local da issue #61 foi implementado e validado: Electron 43.1.0 com
+Node 24 no CI, fuzz/negative tests do protocolo, lifecycle do agente, contrato
+compartilhado do `SystemClient`, dispatcher do broker com executor falso,
+redação de segredos na auditoria, testes das preferências seguras do renderer,
+scripts de consistência/smoke NSIS, gate de release e documentação de QA.
+`go test`, `go vet`, build cruzado Windows, testes Electron, typecheck, build e
+`git diff --check` passam neste host Linux.
+
+O `npm audit` não foi consultável nesta execução por falha DNS no registry;
+as vulnerabilidades conhecidas e a exceção do pacote Windows estão registradas
+em `docs/windows/security-dependencies.md`.
 
 ## Estado publicado
 

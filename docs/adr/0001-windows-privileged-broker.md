@@ -5,6 +5,38 @@
 - **Issue:** [#49](https://github.com/britors/Vega/issues/49)
 - **Escopo:** Windows 11 x64 Home e Pro
 
+## Estado da implementação (2026-07-14)
+
+O agente, o framing de 1 MiB, schemas fechados, nonce, request ID único,
+named pipe protegido, checagem de PID/sessão/elevação e broker descartável
+estão implementados. O dispatcher privilegiado foi separado dos adaptadores:
+testes com executor falso provam que operação desconhecida e parâmetros
+inválidos não alcançam APIs do sistema. Erros externos atravessam a fronteira
+sem texto bruto, evitando exposição de senha ou argumentos sensíveis.
+
+Divergências e trabalho que permanece condicionado ao gate manual:
+
+- o nome do pipe usa 128 bits aleatórios, mas não inclui o session ID como
+  componente textual; a sessão é verificada pela identidade dos processos;
+- `go-winio` aplica a DACL explícita e limita o endpoint local, mas a presença
+  literal de `FILE_FLAG_FIRST_PIPE_INSTANCE` e `PIPE_REJECT_REMOTE_CLIENTS`
+  não é afirmada sem um teste de integração do handle no Windows;
+- caminho, sessão e elevação são verificados; validação Authenticode do peer
+  durante o handshake ainda depende da cadeia de assinatura/release e precisa
+  de evidência com binários assinados;
+- não há Job Object próprio no agente atual. O stdio quebrado encerra o filho,
+  e há testes de EOF/deadline, mas crash e processo órfão precisam ser testados
+  na matriz Windows;
+- auditoria privilegiada dedicada e rotacionada ainda não registra todas as
+  operações do broker. O instalador protege `%ProgramData%\Vega\Audit`, e o
+  gate verifica a ACL, mas não se deve alegar cobertura de auditoria completa;
+- timeout total do broker é 90 segundos. Idle por fase, cancelamento em
+  progresso e limites absolutos por operação ainda não correspondem a todos os
+  valores ideais descritos abaixo.
+
+Essas divergências são ameaças residuais visíveis, não evidência concluída.
+Uma release exige a matriz de [QA Windows](../windows/qa-release-gate.md).
+
 ## Contexto
 
 No Linux, o Electron roda como usuário comum e o `vegad` é ativado pelo

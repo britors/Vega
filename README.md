@@ -1,8 +1,22 @@
 # Vega
 
-Centro de controle unificado para Linux.
+Centro de controle unificado para Linux e Windows.
 
 ## Instalação
+
+### Windows 11 x64
+
+Baixe `Vega-Setup-<versão>-x64.exe` e o arquivo `.sha256` da GitHub Release,
+confira o hash e a assinatura Authenticode e execute o instalador. O Electron
+roda como usuário comum; ações administrativas iniciam um broker descartável e
+mostram UAC por operação. O suporte Windows ainda depende do gate manual
+documentado em [`docs/windows/qa-release-gate.md`](docs/windows/qa-release-gate.md);
+uma tag não deve ser tratada como pronta sem as evidências dessa matriz.
+
+No Windows, Software usa WinGet e Backup usa Restic quando disponível. Pontos
+de Restauração e Kernel permanecem ocultos; algumas ações de Bluetooth abrem
+as Configurações do Windows. Veja o documento de QA para instalação, remoção,
+troubleshooting, privacidade e demais limitações.
 
 ### Arch
 

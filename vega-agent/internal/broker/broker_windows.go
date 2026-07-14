@@ -7,9 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -187,155 +185,57 @@ func RunClient(ctx context.Context, pipeName string, serverPID, sessionID uint32
 	if request.Version != protocol.Version || request.Nonce != nonce || request.RequestID == "" {
 		return fmt.Errorf("unauthorized broker request")
 	}
-	result := map[string]any{"elevated": true, "pid": os.Getpid()}
-	switch request.Operation {
-	case "broker.proof":
-		if len(request.Params) > 0 && string(request.Params) != "{}" && string(request.Params) != "null" {
-			return fmt.Errorf("broker proof takes no parameters")
-		}
-	case "process.kill":
-		var params struct {
-			PID uint32 `json:"pid"`
-		}
-		decoder := json.NewDecoder(strings.NewReader(string(request.Params)))
-		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&params); err != nil || params.PID == 0 {
-			return fmt.Errorf("invalid process.kill parameters")
-		}
-		if err := decoder.Decode(&struct{}{}); err != io.EOF {
-			return fmt.Errorf("invalid process.kill parameters")
-		}
-		if err := processcontrol.Kill(params.PID); err != nil {
-			code := "EXTERNAL_FAILURE"
-			if errors.Is(err, processcontrol.ErrProtected) {
-				code = "UNAUTHORIZED"
-			}
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: code, Message: err.Error()}})
-		}
-		result["terminated"] = true
-	case "services.start", "services.stop", "services.restart", "services.enable", "services.disable":
-		var params struct {
-			Name string `json:"name"`
-		}
-		decoder := json.NewDecoder(strings.NewReader(string(request.Params)))
-		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&params); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
-			return fmt.Errorf("invalid service parameters")
-		}
-		action := strings.TrimPrefix(request.Operation, "services.")
-		if err := servicecontrol.ValidateAction(params.Name, action); err != nil {
-			code := "INVALID_ARGUMENT"
-			if errors.Is(err, servicecontrol.ErrProtected) {
-				code = "UNAUTHORIZED"
-			}
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: code, Message: err.Error()}})
-		}
-		if err := (servicecontrol.Manager{}).Apply(ctx, params.Name, action); err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
-		}
-		result["changed"] = true
-	case "network.staticIPv4":
-		var params networking.StaticIPv4
-		if err := decodeClosed(request.Params, &params); err != nil {
-			return fmt.Errorf("invalid network.staticIPv4 parameters")
-		}
-		valid, err := networking.ValidateStaticIPv4(params)
-		if err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "INVALID_ARGUMENT", Message: err.Error()}})
-		}
-		if err := (networking.Reader{}).ApplyStaticIPv4(ctx, valid); err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
-		}
-		result["changed"] = true
-	case "network.firewallRuleSet":
-		var params struct {
-			Name    string `json:"name"`
-			Enabled bool   `json:"enabled"`
-		}
-		if err := decodeClosed(request.Params, &params); err != nil || networking.ValidateManagedRuleName(params.Name) != nil {
-			return fmt.Errorf("invalid network.firewallRuleSet parameters")
-		}
-		if err := (networking.Reader{}).SetFirewallRuleEnabled(ctx, params.Name, params.Enabled); err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
-		}
-		result["changed"] = true
-	case "network.firewallRuleCreate":
-		var params networking.FirewallRuleSpec
-		if err := decodeClosed(request.Params, &params); err != nil {
-			return fmt.Errorf("invalid network.firewallRuleCreate parameters")
-		}
-		valid, err := networking.ValidateFirewallRule(params)
-		if err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "INVALID_ARGUMENT", Message: err.Error()}})
-		}
-		name, err := (networking.Reader{}).CreateFirewallRule(ctx, valid)
-		if err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
-		}
-		result["name"] = name
-	case "accounts.create":
-		var params localaccounts.CreateParams
-		if err := decodeClosed(request.Params, &params); err != nil {
-			return fmt.Errorf("invalid accounts.create parameters")
-		}
-		valid, err := localaccounts.ValidateCreate(params)
-		if err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "INVALID_ARGUMENT", Message: err.Error()}})
-		}
-		if err := (localaccounts.Manager{}).Create(ctx, valid); err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
-		}
-		result["changed"] = true
-	case "accounts.remove":
-		var params localaccounts.RemoveParams
-		if err := decodeClosed(request.Params, &params); err != nil {
-			return fmt.Errorf("invalid accounts.remove parameters")
-		}
-		if err := (localaccounts.Manager{}).Remove(ctx, params); err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
-		}
-		result["changed"] = true
-	case "accounts.setAdmin":
-		var params localaccounts.AdminParams
-		if err := decodeClosed(request.Params, &params); err != nil {
-			return fmt.Errorf("invalid accounts.setAdmin parameters")
-		}
-		if err := (localaccounts.Manager{}).SetAdmin(ctx, params); err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
-		}
-		result["changed"] = true
-	case "regional.apply":
-		var params regional.ApplyParams
-		if err := decodeClosed(request.Params, &params); err != nil {
-			return fmt.Errorf("invalid regional.apply parameters")
-		}
-		valid, err := regional.ValidateApply(params)
-		if err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "INVALID_ARGUMENT", Message: err.Error()}})
-		}
-		if err := (regional.Manager{}).Apply(ctx, valid); err != nil {
-			return protocol.Write(connection, protocol.Message{Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: &protocol.Error{Code: "EXTERNAL_FAILURE", Message: err.Error()}})
-		}
-		result["changed"] = true
-	default:
-		return fmt.Errorf("broker operation not allowed")
+	dispatched, err := Dispatch(ctx, request, windowsExecutor{})
+	if err != nil {
+		return err
 	}
+	if dispatched.Failure != nil {
+		return protocol.Write(connection, protocol.Message{
+			Version: protocol.Version, Kind: "error", RequestID: request.RequestID, Error: dispatched.Failure,
+		})
+	}
+	dispatched.Values["pid"] = os.Getpid()
 	return protocol.Write(connection, protocol.Message{
-		Version: protocol.Version, Kind: "result", RequestID: request.RequestID,
-		Result: result,
+		Version: protocol.Version, Kind: "result", RequestID: request.RequestID, Result: dispatched.Values,
 	})
 }
 
-func decodeClosed(params []byte, target any) error {
-	decoder := json.NewDecoder(strings.NewReader(string(params)))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		return err
-	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return fmt.Errorf("trailing parameters")
-	}
-	return nil
+type windowsExecutor struct{}
+
+func (windowsExecutor) Kill(pid uint32) error {
+	return processcontrol.Kill(pid)
+}
+
+func (windowsExecutor) Service(ctx context.Context, name, action string) error {
+	return (servicecontrol.Manager{}).Apply(ctx, name, action)
+}
+
+func (windowsExecutor) StaticIPv4(ctx context.Context, config networking.StaticIPv4) error {
+	return (networking.Reader{}).ApplyStaticIPv4(ctx, config)
+}
+
+func (windowsExecutor) SetFirewallRule(ctx context.Context, name string, enabled bool) error {
+	return (networking.Reader{}).SetFirewallRuleEnabled(ctx, name, enabled)
+}
+
+func (windowsExecutor) CreateFirewallRule(ctx context.Context, spec networking.FirewallRuleSpec) (string, error) {
+	return (networking.Reader{}).CreateFirewallRule(ctx, spec)
+}
+
+func (windowsExecutor) AccountCreate(ctx context.Context, params localaccounts.CreateParams) error {
+	return (localaccounts.Manager{}).Create(ctx, params)
+}
+
+func (windowsExecutor) AccountRemove(ctx context.Context, params localaccounts.RemoveParams) error {
+	return (localaccounts.Manager{}).Remove(ctx, params)
+}
+
+func (windowsExecutor) AccountSetAdmin(ctx context.Context, params localaccounts.AdminParams) error {
+	return (localaccounts.Manager{}).SetAdmin(ctx, params)
+}
+
+func (windowsExecutor) RegionalApply(ctx context.Context, params regional.ApplyParams) error {
+	return (regional.Manager{}).Apply(ctx, params)
 }
 
 func randomPipeName() (string, error) {

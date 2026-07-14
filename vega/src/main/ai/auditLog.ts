@@ -20,13 +20,24 @@ function redactSensitive(text: string): string {
   return REDACT_PATTERNS.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), text)
 }
 
-function redactValue(value: unknown): unknown {
+const SENSITIVE_FIELD = /^(password|passphrase|secret|token|nonce|api[_-]?key|authorization)$/i
+
+function redactValue(value: unknown, key = ''): unknown {
+  if (SENSITIVE_FIELD.test(key)) return '[segredo redigido]'
   if (typeof value === 'string') return redactSensitive(value)
-  if (Array.isArray(value)) return value.map(redactValue)
+  if (Array.isArray(value)) return value.map((item) => redactValue(item, key))
   if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, redactValue(item)]))
+    return Object.fromEntries(Object.entries(value).map(([childKey, item]) => [childKey, redactValue(item, childKey)]))
   }
   return value
+}
+
+export function redactAuditEntry(entry: Omit<AIAuditEntry, 'timestamp'>): Omit<AIAuditEntry, 'timestamp'> {
+  return {
+    ...entry,
+    input: redactValue(entry.input) as Record<string, unknown>,
+    detail: redactSensitive(entry.detail)
+  }
 }
 
 function auditLogPath(): string {
@@ -34,8 +45,7 @@ function auditLogPath(): string {
 }
 
 export async function logAuditEntry(entry: Omit<AIAuditEntry, 'timestamp'>): Promise<void> {
-  const redactedInput = redactValue(entry.input) as Record<string, unknown>
-  const redacted = { ...entry, input: redactedInput, detail: redactSensitive(entry.detail) }
+  const redacted = redactAuditEntry(entry)
   const line = JSON.stringify({ timestamp: new Date().toISOString(), ...redacted } satisfies AIAuditEntry)
   try {
     await fs.appendFile(auditLogPath(), line + '\n', { mode: 0o600 })

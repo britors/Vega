@@ -65,3 +65,39 @@ func TestWriteRejectsLargePayload(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func FuzzRead(f *testing.F) {
+	valid := framed(`{"version":1,"kind":"hello","nonce":"01234567890123456789012345678901"}`).Bytes()
+	duplicate := framed(`{"version":1,"kind":"hello","kind":"request"}`).Bytes()
+	unknown := framed(`{"version":1,"kind":"hello","unknown":true}`).Bytes()
+	truncated := framed(`{"version":1,"kind":"hello"}`).Bytes()
+	truncated = truncated[:len(truncated)-1]
+	oversized := &bytes.Buffer{}
+	_ = binary.Write(oversized, binary.LittleEndian, uint32(MaxFrameSize+1))
+
+	for _, seed := range [][]byte{
+		nil,
+		{0, 0, 0, 0},
+		valid,
+		duplicate,
+		unknown,
+		truncated,
+		oversized.Bytes(),
+		[]byte(`{"arbitrary":[null,true,1,"text",{}]}`),
+	} {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, frame []byte) {
+		message, err := Read(bytes.NewReader(frame))
+		if err == nil {
+			var encoded bytes.Buffer
+			if writeErr := Write(&encoded, message); writeErr != nil {
+				t.Fatalf("accepted message cannot be encoded: %v", writeErr)
+			}
+			if _, readErr := Read(&encoded); readErr != nil {
+				t.Fatalf("accepted message cannot be decoded again: %v", readErr)
+			}
+		}
+	})
+}

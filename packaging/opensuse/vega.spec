@@ -1,4 +1,4 @@
-# Empacotamento de teste local/CI para openSUSE Leap. Ver vegad.spec neste
+# Empacotamento Linux. Ver vegad.spec neste
 # mesmo diretório para as notas gerais (versionamento via --define version,
 # status do empacotamento).
 %{!?version: %define version 0.0.0}
@@ -23,9 +23,6 @@ UI do Vega (Electron/React) para openSUSE Leap. Não há binário "electron"
 empacotado no Leap, então o Electron da devDependency do npm é empacotado
 junto em /usr/lib/lyra-vega/node_modules/electron — o pacote fica maior que
 o normal por causa disso.
-
-Empacotamento ainda não validado ponta a ponta num Leap real — trate como
-build de teste.
 
 %prep
 %setup -q -c -n vega-src

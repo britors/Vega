@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -56,6 +57,13 @@ func (fixtureCollector) ListProcesses(context.Context) ([]ProcessInfo, error) {
 }
 func (fixtureCollector) ListStorageVolumes(context.Context) ([]StorageVolumeInfo, error) {
 	return []StorageVolumeInfo{{Name: "Dados_日本", Path: "D:", FSType: "NTFS", Health: "Healthy"}}, nil
+}
+
+type blockingCollector struct{ fixtureCollector }
+
+func (blockingCollector) SystemInfo(ctx context.Context) (map[string]any, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
 }
 
 type fixtureProcesses struct{}
@@ -326,6 +334,65 @@ func TestRejectsParametersForPing(t *testing.T) {
 	}
 	if response.Error == nil || response.Error.Code != "INVALID_ARGUMENT" {
 		t.Fatalf("got %#v", response)
+	}
+}
+
+func TestServeStopsAfterOperationTimeout(t *testing.T) {
+	server, client := net.Pipe()
+	defer client.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- (Server{PlatformVersion: "test", Collector: blockingCollector{}}).Serve(ctx, server, server)
+		_ = server.Close()
+	}()
+	client.SetDeadline(time.Now().Add(2 * time.Second))
+	hello := handshake(t, client)
+
+	if err := protocol.Write(client, protocol.Message{
+		Version: protocol.Version, Kind: "request", RequestID: "timeout", Nonce: hello.Nonce, Operation: "system.ping",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	response, err := protocol.Read(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.Kind != "result" {
+		t.Fatalf("got %#v", response)
+	}
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("got %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("server did not stop after context deadline")
+	}
+}
+
+func TestServeStopsWhenClientCloses(t *testing.T) {
+	server, client := net.Pipe()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- (Server{PlatformVersion: "test"}).Serve(ctx, server, server)
+		_ = server.Close()
+	}()
+	client.SetDeadline(time.Now().Add(2 * time.Second))
+	_ = handshake(t, client)
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-done:
+		if !errors.Is(err, io.EOF) {
+			t.Fatalf("got %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("server did not stop after client closed")
 	}
 }
 

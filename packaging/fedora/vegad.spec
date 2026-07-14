@@ -1,4 +1,4 @@
-# Empacotamento de teste local/CI para Fedora. Ainda não publicado em
+# Empacotamento para Fedora. Ainda não publicado em
 # nenhum repositório oficial (Copr ou similar) — mesmo padrão de
 # packaging/opensuse/vegad.spec, adaptado para DNF/nomes de pacote do Fedora.
 #
@@ -46,9 +46,6 @@ Daemon privilegiado do Vega para Fedora. Expõe operações de sistema
 (pacotes via DNF, snapshots via Timeshift, kernel, hardware, rede,
 firewall, usuários) via D-Bus, autorizadas por polkit. Ativado sob demanda
 pelo D-Bus (Type=dbus), não roda como serviço permanente.
-
-Empacotamento ainda não validado ponta a ponta num Fedora real — trate
-como build de teste.
 
 %prep
 %setup -q -c -n vega-src

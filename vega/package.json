@@ -15,7 +15,7 @@
     "build": "electron-vite build",
     "build:agent:windows": "node scripts/build-windows-agent.mjs",
     "package:windows": "npm run build:agent:windows && npm run build && electron-builder --win nsis --x64 --publish never",
-    "test": "vitest run",
+    "test": "vitest run --exclude **/.tsbuild/**",
     "typecheck": "tsc -b tsconfig.json",
     "lint": "eslint . --ext .ts,.tsx",
     "start": "electron-vite preview"
@@ -96,7 +96,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
-    "electron": "^31.3.0",
+    "electron": "^43.1.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
     "typescript": "^5.5.4",

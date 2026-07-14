@@ -39,6 +39,7 @@ import { getDailyUsage } from './ai/usageTracker'
 import type { AIProviderId, AIToolOutcome, AIToolProposal } from './ai/types'
 import { starterPromptsForCapabilities } from './ai/platformContext'
 import { initUpdater } from './updater'
+import { secureWebPreferences } from './windowSecurity'
 
 const vegaClient = createSystemClient()
 let mainWindow: BrowserWindow | null = null
@@ -65,12 +66,7 @@ function createWindow(): void {
     autoHideMenuBar: true,
     frame: false,
     backgroundColor: '#14141c', // lyra-night-alt placeholder
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false
-    }
+    webPreferences: secureWebPreferences(join(__dirname, '../preload/index.js'))
   })
 
   mainWindow = win

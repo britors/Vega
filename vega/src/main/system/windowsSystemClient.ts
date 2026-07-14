@@ -1,7 +1,6 @@
 import { EventEmitter } from 'node:events'
 import { spawn } from 'node:child_process'
 import { stat } from 'node:fs/promises'
-import { shell } from 'electron'
 import { AgentTransport } from './agentTransport'
 import type { SystemClient } from './systemClient'
 import {
@@ -11,6 +10,11 @@ import {
 } from './types'
 import type { PackageDetails, PackageRef, SoftwareInstallOptions } from './types'
 import type { DisplayApplyResult, DisplayConfig, DisplayOutputInfo } from '../sessionSettings'
+
+async function openBluetoothSettings(): Promise<void> {
+  const { shell } = await import('electron')
+  await shell.openExternal('ms-settings:bluetooth')
+}
 
 class WindowsSystemClientBase extends EventEmitter {
   private readonly transport = new AgentTransport()
@@ -144,12 +148,12 @@ class WindowsSystemClientBase extends EventEmitter {
   async removeBluetoothDevice(address: string): Promise<void> {
     await this.transport.request('bluetooth.remove', { address }, undefined, 30_000)
   }
-  async setBluetoothPowered(_powered: boolean): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
-  async setBluetoothDiscoverable(_discoverable: boolean): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
-  async setBluetoothPairable(_pairable: boolean): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
-  async trustBluetoothDevice(_address: string, _trusted: boolean): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
-  async connectBluetoothDevice(_address: string): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
-  async disconnectBluetoothDevice(_address: string): Promise<void> { await shell.openExternal('ms-settings:bluetooth') }
+  async setBluetoothPowered(_powered: boolean): Promise<void> { await openBluetoothSettings() }
+  async setBluetoothDiscoverable(_discoverable: boolean): Promise<void> { await openBluetoothSettings() }
+  async setBluetoothPairable(_pairable: boolean): Promise<void> { await openBluetoothSettings() }
+  async trustBluetoothDevice(_address: string, _trusted: boolean): Promise<void> { await openBluetoothSettings() }
+  async connectBluetoothDevice(_address: string): Promise<void> { await openBluetoothSettings() }
+  async disconnectBluetoothDevice(_address: string): Promise<void> { await openBluetoothSettings() }
   async sendBluetoothFile(_address: string, path: string): Promise<void> {
     if (!(await stat(path)).isFile()) throw new SystemClientError('EXTERNAL_FAILURE', 'Selecione um arquivo local válido.')
     spawn('fsquirt.exe', [], { detached: true, stdio: 'ignore', windowsHide: false }).unref()
