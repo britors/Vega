@@ -1,5 +1,5 @@
 name: Release RPMs (Fedora)
-# Builda vegad.rpm e vega.rpm num container Fedora a partir dos specs em
+# Builda vegad.rpm e lyra-vega-gtk.rpm num container Fedora a partir dos specs em
 # packaging/fedora/ e anexa os dois na GitHub Release da tag empurrada.
 # Empacotamento ainda de teste, ver packaging/fedora/vegad.spec.
 #
@@ -21,7 +21,8 @@ jobs:
     steps:
       - name: Instalar dependências de build
         run: |
-          dnf install -y golang nodejs npm rpm-build rpmdevtools
+          dnf install -y golang rust cargo gcc pkgconf-pkg-config \
+            gtk4-devel libadwaita-devel rpm-build rpmdevtools
       - uses: actions/checkout@v4
       - name: Buildar os RPMs
         run: |
@@ -31,9 +32,7 @@ jobs:
           rpmdev-setuptree
           tar czf "$HOME/rpmbuild/SOURCES/vega-src.tar.gz" \
             --exclude='.git' \
-            --exclude='vega/node_modules' \
-            --exclude='vega/out' \
-            --exclude='vega/.tsbuild' \
+            --exclude='vega-gtk/target' \
             .
           rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vegad.spec
           rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vega.spec

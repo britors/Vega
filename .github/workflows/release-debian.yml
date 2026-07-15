@@ -1,9 +1,7 @@
 name: Release DEBs (Ubuntu/Debian)
 
-# Builda vega.deb e vegad.deb num container Ubuntu a partir do template em
+# Builda lyra-vega-gtk.deb e vegad.deb num container Ubuntu a partir do template em
 # packaging/debian-src/ e anexa os dois na GitHub Release da tag empurrada.
-# Empacotamento ainda de teste — não validado ponta a ponta num Ubuntu real,
-# ver packaging/debian-src/debian/control.
 on:
   push:
     tags:
@@ -22,21 +20,22 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
           apt-get install -y --no-install-recommends \
-            build-essential debhelper dpkg-dev fakeroot \
-            golang-go ca-certificates curl git
-          curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-          apt-get install -y --no-install-recommends nodejs
+            build-essential debhelper dpkg-dev fakeroot golang-go \
+            cargo rustc pkg-config libgtk-4-dev libadwaita-1-dev ca-certificates git
 
       - uses: actions/checkout@v4
+
+      # O cargo do Ubuntu satisfaz o Build-Depends; o toolchain estável evita
+      # prender o build ao compilador antigo da imagem LTS.
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Preparar árvore debian/ e versão
         run: |
           # Debian accepts the test suffix; keep the package version numeric
-          # so it remains compatible with RPM/DPKG metadata and Electron.
+          # so it remains compatible with RPM/DPKG metadata.
           version="${GITHUB_REF_NAME#v}"
           version="${version%%-*}"
           cp -r packaging/debian-src/debian .
-          cp packaging/debian-src/vega-wrapper.sh .
           sed -i "1s/^vega ([^)]*)/vega (${version}-1)/" debian/changelog
 
       - name: Buildar os .deb

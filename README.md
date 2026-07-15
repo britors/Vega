@@ -9,7 +9,7 @@ Centro de controle unificado para Linux.
 Publicado no AUR:
 
 ```sh
-yay -S lyra-vega
+yay -S lyra-vega-gtk
 ```
 
 ### openSUSE Leap, Fedora e Ubuntu/Debian
@@ -58,8 +58,8 @@ documentado também em [`CONTRIBUTING.md`](CONTRIBUTING.md) e
 ## Layout do repositório
 
 ```
-vega/        UI (Electron + TypeScript + React), roda como usuário comum
-vega-gtk/    UI nativa experimental (Rust + GTK4/libadwaita), em migração paralela
+vega-gtk/    UI oficial (Rust + GTK4/libadwaita), roda como usuário comum
+vega/        UI Electron anterior, mantida temporariamente como referência histórica
 vegad/       Daemon privilegiado (Go), roda como root, exposto via D-Bus
 dbus/        Definições de interface D-Bus (XML de introspecção) — contrato entre vega e vegad
 docs/adr/    Decisões arquiteturais e fronteiras de segurança do projeto
@@ -69,8 +69,9 @@ packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBU
 O plano da migração paralela da interface para Rust + GTK4 está em
 [`docs/migration/rust-gtk-architecture.md`](docs/migration/rust-gtk-architecture.md),
 com a [matriz de paridade](docs/migration/rust-gtk-parity.md) e o
-[protocolo de baseline](docs/migration/rust-gtk-baseline.md). A UI Electron
-continua sendo a implementação oficial até o cutover.
+[protocolo de baseline](docs/migration/rust-gtk-baseline.md) e o
+[roteiro de QA](docs/migration/rust-gtk-qa.md). O cutover para GTK4 foi feito;
+os pacotes finais não incluem Electron, Node ou npm.
 
 ## Status
 
@@ -85,12 +86,11 @@ real — ver "Pendências conhecidas" abaixo.
 
 ## Desenvolvimento
 
-### vega (UI)
+### lyra-vega-gtk (UI)
 
 ```
-cd vega
-npm install
-npm run dev
+cd vega-gtk
+cargo run
 ```
 
 ### vegad (daemon)

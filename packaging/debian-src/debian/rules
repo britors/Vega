@@ -1,16 +1,12 @@
 #!/usr/bin/make -f
 #
 # Build from the repo root, not from here — dpkg-buildpackage always reads
-# ./debian relative to its cwd, so this whole "debian/" directory (and
-# ../vega-wrapper.sh) has to be copied to the repo root first:
+# ./debian relative to its cwd, so this whole "debian/" directory has to
+# be copied to the repo root first:
 #
 #   cp -r packaging/debian-src/debian .
-#   cp packaging/debian-src/vega-wrapper.sh .
 #   dpkg-buildpackage -us -uc -b
-#   rm -rf debian vega-wrapper.sh
-#
-# Empacotamento de teste, mesmo aviso que packaging/opensuse/*.spec já
-# carrega: não validado ponta a ponta num Ubuntu real.
+#   rm -rf debian
 
 export DH_VERBOSE=1
 
@@ -18,26 +14,21 @@ export DH_VERBOSE=1
 	dh $@
 
 override_dh_auto_build:
-	cd vega && npm install --no-audit --no-fund && node node_modules/electron/install.js && npm run build
+	cd vega-gtk && cargo build --release --locked
 	cd vegad && go build -trimpath -buildvcs=false \
 		-ldflags "-X github.com/lyraos/vegad/internal/version.Version=$(DEB_VERSION_UPSTREAM)" \
 		-o vegad ./cmd/vegad
 
-# Both binary packages are populated directly here (rather than via
-# debian/tmp + per-package .install files) since neither the Electron/npm
-# nor the Go build is a buildsystem debhelper recognizes automatically —
-# same install-file list as packaging/opensuse/{vega,vegad}.spec's
-# %install sections.
+# Both binary packages are populated directly here rather than via
+# debian/tmp + per-package .install files.
 override_dh_auto_install:
-	install -dm755 debian/vega/usr/lib/lyra-vega
-	cp -r vega/out/. debian/vega/usr/lib/lyra-vega/
-	rm -rf debian/vega/usr/lib/lyra-vega/node_modules
-	cp -r vega/node_modules debian/vega/usr/lib/lyra-vega/node_modules
-	install -Dm755 vega-wrapper.sh debian/vega/usr/bin/vega
+	install -Dm755 vega-gtk/target/release/lyra-vega-gtk \
+		debian/lyra-vega-gtk/usr/bin/lyra-vega-gtk
+	ln -s lyra-vega-gtk debian/lyra-vega-gtk/usr/bin/vega
 	install -Dm644 packaging/vega/vega.desktop \
-		debian/vega/usr/share/applications/vega.desktop
+		debian/lyra-vega-gtk/usr/share/applications/vega.desktop
 	install -Dm644 packaging/vega/vega.svg \
-		debian/vega/usr/share/icons/hicolor/scalable/apps/vega.svg
+		debian/lyra-vega-gtk/usr/share/icons/hicolor/scalable/apps/vega.svg
 
 	install -Dm755 vegad/vegad debian/vegad/usr/lib/vega/vegad
 	install -Dm644 packaging/vegad/vegad.service \
@@ -62,16 +53,3 @@ override_dh_installsystemd:
 # dwz only applies to C/C++ debug info; vegad's Go binary already ships
 # compressed DWARF, which dwz can't re-compress and aborts on.
 override_dh_dwz:
-
-# The bundled Electron binaries under node_modules are prebuilt third-party
-# artifacts, not something we compiled — dpkg-shlibdeps can't resolve their
-# runtime libs (libgtk-3, libX11, ...) since those dev libs aren't installed
-# in the build container, and bundling them isn't what shlibs:Depends is for.
-override_dh_shlibdeps:
-	dh_shlibdeps -X usr/lib/lyra-vega/node_modules
-
-# Electron bundles native addons for several architectures. They are already
-# prebuilt third-party artifacts; the host binutils cannot strip every target
-# format (for example linux-arm64) in the amd64 Debian build container.
-override_dh_strip:
-	dh_strip -X usr/lib/lyra-vega/node_modules

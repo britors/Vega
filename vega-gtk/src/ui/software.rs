@@ -464,17 +464,13 @@ impl SoftwarePage {
     }
 
     pub fn finish_transaction(&self, success: bool, message: &str) {
-        self.transaction_label.set_label(message);
-        self.transaction_progress.set_fraction(1.0);
-        self.transaction_progress
-            .set_text(Some(if success { "Concluído" } else { "Falhou" }));
-        if success {
-            self.transaction_panel.remove_css_class("error");
-            self.transaction_panel.add_css_class("success");
+        self.transaction_panel.set_visible(false);
+        let status = if success {
+            message.to_owned()
         } else {
-            self.transaction_panel.remove_css_class("success");
-            self.transaction_panel.add_css_class("error");
-        }
+            format!("Falha: {message}")
+        };
+        self.status.set_label(&status);
     }
 
     pub fn select_search(&self) {

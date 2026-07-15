@@ -4,7 +4,7 @@
 # openSUSE Leap (RPM, via .github/workflows/release-opensuse.yml), Fedora
 # (RPM, via .github/workflows/release-fedora.yml) e Ubuntu/Debian (.deb, via
 # .github/workflows/release-debian.yml). Em Arch use o pacote no AUR
-# (`yay -S lyra-vega`), que já existe e é o caminho recomendado — não há
+# (`yay -S lyra-vega-gtk`), que já existe e é o caminho recomendado — não há
 # RPM/.deb equivalente pra Arch.
 #
 # Uso:
@@ -74,9 +74,9 @@ case "$distro_id $distro_id_like" in
 Detectei Arch. Este instalador só empacota RPM/.deb pra openSUSE/Fedora/
 Ubuntu; em Arch use o pacote do AUR, que já é o caminho suportado:
 
-  yay -S lyra-vega
+  yay -S lyra-vega-gtk
 
-(ou `paru -S lyra-vega`, se preferir).
+(ou `paru -S lyra-vega-gtk`, se preferir).
 EOF
     exit 1
     ;;

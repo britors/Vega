@@ -1,5 +1,6 @@
 use adw::prelude::*;
 use gtk::{gio, glib};
+use std::time::Instant;
 
 use crate::dbus::{
     BackupClient, BackupConfig, BackupEvent, BluetoothClient, DateTimeClient, FirewallClient,
@@ -9,16 +10,21 @@ use crate::dbus::{
 use crate::model::AppIdentity;
 use crate::ui::VegaShell;
 
-pub const APPLICATION_ID: &str = "org.lyraos.Vega.Gtk.Devel";
+pub const APPLICATION_ID: &str = "org.lyraos.Vega";
 
 pub fn run() -> glib::ExitCode {
     let app = adw::Application::builder()
         .application_id(APPLICATION_ID)
-        .flags(gio::ApplicationFlags::NON_UNIQUE)
         .build();
 
     app.connect_startup(|_| install_style());
-    app.connect_activate(build_window);
+    let started = Instant::now();
+    app.connect_activate(move |app| {
+        build_window(app);
+        if std::env::var_os("VEGA_BENCHMARK_MARKER").is_some() {
+            eprintln!("VEGA_WINDOW_READY_MS={}", started.elapsed().as_millis());
+        }
+    });
     app.run()
 }
 
@@ -2485,7 +2491,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                 }
             };
             match client.optimize_mirrors().await {
-                Ok(id) => monitor_software_transaction(&page, &mut events, id).await,
+                Ok(id) => monitor_software_transaction(&page, &client, &mut events, id).await,
                 Err(error) => page.finish_transaction(false, &error.to_string()),
             }
             page.optimize_mirrors.set_sensitive(true);
@@ -2539,7 +2545,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                 client.clear_cache().await
             };
             match transaction {
-                Ok(id) => monitor_software_transaction(&page, &mut events, id).await,
+                Ok(id) => monitor_software_transaction(&page, &client, &mut events, id).await,
                 Err(error) => page.finish_transaction(false, &error.to_string()),
             }
             page.global_action.set_sensitive(true);
@@ -2671,6 +2677,9 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                             "Falhou"
                         });
                         page.action.set_sensitive(!finished.success);
+                        if finished.success {
+                            refresh_current_software_page(&page, &client).await;
+                        }
                         break;
                     }
                     Ok(_) => {}
@@ -2791,6 +2800,7 @@ fn requires_pkgbuild_review(origin: &str, installed: bool) -> bool {
 
 async fn monitor_software_transaction(
     page: &crate::ui::SoftwarePage,
+    client: &impl SoftwareClient,
     events: &mut crate::dbus::SoftwareEventStream,
     transaction_id: u32,
 ) {
@@ -2801,6 +2811,9 @@ async fn monitor_software_transaction(
             }
             Ok(SoftwareEvent::Finished(finished)) if finished.transaction_id == transaction_id => {
                 page.finish_transaction(finished.success, &finished.message);
+                if finished.success {
+                    refresh_current_software_page(page, client).await;
+                }
                 break;
             }
             Ok(_) => {}
@@ -2810,6 +2823,38 @@ async fn monitor_software_transaction(
             }
         }
     }
+}
+
+async fn refresh_current_software_page(
+    page: &crate::ui::SoftwarePage,
+    client: &impl SoftwareClient,
+) {
+    page.set_busy(true);
+    if page.installed_tab.is_active() {
+        match client.list_installed().await {
+            Ok(packages) => page.show_results(packages),
+            Err(error) => page.show_error(&error.to_string()),
+        }
+    } else if page.updates_tab.is_active() {
+        match client.list_updates().await {
+            Ok(packages) => page.show_results(packages),
+            Err(error) => page.show_error(&error.to_string()),
+        }
+    } else if page.repositories_tab.is_active() {
+        match client.list_repos().await {
+            Ok(repositories) => page.show_repositories(&repositories),
+            Err(error) => page.show_error(&error.to_string()),
+        }
+    } else {
+        let query = page.query.text().trim().to_owned();
+        if query.chars().count() >= 2 {
+            match client.search(&query).await {
+                Ok(packages) => page.show_results(packages),
+                Err(error) => page.show_error(&error.to_string()),
+            }
+        }
+    }
+    page.set_busy(false);
 }
 
 fn configure_driver_action(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
@@ -2871,9 +2916,8 @@ mod tests {
     use super::{APPLICATION_ID, requires_pkgbuild_review, valid_ipv4_cidr};
 
     #[test]
-    fn development_id_does_not_replace_the_electron_application() {
-        assert_eq!(APPLICATION_ID, "org.lyraos.Vega.Gtk.Devel");
-        assert_ne!(APPLICATION_ID, "org.lyraos.Vega");
+    fn production_id_is_stable() {
+        assert_eq!(APPLICATION_ID, "org.lyraos.Vega");
     }
 
     #[test]
