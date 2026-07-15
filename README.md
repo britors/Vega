@@ -1,6 +1,21 @@
 # Vega
 
-Centro de controle unificado para Linux.
+Centro de controle nativo para Linux, construído com Rust, GTK4 e libadwaita.
+O Vega reúne administração de software, hardware, kernel, rede, backups,
+usuários e serviços em uma interface integrada ao GNOME. Operações
+privilegiadas passam pelo daemon `vegad` (Go), via D-Bus e polkit.
+
+## Recursos
+
+- painel com saúde do sistema e atalhos;
+- software nativo, Flatpak e AUR, com atualizações e repositórios;
+- snapshots opcionais via Snapper ou Timeshift e backups via Restic;
+- hardware, drivers, kernel, bootloader, armazenamento, data e hora;
+- Wi-Fi, Bluetooth, firewall, VPN, proxy e IPv4;
+- usuários, serviços, logs e assistente com múltiplos provedores de IA.
+
+Wallpapers, monitores e monitor de processos ficam fora do escopo: as
+ferramentas nativas do desktop já atendem melhor a esses casos.
 
 ## Instalação
 
@@ -23,14 +38,15 @@ recente:
 curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
 ```
 
-Em openSUSE isso baixa `vegad-*.rpm`/`vega-*.rpm` (gerados por
+Em openSUSE isso baixa `vegad-*.rpm`/`lyra-vega-gtk-*.rpm` (gerados por
 [`.github/workflows/release-opensuse.yml`](.github/workflows/release-opensuse.yml)
 a partir de [`packaging/opensuse/`](packaging/opensuse/)) e instala via
-`zypper --allow-unsigned-rpm`. Em Fedora baixa `vegad-*.fcNN.*.rpm`/`vega-*.fcNN.*.rpm`
+`zypper --allow-unsigned-rpm`. Em Fedora baixa
+`vegad-*.fcNN.*.rpm`/`lyra-vega-gtk-*.fcNN.*.rpm`
 (gerados por [`.github/workflows/release-fedora.yml`](.github/workflows/release-fedora.yml)
 a partir de [`packaging/fedora/`](packaging/fedora/)) e instala via
 `dnf install --nogpgcheck` (nenhum dos dois conjuntos de RPM é assinado ainda).
-Em Ubuntu/Debian baixa `vega_*.deb`/`vegad_*.deb` (gerados por
+Em Ubuntu/Debian baixa `lyra-vega-gtk_*.deb`/`vegad_*.deb` (gerados por
 [`.github/workflows/release-debian.yml`](.github/workflows/release-debian.yml)
 a partir de [`packaging/debian-src/`](packaging/debian-src/)) e instala via
 `apt-get install` (assim as dependências declaradas em `debian/control` são
@@ -40,13 +56,9 @@ pro AUR — não há RPM/`.deb` equivalente lá.
 Para travar numa versão específica: `VEGA_VERSION=v1.3.4 sudo -E bash install.sh`
 (baixe o script primeiro se for usar essa variante).
 
-Os três empacotamentos ainda são considerados de teste (ver avisos em
-[`packaging/opensuse/vegad.spec`](packaging/opensuse/vegad.spec),
-[`packaging/fedora/vegad.spec`](packaging/fedora/vegad.spec) e
-[`packaging/debian-src/debian/control`](packaging/debian-src/debian/control)
-— os backends Fedora e Ubuntu/Debian do `vegad` em si, não só o empacotamento,
-ainda não foram validados contra uma instalação real). Para instalar a partir
-do checkout local em vez do pacote pronto, veja
+Os pacotes ainda não estão assinados. A automação compila cada formato em sua
+distribuição de destino, mas operações privilegiadas devem ser validadas em VM
+antes de cada release. Para instalar a partir do checkout local, veja
 [`packaging/opensuse/install.sh`](packaging/opensuse/install.sh) (openSUSE,
 documentado também em [`CONTRIBUTING.md`](CONTRIBUTING.md) e
 [`dependencias.md`](dependencias.md)), `rpmbuild -bb packaging/fedora/*.spec`
@@ -66,7 +78,7 @@ docs/adr/    Decisões arquiteturais e fronteiras de segurança do projeto
 packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs (Arch), specs RPM (openSUSE, Fedora) e debian/rules (Ubuntu/Debian)
 ```
 
-O plano da migração paralela da interface para Rust + GTK4 está em
+A arquitetura da migração da interface para Rust + GTK4 está em
 [`docs/migration/rust-gtk-architecture.md`](docs/migration/rust-gtk-architecture.md),
 com a [matriz de paridade](docs/migration/rust-gtk-parity.md) e o
 [protocolo de baseline](docs/migration/rust-gtk-baseline.md) e o
@@ -75,14 +87,11 @@ os pacotes finais não incluem Electron, Node ou npm.
 
 ## Status
 
-Módulos **Software**, **Pontos de Restauração** e **Backup** funcionais de ponta
-a ponta contra Pacman + Flathub + Snapper + Restic (busca, instalar, remover,
-listar/aplicar atualizações, limpar cache, criar/listar snapshots e rollback,
-configurar backup, rodar backup agora e restaurar snapshots, tudo com
-progresso em tempo real via sinais D-Bus). A navegação atual também expõe
-**Hardware**, **Kernel**, **Rede e Firewall**, **Usuários** e **Sobre**; o
-módulo **Serviços** ainda fica fora da superfície de usuário até ter backend
-real — ver "Pendências conhecidas" abaixo.
+A UI GTK cobre Painel, Software, Pontos de Restauração, Backup, Hardware,
+Kernel, Armazenamento, Data e Hora, Rede/Firewall, Wi-Fi, Bluetooth, Usuários,
+Serviços, Logs, Assistente e Sobre. O backend seleciona implementações por
+distribuição e apresenta recursos opcionais como indisponíveis quando a
+ferramenta correspondente não está instalada.
 
 ## Desenvolvimento
 
@@ -95,7 +104,7 @@ cargo run
 
 ### vegad (daemon)
 
-Requer Go instalado (não presente neste ambiente de scaffold):
+Requer Go instalado:
 
 ```
 cd vegad
@@ -105,7 +114,7 @@ go build ./...
 
 Os PKGBUILDs em `packaging/vega` e `packaging/vegad` empacotam este checkout
 local por padrão. Para gerar os dois pacotes em ordem (`vegad` e depois
-`vega`):
+`lyra-vega-gtk`):
 
 ```
 ./scripts/build-local-packages.sh
@@ -137,6 +146,15 @@ Para rodar os checks automatizados deste checkout, use:
 ./scripts/qa-smoke.sh
 ```
 
+Para coletar dez amostras de inicialização, PSS, CPU e tamanho do binário:
+
+```sh
+./scripts/benchmark-ui.sh 10
+```
+
+Os resultados e o checklist manual de Wayland, X11 e acessibilidade ficam em
+[`docs/migration/rust-gtk-qa.md`](docs/migration/rust-gtk-qa.md).
+
 ## Nomes D-Bus e polkit
 
 - Bus name: `org.lyraos.Vega1` (system bus)
@@ -144,14 +162,19 @@ Para rodar os checks automatizados deste checkout, use:
 - Actions polkit em `packaging/vegad/org.lyraos.vega.policy`, prefixo `org.lyraos.vega.*`
 - `vegad` roda em `/usr/lib/vega/vegad`, unit bus-activated em `packaging/vegad/vegad.service`
 
-## Pendências conhecidas
+## Limitações conhecidas
 
-- **Software**: `Search`, `ListRepos`, `ListUpdates`, `Install`, `Remove`, `UpdateAll`, `SetRepoEnabled` e `ClearCache` rodam de verdade (shell out para `pacman`/`flatpak`, sem libalpm direto ainda — ver comentário em `vegad/internal/dbusserver/pacman.go`). A busca inclui a AUR de verdade (origem "Comunidade") via `yay`/`paru` (o que estiver instalado, `optdepend`), e a UI deduplica resultados por app/origem. Progresso reportado é por estágio (regex sobre a saída do comando), não byte-exato. Instalações Pacman e AUR criam snapshots Snapper pré/pós quando `snapper` está disponível. `vegad-update-check.timer` roda `vegad check-updates` a cada 4h (`packaging/vegad/vegad-update-check.timer`) e, se houver pacotes pendentes, emite o sinal `Software.UpdatesAvailable`; a UI mostra uma notificação nativa (`vega/src/main/index.ts`) apenas se o app estiver aberto no momento — não há componente em segundo plano ainda, mesma limitação que `Backup.BackupAlert` já tinha.
-- **Pontos de Restauração**: detecta ferramentas já instaladas sem torná-las dependências. Usa Snapper como backend preferencial e Timeshift como fallback opcional para listar, criar, excluir e restaurar snapshots. Retenção global e diff detalhado continuam específicos do Snapper.
-- **Backup**: cria configurações locais em `/etc/vega/backup` por padrão, executa `restic` para backup e restauração, agenda serviços/timers systemd para `daily`/`weekly`, e lista snapshots do repositório
-- AUR (`vegad/internal/dbusserver/aur.go`) roda `yay`/`paru -Ssa` e `-S` como `vega-build` dentro de `systemd-run`, nunca como root; o passo final de instalação (`sudo pacman -U` interno do helper) depende da regra NOPASSWD em `packaging/vegad/sudoers.d/vega-build` — a UI mostra o PKGBUILD antes de confirmar, já que essa regra dá a `vega-build` permissão efetiva de instalar pacotes como root
-- Hardware, Kernel, Rede/Firewall e Usuários já têm backend básico e telas iniciais; ainda faltam integrações mais profundas e o módulo de Serviços continua fora da navegação do MVP
-- PKGBUILDs em `packaging/*/PKGBUILD` usam a fonte versionada do Vega por padrão e aceitam `VEGA_SOURCE_URL`/`VEGA_SOURCE_DIR` para builds locais e empacotamento AUR
-- `vegad` implementa `org.freedesktop.DBus.Introspectable` via reflection (`introspect.Methods`, ver `server.go`) — necessário para clientes como `dbus-next` (usado pela UI) que fazem introspecção antes de chamar métodos; `busctl`/`gdbus call` funcionam mesmo sem isso, então esse gap só aparece testando com o mesmo cliente D-Bus que a UI usa
-- Suporte a Ubuntu/Debian (`vegad/internal/distro/{apt,kernel_debian,hardware_debian}.go`, `dbusserver/ufw.go`) é novo e não testado numa instalação real: `SetRepoEnabled` só reconhece linhas que batem exatamente com `apt list`/`sources.list` (sem suporte a PPA via `add-apt-repository`); o backend de Firewall usa `ufw` quando `firewall-cmd` não está presente. Snapshots detecta Snapper ou Timeshift no `PATH`; sem ambos, a UI mostra o recurso como indisponível.
-- Suporte a Fedora (`vegad/internal/distro/{dnf,kernel_fedora,hardware_fedora}.go`) é novo e não testado numa instalação real (escrito sem acesso a uma máquina Fedora): `ListUpdates` usa `dnf list --upgrades` em vez de `dnf check-update` para evitar os códigos de saída especiais deste último; `GetDetails`/`Search` assumem o formato "Key : Value"/"nome.arch : resumo" documentado do `dnf`, não confirmado contra uma saída real; o driver NVIDIA (`akmod-nvidia`) depende do repositório RPM Fusion nonfree já estar habilitado (Vega não adiciona repositórios de terceiros sozinho) e builda o módulo do kernel de forma assíncrona via `akmods.service`, não durante a própria instalação; `RebuildBootArtifacts` assume GRUB2 clássico (`grub2-mkconfig`) e não cobre o layout BLS/`grubby` que o Fedora 38+ usa por padrão em instalações UEFI
+- Software usa os gerenciadores da distribuição e Flatpak por subprocesso;
+  o progresso é por etapa, não por bytes transferidos.
+- AUR exige `yay` ou `paru`, executa builds com o usuário isolado `vega-build`
+  e sempre mostra o PKGBUILD antes da confirmação.
+- Snapper e Timeshift são opcionais. Sem uma dessas ferramentas, Pontos de
+  Restauração aparece como indisponível; recursos avançados de diff e retenção
+  continuam específicos do Snapper.
+- O driver NVIDIA no Fedora depende do RPM Fusion nonfree já configurado; o
+  Vega não habilita repositórios de terceiros automaticamente.
+- O backend Debian/Ubuntu ainda não administra PPAs por
+  `add-apt-repository`. O firewall usa UFW quando firewalld não está presente.
+- Os testes automatizados cobrem modelos, mocks D-Bus, daemon, lint e build.
+  Operações polkit, acessibilidade, X11 e os quatro pacotes ainda fazem parte
+  do roteiro manual de release.
