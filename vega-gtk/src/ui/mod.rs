@@ -1,0 +1,27 @@
+mod assistant;
+mod backup;
+mod bluetooth;
+mod datetime;
+mod kernel;
+mod logs;
+mod network;
+mod services;
+mod shell;
+mod snapshots;
+mod software;
+mod storage;
+mod users;
+
+pub use assistant::AssistantPage;
+pub use backup::BackupPage;
+pub use bluetooth::BluetoothPage;
+pub use datetime::DateTimePage;
+pub use kernel::KernelPage;
+pub use logs::LogsPage;
+pub use network::NetworkPage;
+pub use services::ServicesPage;
+pub use shell::VegaShell;
+pub use snapshots::SnapshotsPage;
+pub use software::SoftwarePage;
+pub use storage::StoragePage;
+pub use users::UsersPage;

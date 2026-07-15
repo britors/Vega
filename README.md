@@ -59,11 +59,18 @@ documentado também em [`CONTRIBUTING.md`](CONTRIBUTING.md) e
 
 ```
 vega/        UI (Electron + TypeScript + React), roda como usuário comum
+vega-gtk/    UI nativa experimental (Rust + GTK4/libadwaita), em migração paralela
 vegad/       Daemon privilegiado (Go), roda como root, exposto via D-Bus
 dbus/        Definições de interface D-Bus (XML de introspecção) — contrato entre vega e vegad
 docs/adr/    Decisões arquiteturais e fronteiras de segurança do projeto
 packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs (Arch), specs RPM (openSUSE, Fedora) e debian/rules (Ubuntu/Debian)
 ```
+
+O plano da migração paralela da interface para Rust + GTK4 está em
+[`docs/migration/rust-gtk-architecture.md`](docs/migration/rust-gtk-architecture.md),
+com a [matriz de paridade](docs/migration/rust-gtk-parity.md) e o
+[protocolo de baseline](docs/migration/rust-gtk-baseline.md). A UI Electron
+continua sendo a implementação oficial até o cutover.
 
 ## Status
 
@@ -140,11 +147,11 @@ Para rodar os checks automatizados deste checkout, use:
 ## Pendências conhecidas
 
 - **Software**: `Search`, `ListRepos`, `ListUpdates`, `Install`, `Remove`, `UpdateAll`, `SetRepoEnabled` e `ClearCache` rodam de verdade (shell out para `pacman`/`flatpak`, sem libalpm direto ainda — ver comentário em `vegad/internal/dbusserver/pacman.go`). A busca inclui a AUR de verdade (origem "Comunidade") via `yay`/`paru` (o que estiver instalado, `optdepend`), e a UI deduplica resultados por app/origem. Progresso reportado é por estágio (regex sobre a saída do comando), não byte-exato. Instalações Pacman e AUR criam snapshots Snapper pré/pós quando `snapper` está disponível. `vegad-update-check.timer` roda `vegad check-updates` a cada 4h (`packaging/vegad/vegad-update-check.timer`) e, se houver pacotes pendentes, emite o sinal `Software.UpdatesAvailable`; a UI mostra uma notificação nativa (`vega/src/main/index.ts`) apenas se o app estiver aberto no momento — não há componente em segundo plano ainda, mesma limitação que `Backup.BackupAlert` já tinha.
-- **Pontos de Restauração**: lista snapshots, cria snapshot manual, faz rollback e ajusta retenção via snapper — o item de menu fica oculto quando o snapper não está disponível (Timeshift deixou de ser um backend suportado, issue #48)
+- **Pontos de Restauração**: detecta ferramentas já instaladas sem torná-las dependências. Usa Snapper como backend preferencial e Timeshift como fallback opcional para listar, criar, excluir e restaurar snapshots. Retenção global e diff detalhado continuam específicos do Snapper.
 - **Backup**: cria configurações locais em `/etc/vega/backup` por padrão, executa `restic` para backup e restauração, agenda serviços/timers systemd para `daily`/`weekly`, e lista snapshots do repositório
 - AUR (`vegad/internal/dbusserver/aur.go`) roda `yay`/`paru -Ssa` e `-S` como `vega-build` dentro de `systemd-run`, nunca como root; o passo final de instalação (`sudo pacman -U` interno do helper) depende da regra NOPASSWD em `packaging/vegad/sudoers.d/vega-build` — a UI mostra o PKGBUILD antes de confirmar, já que essa regra dá a `vega-build` permissão efetiva de instalar pacotes como root
 - Hardware, Kernel, Rede/Firewall e Usuários já têm backend básico e telas iniciais; ainda faltam integrações mais profundas e o módulo de Serviços continua fora da navegação do MVP
 - PKGBUILDs em `packaging/*/PKGBUILD` usam a fonte versionada do Vega por padrão e aceitam `VEGA_SOURCE_URL`/`VEGA_SOURCE_DIR` para builds locais e empacotamento AUR
 - `vegad` implementa `org.freedesktop.DBus.Introspectable` via reflection (`introspect.Methods`, ver `server.go`) — necessário para clientes como `dbus-next` (usado pela UI) que fazem introspecção antes de chamar métodos; `busctl`/`gdbus call` funcionam mesmo sem isso, então esse gap só aparece testando com o mesmo cliente D-Bus que a UI usa
-- Suporte a Ubuntu/Debian (`vegad/internal/distro/{apt,kernel_debian,hardware_debian}.go`, `dbusserver/ufw.go`) é novo e não testado numa instalação real: `SetRepoEnabled` só reconhece linhas que batem exatamente com `apt list`/`sources.list` (sem suporte a PPA via `add-apt-repository`); o backend de Firewall usa `ufw` quando `firewall-cmd` não está presente. O módulo Snapshots depende só de snapper em qualquer distro — o backend Timeshift foi removido porque a saída do `timeshift --list` nunca bateu com uma instalação real (issue #48), então em Debian/Ubuntu/Fedora sem snapper instalado manualmente o menu "Pontos de Restauração" fica oculto
+- Suporte a Ubuntu/Debian (`vegad/internal/distro/{apt,kernel_debian,hardware_debian}.go`, `dbusserver/ufw.go`) é novo e não testado numa instalação real: `SetRepoEnabled` só reconhece linhas que batem exatamente com `apt list`/`sources.list` (sem suporte a PPA via `add-apt-repository`); o backend de Firewall usa `ufw` quando `firewall-cmd` não está presente. Snapshots detecta Snapper ou Timeshift no `PATH`; sem ambos, a UI mostra o recurso como indisponível.
 - Suporte a Fedora (`vegad/internal/distro/{dnf,kernel_fedora,hardware_fedora}.go`) é novo e não testado numa instalação real (escrito sem acesso a uma máquina Fedora): `ListUpdates` usa `dnf list --upgrades` em vez de `dnf check-update` para evitar os códigos de saída especiais deste último; `GetDetails`/`Search` assumem o formato "Key : Value"/"nome.arch : resumo" documentado do `dnf`, não confirmado contra uma saída real; o driver NVIDIA (`akmod-nvidia`) depende do repositório RPM Fusion nonfree já estar habilitado (Vega não adiciona repositórios de terceiros sozinho) e builda o módulo do kernel de forma assíncrona via `akmods.service`, não durante a própria instalação; `RebuildBootArtifacts` assume GRUB2 clássico (`grub2-mkconfig`) e não cobre o layout BLS/`grubby` que o Fedora 38+ usa por padrão em instalações UEFI

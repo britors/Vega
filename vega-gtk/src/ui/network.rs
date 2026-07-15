@@ -1,0 +1,390 @@
+use std::{cell::RefCell, rc::Rc};
+
+use crate::dbus::{FirewallService, FirewallStatus, NetworkInterface, ProxyConfig, WifiNetwork};
+use adw::prelude::*;
+
+type WifiActionHandler = Rc<dyn Fn(WifiNetwork)>;
+
+#[derive(Clone)]
+pub struct NetworkPage {
+    pub root: gtk::Widget,
+    pub status: gtk::Label,
+    pub interfaces: gtk::ListBox,
+    pub interface_action: gtk::Button,
+    pub wifi: gtk::ListBox,
+    pub proxy: gtk::Label,
+    pub proxy_http: gtk::Entry,
+    pub proxy_https: gtk::Entry,
+    pub proxy_socks: gtk::Entry,
+    pub proxy_exceptions: gtk::Entry,
+    pub proxy_apply: gtk::Button,
+    pub vpn_status: gtk::Label,
+    pub vpn_import: gtk::Button,
+    pub firewall_status: gtk::Label,
+    pub firewall_services: gtk::ListBox,
+    pub firewall_action: gtk::Button,
+    interface_items: Rc<RefCell<Vec<NetworkInterface>>>,
+    wifi_action_handlers: Rc<RefCell<Vec<WifiActionHandler>>>,
+    firewall_items: Rc<RefCell<Vec<FirewallService>>>,
+}
+impl NetworkPage {
+    pub fn new() -> Self {
+        let status = gtk::Label::builder()
+            .label("Carregando rede…")
+            .xalign(0.0)
+            .css_classes(["dim-label"])
+            .build();
+        let interfaces = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::Single)
+            .css_classes(["boxed-list"])
+            .build();
+        interfaces.add_css_class("network-interfaces");
+        let interface_action = gtk::Button::builder()
+            .label("Configurar IPv4")
+            .halign(gtk::Align::Start)
+            .sensitive(false)
+            .build();
+        let wifi = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::Single)
+            .css_classes(["boxed-list"])
+            .build();
+        wifi.add_css_class("wifi-networks");
+        let proxy = gtk::Label::builder()
+            .label("Carregando configuração…")
+            .xalign(0.0)
+            .wrap(true)
+            .css_classes(["dim-label"])
+            .build();
+        let proxy_http = proxy_entry("http://servidor:porta");
+        let proxy_https = proxy_entry("http://servidor:porta");
+        let proxy_socks = proxy_entry("socks://servidor:porta");
+        let proxy_exceptions = proxy_entry("localhost, 127.0.0.1, domínio.local");
+        let proxy_grid = gtk::Grid::builder()
+            .column_spacing(10)
+            .row_spacing(8)
+            .hexpand(true)
+            .build();
+        for (row, (label, entry)) in [
+            ("HTTP", &proxy_http),
+            ("HTTPS", &proxy_https),
+            ("SOCKS", &proxy_socks),
+            ("Exceções", &proxy_exceptions),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            proxy_grid.attach(
+                &gtk::Label::builder().label(label).xalign(0.0).build(),
+                0,
+                row as i32,
+                1,
+                1,
+            );
+            proxy_grid.attach(entry, 1, row as i32, 1, 1);
+        }
+        let proxy_apply = gtk::Button::builder()
+            .label("Aplicar proxy")
+            .halign(gtk::Align::Start)
+            .build();
+        let vpn_status = gtk::Label::builder()
+            .label("Importe um perfil OpenVPN fornecido pelo seu serviço de VPN.")
+            .xalign(0.0)
+            .wrap(true)
+            .css_classes(["dim-label"])
+            .build();
+        let vpn_import = gtk::Button::builder()
+            .label("Importar perfil .ovpn")
+            .halign(gtk::Align::Start)
+            .build();
+        let firewall_status = gtk::Label::builder()
+            .label("Detectando firewall…")
+            .xalign(0.0)
+            .css_classes(["dim-label"])
+            .build();
+        let firewall_services = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::Single)
+            .css_classes(["boxed-list"])
+            .build();
+        firewall_services.add_css_class("firewall-services");
+        let firewall_action = gtk::Button::builder()
+            .label("Permitir serviço")
+            .halign(gtk::Align::Start)
+            .sensitive(false)
+            .build();
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
+        content.add_css_class("content-page");
+        content.add_css_class("compact-page");
+        content.append(
+            &gtk::Label::builder()
+                .label("Rede e Firewall")
+                .xalign(0.0)
+                .css_classes(["title-1"])
+                .build(),
+        );
+        content.append(
+            &gtk::Label::builder()
+                .label("Interfaces, Wi‑Fi, proxy e proteção da rede")
+                .xalign(0.0)
+                .css_classes(["dim-label"])
+                .build(),
+        );
+        content.append(&status);
+        content.append(&section("Interfaces", &interfaces));
+        content.append(&interface_action);
+        content.append(&section("Redes Wi‑Fi", &wifi));
+        content.append(
+            &gtk::Label::builder()
+                .label("Proxy")
+                .xalign(0.0)
+                .css_classes(["title-2"])
+                .build(),
+        );
+        content.append(&proxy);
+        content.append(&proxy_grid);
+        content.append(&proxy_apply);
+        content.append(
+            &gtk::Label::builder()
+                .label("VPN")
+                .xalign(0.0)
+                .css_classes(["title-2"])
+                .build(),
+        );
+        content.append(&vpn_status);
+        content.append(&vpn_import);
+        content.append(
+            &gtk::Label::builder()
+                .label("Firewall")
+                .xalign(0.0)
+                .css_classes(["title-2"])
+                .build(),
+        );
+        content.append(&firewall_status);
+        content.append(&firewall_services);
+        content.append(&firewall_action);
+        let root = gtk::ScrolledWindow::builder()
+            .child(&content)
+            .hscrollbar_policy(gtk::PolicyType::Never)
+            .build()
+            .upcast();
+        let page = Self {
+            root,
+            status,
+            interfaces,
+            interface_action,
+            wifi,
+            proxy,
+            proxy_http,
+            proxy_https,
+            proxy_socks,
+            proxy_exceptions,
+            proxy_apply,
+            vpn_status,
+            vpn_import,
+            firewall_status,
+            firewall_services,
+            firewall_action,
+            interface_items: Rc::new(RefCell::new(Vec::new())),
+            wifi_action_handlers: Rc::new(RefCell::new(Vec::new())),
+            firewall_items: Rc::new(RefCell::new(Vec::new())),
+        };
+        let interface_page = page.clone();
+        page.interfaces
+            .connect_row_selected(move |_, _| interface_page.update_interface_action());
+        let selection_page = page.clone();
+        page.firewall_services
+            .connect_row_selected(move |_, _| selection_page.update_firewall_action());
+        page
+    }
+    pub fn show_interfaces(&self, items: &[NetworkInterface]) {
+        clear(&self.interfaces);
+        for i in items {
+            let title = format!("{} • {}", i.name, i.device);
+            let sub = format!(
+                "{} • {} • IPv4 {} • {} • {}",
+                i.kind,
+                i.state,
+                dash(&i.ipv4),
+                dash(&i.speed),
+                i.mac
+            );
+            self.interfaces.append(
+                &adw::ActionRow::builder()
+                    .title(gtk::glib::markup_escape_text(&title))
+                    .subtitle(gtk::glib::markup_escape_text(&sub))
+                    .build(),
+            );
+        }
+        if items.is_empty() {
+            empty(&self.interfaces, "Nenhuma interface detectada");
+        }
+        *self.interface_items.borrow_mut() = items.to_vec();
+        self.update_interface_action();
+    }
+    pub fn show_wifi(&self, items: &[WifiNetwork]) {
+        clear(&self.wifi);
+        for i in items {
+            let sub = format!(
+                "{} • sinal {}% • {}",
+                dash(&i.security),
+                i.signal,
+                if i.active { "Conectada" } else { "Disponível" }
+            );
+            let row = adw::ActionRow::builder()
+                .title(gtk::glib::markup_escape_text(&i.ssid))
+                .subtitle(gtk::glib::markup_escape_text(&sub))
+                .build();
+            let button = gtk::Button::with_label(if i.active { "Desconectar" } else { "Conectar" });
+            button.add_css_class("wifi-row-action");
+            button.set_valign(gtk::Align::Center);
+            if !i.active {
+                button.add_css_class("suggested-action");
+            }
+            let network = i.clone();
+            let handlers = self.wifi_action_handlers.clone();
+            button.connect_clicked(move |_| {
+                for handler in handlers.borrow().iter() {
+                    handler(network.clone());
+                }
+            });
+            row.add_suffix(&button);
+            self.wifi.append(&row);
+        }
+        if items.is_empty() {
+            empty(&self.wifi, "Nenhuma rede Wi‑Fi detectada");
+        }
+    }
+    pub fn show_proxy(&self, p: &ProxyConfig) {
+        self.proxy_http.set_text(&p.http);
+        self.proxy_https.set_text(&p.https);
+        self.proxy_socks.set_text(&p.socks);
+        self.proxy_exceptions.set_text(&p.no_proxy);
+        self.proxy.set_label(
+            if p.http.is_empty()
+                && p.https.is_empty()
+                && p.socks.is_empty()
+                && p.no_proxy.is_empty()
+            {
+                "Proxy não configurado"
+            } else {
+                "Configuração carregada de /etc/environment"
+            },
+        );
+    }
+
+    pub fn proxy_config(&self) -> ProxyConfig {
+        ProxyConfig {
+            http: self.proxy_http.text().trim().to_owned(),
+            https: self.proxy_https.text().trim().to_owned(),
+            socks: self.proxy_socks.text().trim().to_owned(),
+            no_proxy: self.proxy_exceptions.text().trim().to_owned(),
+        }
+    }
+
+    pub fn show_firewall(&self, status: &FirewallStatus, services: &[FirewallService]) {
+        self.firewall_status.set_label(&format!(
+            "{} • zona/perfil: {}",
+            if status.enabled { "Ativo" } else { "Inativo" },
+            dash(&status.active_zone)
+        ));
+        clear(&self.firewall_services);
+        for service in services {
+            let row = adw::ActionRow::builder()
+                .title(gtk::glib::markup_escape_text(&service.label))
+                .subtitle(gtk::glib::markup_escape_text(&service.name))
+                .title_lines(1)
+                .subtitle_lines(1)
+                .activatable(true)
+                .build();
+            row.add_suffix(
+                &gtk::Label::builder()
+                    .label(if service.enabled {
+                        "Permitido"
+                    } else {
+                        "Bloqueado"
+                    })
+                    .valign(gtk::Align::Center)
+                    .css_classes(if service.enabled {
+                        vec!["success"]
+                    } else {
+                        vec!["dim-label"]
+                    })
+                    .build(),
+            );
+            self.firewall_services.append(&row);
+        }
+        if services.is_empty() {
+            empty(&self.firewall_services, "Nenhum serviço publicado");
+        }
+        *self.firewall_items.borrow_mut() = services.to_vec();
+        self.update_firewall_action();
+    }
+
+    pub fn selected_firewall_service(&self) -> Option<FirewallService> {
+        let index = self.firewall_services.selected_row()?.index() as usize;
+        self.firewall_items.borrow().get(index).cloned()
+    }
+
+    pub fn connect_wifi_action(&self, handler: impl Fn(WifiNetwork) + 'static) {
+        self.wifi_action_handlers
+            .borrow_mut()
+            .push(Rc::new(handler));
+    }
+
+    pub fn selected_interface(&self) -> Option<NetworkInterface> {
+        let index = self.interfaces.selected_row()?.index() as usize;
+        self.interface_items.borrow().get(index).cloned()
+    }
+
+    fn update_interface_action(&self) {
+        self.interface_action
+            .set_sensitive(self.selected_interface().is_some());
+    }
+
+    fn update_firewall_action(&self) {
+        let Some(service) = self.selected_firewall_service() else {
+            self.firewall_action.set_sensitive(false);
+            return;
+        };
+        self.firewall_action.set_sensitive(true);
+        self.firewall_action.set_label(if service.enabled {
+            "Bloquear serviço"
+        } else {
+            "Permitir serviço"
+        });
+        if service.enabled {
+            self.firewall_action.remove_css_class("suggested-action");
+        } else {
+            self.firewall_action.add_css_class("suggested-action");
+        }
+    }
+}
+fn section(t: &str, l: &gtk::ListBox) -> gtk::Box {
+    let b = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    b.append(
+        &gtk::Label::builder()
+            .label(t)
+            .xalign(0.0)
+            .css_classes(["title-2"])
+            .build(),
+    );
+    b.append(l);
+    b
+}
+fn clear(l: &gtk::ListBox) {
+    while let Some(c) = l.first_child() {
+        l.remove(&c);
+    }
+}
+fn empty(l: &gtk::ListBox, t: &str) {
+    l.append(&adw::ActionRow::builder().title(t).build());
+}
+fn dash(v: &str) -> &str {
+    if v.is_empty() { "—" } else { v }
+}
+
+fn proxy_entry(placeholder: &str) -> gtk::Entry {
+    gtk::Entry::builder()
+        .placeholder_text(placeholder)
+        .hexpand(true)
+        .build()
+}
