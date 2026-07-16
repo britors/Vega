@@ -66,6 +66,8 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 ## Segurança e acessibilidade
 
 - nenhuma operação privilegiada executa shell na UI; todas usam o system bus;
+- campos secretos são mascarados, apagados após o despacho e não permanecem
+  capturados em callbacks de conclusão;
 - chaves do Assistente usam somente Secret Service e identidade Qt independente;
 - histórico/configurações/auditoria recebem permissões `0600`;
 - AUR exige revisão por ID antes de instalar;

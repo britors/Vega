@@ -497,6 +497,26 @@ private slots:
         removeUser->click();
         QVERIFY(!client->calls.contains(QStringLiteral("org.lyraos.Vega1.Users.RemoveUser")));
     }
+    void secretInputsAreClearedImmediatelyAfterDispatch() {
+        auto *client = new MockDbusClient;
+        MainWindow window(nullptr, client);
+        auto *connectWifi = window.findChild<QPushButton *>(QStringLiteral("action.Network.ConnectWifi"));
+        QVERIFY(connectWifi);
+        const auto inputs = connectWifi->parentWidget()->findChildren<QLineEdit *>();
+        QCOMPARE(inputs.size(), 2);
+        inputs.at(0)->setText(QStringLiteral("rede-teste"));
+        inputs.at(1)->setText(QStringLiteral("segredo-temporario"));
+        QCOMPARE(inputs.at(1)->echoMode(), QLineEdit::Password);
+        QTimer::singleShot(0, [] {
+            for (auto *widget : QApplication::topLevelWidgets())
+                if (auto *dialog = qobject_cast<QMessageBox *>(widget))
+                    dialog->button(QMessageBox::Ok)->click();
+        });
+        connectWifi->click();
+        QCoreApplication::processEvents();
+        QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.Network.ConnectWifi")));
+        QVERIFY(inputs.at(1)->text().isEmpty());
+    }
     void repeatedNavigationDoesNotDuplicateDomainLoads() {
         auto *client = new MockDbusClient;
         MainWindow window(nullptr, client);

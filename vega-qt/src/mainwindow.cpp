@@ -1122,13 +1122,23 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
         }
         button->setEnabled(false);
         setResultText(result, tr("Solicitando autorização…"));
+        QString softwarePackageId;
+        if (interface == QStringLiteral("Software")) {
+            if (method == QStringLiteral("GetAurPkgbuild") && !arguments.isEmpty())
+                softwarePackageId = arguments.first().toString();
+            else if (arguments.size() >= 2)
+                softwarePackageId = arguments.at(1).toString();
+        }
         auto *watcher = m_client->watch(QStringLiteral("org.lyraos.Vega1.%1").arg(interface),
                                         method, arguments, panel);
-        for (qsizetype index = 0; index < editors.size(); ++index)
-            if (inputs.at(index).type == InputType::Secret)
+        for (qsizetype index = 0; index < editors.size(); ++index) {
+            if (inputs.at(index).type == InputType::Secret) {
                 qobject_cast<QLineEdit *>(editors.at(index))->clear();
+                arguments[index] = QString{};
+            }
+        }
         connect(watcher, &QDBusPendingCallWatcher::finished, panel,
-                [this, button, result, watcher, interface, method, arguments] {
+                [this, button, result, watcher, interface, method, softwarePackageId] {
             const auto reply = watcher->reply();
             button->setEnabled(true);
             if (reply.type() == QDBusMessage::ErrorMessage) {
@@ -1146,13 +1156,12 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
                 setResultText(result, values.isEmpty() ? QObject::tr("Operação concluída.")
                                                        : values.join(QStringLiteral("\n")));
                 if (interface == QStringLiteral("Software") && method == QStringLiteral("GetAurPkgbuild") &&
-                    !arguments.isEmpty())
-                    markAurReviewed(arguments.first().toString());
+                    !softwarePackageId.isEmpty())
+                    markAurReviewed(softwarePackageId);
             }
             if (reply.type() != QDBusMessage::ErrorMessage && interface == QStringLiteral("Software") &&
-                method == QStringLiteral("Install") &&
-                arguments.size() >= 2)
-                m_reviewedAurPackages.remove(arguments.at(1).toString());
+                method == QStringLiteral("Install") && !softwarePackageId.isEmpty())
+                m_reviewedAurPackages.remove(softwarePackageId);
             watcher->deleteLater();
         });
     });
