@@ -59,6 +59,7 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 - histórico/configurações/auditoria recebem permissões `0600`;
 - AUR exige revisão por ID antes de instalar;
 - mutações de impacto usam confirmação com Cancelar como padrão;
+- negação polkit, cancelamento e timeout possuem estados/mensagens distintos;
 - controles possuem nomes acessíveis, foco padrão e busca por `Ctrl+F`;
 - a troca de rota por teclado move o foco para um título acessível da nova página;
 - caminhos de VPN, restauração e transferência usam seletores nativos Qt em vez

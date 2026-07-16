@@ -44,7 +44,10 @@ private slots:
         QCOMPARE(DbusClient::classify(QStringLiteral("org.freedesktop.DBus.Error.ServiceUnknown")), DbusClient::Error::Unavailable);
         QCOMPARE(DbusClient::classify(QStringLiteral("org.freedesktop.DBus.Error.NoReply")), DbusClient::Error::Timeout);
         QCOMPARE(DbusClient::classify(QStringLiteral("org.freedesktop.DBus.Error.AccessDenied")), DbusClient::Error::Denied);
+        QCOMPARE(DbusClient::classify(QStringLiteral("org.freedesktop.PolicyKit1.Error.Cancelled")), DbusClient::Error::Cancelled);
         QVERIFY(!DbusClient::userMessage(DbusClient::Error::Unavailable).isEmpty());
+        QVERIFY(DbusClient::userMessage(DbusClient::Error::Denied) !=
+                DbusClient::userMessage(DbusClient::Error::Cancelled));
     }
     void allRequiredRoutesExist() {
         MainWindow window;
@@ -186,6 +189,14 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(&window, "transactionFinished", Qt::DirectConnection,
                                           Q_ARG(quint32, 42), Q_ARG(bool, true), Q_ARG(QString, QStringLiteral("ok"))));
         QVERIFY(!window.tracksTransaction(42));
+    }
+    void onlyLongRunningMethodsStartTransactions() {
+        QVERIFY(DbusClient::startsTransaction(QStringLiteral("Software"), QStringLiteral("Install")));
+        QVERIFY(DbusClient::startsTransaction(QStringLiteral("Backup"), QStringLiteral("RestoreItems")));
+        QVERIFY(DbusClient::startsTransaction(QStringLiteral("Kernel"), QStringLiteral("Install")));
+        QVERIFY(!DbusClient::startsTransaction(QStringLiteral("Snapshots"), QStringLiteral("CreateSnapshot")));
+        QVERIFY(!DbusClient::startsTransaction(QStringLiteral("Snapshots"), QStringLiteral("Rollback")));
+        QVERIFY(!DbusClient::startsTransaction(QStringLiteral("Users"), QStringLiteral("CreateUser")));
     }
     void aurRequiresPerPackageReview() {
         MainWindow window;

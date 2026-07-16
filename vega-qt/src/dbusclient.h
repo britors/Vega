@@ -19,6 +19,7 @@ public:
                                            const QVariantList &arguments = {}, QObject *owner = nullptr);
     static Error classify(const QString &dbusErrorName);
     static QString userMessage(Error error);
+    static bool startsTransaction(const QString &interface, const QString &method);
 
     static constexpr auto Service = "org.lyraos.Vega1";
     static constexpr auto Path = "/org/lyraos/Vega1";

@@ -995,7 +995,8 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
             button->setEnabled(true);
             if (reply.type() == QDBusMessage::ErrorMessage) {
                 result->setText(DbusClient::userMessage(DbusClient::classify(reply.errorName())));
-            } else if (!reply.arguments().isEmpty() && reply.arguments().first().canConvert<quint32>()) {
+            } else if (DbusClient::startsTransaction(interface, method) &&
+                       !reply.arguments().isEmpty() && reply.arguments().first().canConvert<quint32>()) {
                 const auto id = reply.arguments().first().toUInt();
                 trackTransaction(id);
                 result->setText(QObject::tr("Operação iniciada (transação %1).").arg(id));
