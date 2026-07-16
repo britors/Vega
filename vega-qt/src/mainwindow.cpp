@@ -34,6 +34,7 @@
 #include <QJsonObject>
 #include <QPushButton>
 #include <QProgressBar>
+#include <QPlainTextEdit>
 #include <QRegularExpressionValidator>
 #include <QShortcut>
 #include <QScrollArea>
@@ -51,7 +52,7 @@
 #include <QVBoxLayout>
 
 namespace {
-QString decodeArgument(const QDBusArgument &argument, int depth, int &shown) {
+QString decodeArgument(const QDBusArgument &argument, int depth, int &shown, int limit) {
     if (depth > 8) return QStringLiteral("…");
     switch (argument.currentType()) {
     case QDBusArgument::BasicType: {
@@ -81,7 +82,7 @@ QString decodeArgument(const QDBusArgument &argument, int depth, int &shown) {
     case QDBusArgument::StructureType: {
         QStringList values;
         argument.beginStructure();
-        while (!argument.atEnd()) values.append(decodeArgument(argument, depth + 1, shown));
+        while (!argument.atEnd()) values.append(decodeArgument(argument, depth + 1, shown, limit));
         argument.endStructure();
         return values.join(QStringLiteral(" · "));
     }
@@ -90,8 +91,8 @@ QString decodeArgument(const QDBusArgument &argument, int depth, int &shown) {
         qsizetype total = 0;
         argument.beginArray();
         while (!argument.atEnd()) {
-            const auto value = decodeArgument(argument, depth + 1, shown);
-            if (shown < 200) { values.append(value); ++shown; }
+            const auto value = decodeArgument(argument, depth + 1, shown, limit);
+            if (shown < limit) { values.append(value); ++shown; }
             ++total;
         }
         argument.endArray();
@@ -101,14 +102,14 @@ QString decodeArgument(const QDBusArgument &argument, int depth, int &shown) {
     case QDBusArgument::MapType: {
         QStringList values;
         argument.beginMap();
-        while (!argument.atEnd()) values.append(decodeArgument(argument, depth + 1, shown));
+        while (!argument.atEnd()) values.append(decodeArgument(argument, depth + 1, shown, limit));
         argument.endMap();
         return values.join(QStringLiteral("\n"));
     }
     case QDBusArgument::MapEntryType: {
         QStringList values;
         argument.beginMapEntry();
-        while (!argument.atEnd()) values.append(decodeArgument(argument, depth + 1, shown));
+        while (!argument.atEnd()) values.append(decodeArgument(argument, depth + 1, shown, limit));
         argument.endMapEntry();
         return values.join(QStringLiteral(": "));
     }
@@ -116,14 +117,19 @@ QString decodeArgument(const QDBusArgument &argument, int depth, int &shown) {
     }
 }
 
-QString renderVariant(const QVariant &value, int &shown) {
+QString renderVariant(const QVariant &value, int &shown, int limit = 200) {
     if (value.metaType() == QMetaType::fromType<QDBusArgument>())
-        return decodeArgument(qvariant_cast<QDBusArgument>(value), 0, shown);
+        return decodeArgument(qvariant_cast<QDBusArgument>(value), 0, shown, limit);
     if (value.metaType() == QMetaType::fromType<QStringList>())
-        return value.toStringList().mid(0, 200).join(QStringLiteral("\n"));
+        return value.toStringList().mid(0, limit).join(QStringLiteral("\n"));
     if (value.metaType() == QMetaType::fromType<bool>())
         return value.toBool() ? QObject::tr("sim") : QObject::tr("não");
     return value.toString();
+}
+
+void setResultText(QWidget *result, const QString &text) {
+    if (auto *editor = qobject_cast<QPlainTextEdit *>(result)) editor->setPlainText(text);
+    else if (auto *label = qobject_cast<QLabel *>(result)) label->setText(text);
 }
 
 QJsonObject firstObject(const QJsonArray &array) {
@@ -976,10 +982,23 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
     auto *button = new QPushButton(label);
     button->setObjectName(QStringLiteral("action.%1.%2").arg(interface, method));
     button->setAccessibleName(label);
-    auto *result = new QLabel;
-    result->setWordWrap(true);
-    result->setTextFormat(Qt::PlainText);
-    result->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    QWidget *result = nullptr;
+    const bool largeOutput = (interface == QStringLiteral("Logs") && method == QStringLiteral("Query")) ||
+                             (interface == QStringLiteral("Software") && method == QStringLiteral("GetAurPkgbuild"));
+    if (largeOutput) {
+        auto *editor = new QPlainTextEdit;
+        editor->setReadOnly(true);
+        editor->setMaximumBlockCount(method == QStringLiteral("Query") ? 2000 : 0);
+        editor->setMaximumHeight(260);
+        editor->setAccessibleName(tr("Resultado de %1").arg(label));
+        result = editor;
+    } else {
+        auto *resultLabel = new QLabel;
+        resultLabel->setWordWrap(true);
+        resultLabel->setTextFormat(Qt::PlainText);
+        resultLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+        result = resultLabel;
+    }
     panelLayout->addLayout(form);
     panelLayout->addWidget(button, 0, Qt::AlignLeft);
     panelLayout->addWidget(result);
@@ -995,14 +1014,14 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
             }
             const auto value = qobject_cast<QLineEdit *>(editors.at(index))->text().trimmed();
             if (value.isEmpty() && type != InputType::OptionalText) {
-                result->setText(tr("Preencha todos os campos obrigatórios."));
+                setResultText(result, tr("Preencha todos os campos obrigatórios."));
                 return;
             }
             if (type == InputType::Unsigned) {
                 bool valid = false;
                 const auto number = value.toUInt(&valid);
                 if (!valid) {
-                    result->setText(tr("Informe um número válido."));
+                    setResultText(result, tr("Informe um número válido."));
                     return;
                 }
                 arguments.append(number);
@@ -1024,7 +1043,7 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
         if (interface == QStringLiteral("Software") && method == QStringLiteral("Install") &&
             arguments.size() >= 2 && arguments.at(0).toString().compare(QStringLiteral("aur"), Qt::CaseInsensitive) == 0 &&
             !canInstallAur(arguments.at(1).toString())) {
-            result->setText(tr("Revise integralmente o PKGBUILD deste pacote antes de autorizar a instalação AUR."));
+            setResultText(result, tr("Revise integralmente o PKGBUILD deste pacote antes de autorizar a instalação AUR."));
             return;
         }
         if (destructive) {
@@ -1032,12 +1051,12 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
                 tr("%1 pode alterar o sistema e exigirá autorização. Deseja continuar?").arg(label),
                 QMessageBox::Cancel | QMessageBox::Ok, QMessageBox::Cancel);
             if (answer != QMessageBox::Ok) {
-                result->setText(tr("Operação cancelada."));
+                setResultText(result, tr("Operação cancelada."));
                 return;
             }
         }
         button->setEnabled(false);
-        result->setText(tr("Solicitando autorização…"));
+        setResultText(result, tr("Solicitando autorização…"));
         auto *watcher = m_client->watch(QStringLiteral("org.lyraos.Vega1.%1").arg(interface),
                                         method, arguments, panel);
         for (qsizetype index = 0; index < editors.size(); ++index)
@@ -1048,18 +1067,19 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
             const auto reply = watcher->reply();
             button->setEnabled(true);
             if (reply.type() == QDBusMessage::ErrorMessage) {
-                result->setText(DbusClient::userMessage(DbusClient::classify(reply.errorName())));
+                setResultText(result, DbusClient::userMessage(DbusClient::classify(reply.errorName())));
             } else if (DbusClient::startsTransaction(interface, method) &&
                        !reply.arguments().isEmpty() && reply.arguments().first().canConvert<quint32>()) {
                 const auto id = reply.arguments().first().toUInt();
                 trackTransaction(id);
-                result->setText(QObject::tr("Operação iniciada (transação %1).").arg(id));
+                setResultText(result, QObject::tr("Operação iniciada (transação %1).").arg(id));
             } else {
                 int shown = 0;
                 QStringList values;
-                for (const auto &argument : reply.arguments()) values.append(renderVariant(argument, shown));
-                result->setText(values.isEmpty() ? QObject::tr("Operação concluída.")
-                                                  : values.join(QStringLiteral("\n")));
+                const int limit = interface == QStringLiteral("Logs") && method == QStringLiteral("Query") ? 2000 : 200;
+                for (const auto &argument : reply.arguments()) values.append(renderVariant(argument, shown, limit));
+                setResultText(result, values.isEmpty() ? QObject::tr("Operação concluída.")
+                                                       : values.join(QStringLiteral("\n")));
                 if (interface == QStringLiteral("Software") && method == QStringLiteral("GetAurPkgbuild") &&
                     !arguments.isEmpty())
                     markAurReviewed(arguments.first().toString());

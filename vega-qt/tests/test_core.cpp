@@ -18,6 +18,7 @@
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPalette>
+#include <QPlainTextEdit>
 #include <QSpinBox>
 #include <QSettings>
 #include <QTextEdit>
@@ -39,8 +40,13 @@ public:
         argumentsByCall.insert(callName, arguments);
         const auto call = QDBusMessage::createMethodCall(
             QStringLiteral("org.test"), QStringLiteral("/test"), interface, method);
-        auto reply = call.createReply(method == QStringLiteral("Ping")
-            ? QVariant(true) : QVariant(QStringLiteral("mock")));
+        QVariant value = method == QStringLiteral("Ping") ? QVariant(true) : QVariant(QStringLiteral("mock"));
+        if (method == QStringLiteral("Query")) {
+            QStringList lines;
+            for (int index = 0; index < 2100; ++index) lines.append(QStringLiteral("linha-%1").arg(index));
+            value = lines;
+        }
+        auto reply = call.createReply(value);
         return new QDBusPendingCallWatcher(QDBusPendingCall::fromCompletedCall(reply), owner);
     }
 };
@@ -121,6 +127,25 @@ private slots:
                  "action.Bluetooth.ListDevices", "action.Services.ListAllServices"})
             QVERIFY2(window.findChild<QPushButton *>(QString::fromLatin1(name)), name);
         QVERIFY(window.findChild<QPushButton *>(QStringLiteral("action.Hardware.FirmwareStatus")));
+    }
+    void extensiveLogsAndPkgbuildUseBoundedScrollableViews() {
+        auto *client = new MockDbusClient;
+        MainWindow window(nullptr, client);
+        auto *logs = window.findChild<QPushButton *>(QStringLiteral("action.Logs.Query"));
+        auto *pkgbuild = window.findChild<QPushButton *>(QStringLiteral("action.Software.GetAurPkgbuild"));
+        QVERIFY(logs && pkgbuild);
+        auto *logsView = logs->parentWidget()->findChild<QPlainTextEdit *>();
+        auto *pkgbuildView = pkgbuild->parentWidget()->findChild<QPlainTextEdit *>();
+        QVERIFY(logsView && pkgbuildView);
+        QCOMPARE(logsView->maximumBlockCount(), 2000);
+        QCOMPARE(pkgbuildView->maximumBlockCount(), 0);
+        const auto inputs = logs->parentWidget()->findChildren<QLineEdit *>();
+        QCOMPARE(inputs.size(), 5);
+        inputs.last()->setText(QStringLiteral("2000"));
+        logs->click();
+        QTRY_COMPARE_WITH_TIMEOUT(logsView->blockCount(), 2000, 1000);
+        QVERIFY(logsView->toPlainText().contains(QStringLiteral("linha-1999")));
+        QVERIFY(!logsView->toPlainText().contains(QStringLiteral("linha-2000")));
     }
     void backupStructuredTypesAndPartialRestoreAreExposed() {
         registerDbusTypes();

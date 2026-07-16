@@ -14,7 +14,7 @@
 | Bluetooth | Bluetooth | sim | leitura + energia/parear/remover/enviar |
 | Usuários | Users | sim | leitura + criar/remover/papel |
 | Serviços | Services | sim | leitura + executar/reiniciar |
-| Logs | Logs | sim | filtros e consulta |
+| Logs | Logs | sim | filtros, consulta e até 2.000 linhas roláveis |
 | Assistente | cliente HTTP + vegad | sim | provedores, streaming, keyring, histórico, limites, tools e consentimento |
 
 As ações acima usam chamadas assíncronas ao system bus, confirmação para impacto relevante,

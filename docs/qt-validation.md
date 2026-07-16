@@ -64,6 +64,8 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 - a troca de rota por teclado move o foco para um título acessível da nova página;
 - os temas explícitos passam contraste mínimo WCAG de 4,5:1 para texto normal,
   inclusive em seleção; o gate falha se uma cor regredir;
+- Logs usa documento rolável limitado a 2.000 blocos e o teste injeta 2.100 linhas
+  para comprovar o limite sem expandir indefinidamente o layout;
 - caminhos de VPN, restauração e transferência usam seletores nativos Qt em vez
   de depender exclusivamente de entrada manual;
 - Qt 6 fornece escala HiDPI e tema claro/escuro do desktop; páginas são roláveis
