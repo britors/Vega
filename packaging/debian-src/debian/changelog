@@ -1,3 +1,11 @@
+vega (2.0.3-1) unstable; urgency=medium
+
+  * Acompanha automaticamente o modo claro ou escuro do GNOME.
+  * Melhora o contraste dos menus e superfícies nos dois temas.
+  * Posiciona a ação de ativar ou desativar em cada linha de repositório.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Thu, 16 Jul 2026 08:37:35 -0300
+
 vega (2.0.2-1) unstable; urgency=medium
 
   * Exibe repositórios em lista com estado ativo ou inativo.

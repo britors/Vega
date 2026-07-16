@@ -9,6 +9,7 @@ use adw::prelude::*;
 use crate::dbus::{PackageRef, RepositoryRef};
 
 type SelectionHandlers = Rc<RefCell<Vec<Rc<dyn Fn()>>>>;
+type RepositoryToggleHandlers = Rc<RefCell<Vec<Rc<dyn Fn(RepositoryRef)>>>>;
 
 #[derive(Clone, Debug)]
 struct PackageGroup {
@@ -42,7 +43,6 @@ pub struct SoftwarePage {
     pub results_area: gtk::Box,
     pub repository_panel: gtk::Box,
     pub repository_list: gtk::ListBox,
-    pub repository_action: gtk::Button,
     pub optimize_mirrors: gtk::Button,
     pub global_action: gtk::Button,
     pub transaction_panel: gtk::Box,
@@ -51,7 +51,7 @@ pub struct SoftwarePage {
     package_groups: Rc<RefCell<Vec<PackageGroup>>>,
     selected_group: Rc<Cell<Option<usize>>>,
     selection_handlers: SelectionHandlers,
-    repositories: Rc<RefCell<Vec<RepositoryRef>>>,
+    repository_toggle_handlers: RepositoryToggleHandlers,
 }
 
 impl SoftwarePage {
@@ -149,14 +149,9 @@ impl SoftwarePage {
         results_area.append(&result_stack);
 
         let repository_list = gtk::ListBox::builder()
-            .selection_mode(gtk::SelectionMode::Single)
+            .selection_mode(gtk::SelectionMode::None)
             .hexpand(true)
             .css_classes(["boxed-list"])
-            .build();
-        let repository_action = gtk::Button::builder()
-            .label("Ativar")
-            .halign(gtk::Align::Start)
-            .sensitive(false)
             .build();
         let optimize_mirrors = gtk::Button::builder().label("Otimizar mirrors").build();
         let repository_header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -182,26 +177,7 @@ impl SoftwarePage {
                 .build(),
         );
         repository_panel.append(&repository_list);
-        repository_panel.append(&repository_action);
-        let repositories = Rc::new(RefCell::new(Vec::<RepositoryRef>::new()));
-        let selected_repositories = repositories.clone();
-        let selected_action = repository_action.clone();
-        repository_list.connect_row_selected(move |_, row| {
-            let repository = row.and_then(|row| {
-                selected_repositories
-                    .borrow()
-                    .get(row.index() as usize)
-                    .cloned()
-            });
-            selected_action.set_sensitive(repository.is_some());
-            if let Some(repository) = repository {
-                selected_action.set_label(if repository.enabled {
-                    "Desativar"
-                } else {
-                    "Ativar"
-                });
-            }
-        });
+        let repository_toggle_handlers = RepositoryToggleHandlers::default();
         let list_stack = result_stack.clone();
         list_view.connect_clicked(move |button| {
             if button.is_active() {
@@ -315,7 +291,6 @@ impl SoftwarePage {
             results_area,
             repository_panel,
             repository_list,
-            repository_action,
             optimize_mirrors,
             global_action,
             transaction_panel,
@@ -324,7 +299,7 @@ impl SoftwarePage {
             package_groups: Rc::new(RefCell::new(Vec::new())),
             selected_group,
             selection_handlers,
-            repositories,
+            repository_toggle_handlers,
         }
     }
 
@@ -537,7 +512,6 @@ impl SoftwarePage {
         while let Some(child) = self.repository_list.first_child() {
             self.repository_list.remove(&child);
         }
-        *self.repositories.borrow_mut() = repositories.to_vec();
         for repository in repositories {
             let row = adw::ActionRow::builder()
                 .title(&repository.name)
@@ -547,26 +521,33 @@ impl SoftwarePage {
                     "Inativo"
                 })
                 .build();
-            row.add_prefix(
-                &gtk::Image::builder()
-                    .icon_name(if repository.enabled {
-                        "emblem-ok-symbolic"
-                    } else {
-                        "media-playback-stop-symbolic"
-                    })
-                    .build(),
-            );
+            let action = gtk::Button::builder()
+                .label(if repository.enabled {
+                    "Desativar"
+                } else {
+                    "Ativar"
+                })
+                .valign(gtk::Align::Center)
+                .build();
+            if !repository.enabled {
+                action.add_css_class("suggested-action");
+            }
+            let selected_repository = repository.clone();
+            let handlers = self.repository_toggle_handlers.clone();
+            action.connect_clicked(move |_| {
+                for handler in handlers.borrow().iter() {
+                    handler(selected_repository.clone());
+                }
+            });
+            row.add_suffix(&action);
             self.repository_list.append(&row);
-        }
-        self.repository_action.set_sensitive(false);
-        if let Some(row) = self.repository_list.row_at_index(0) {
-            self.repository_list.select_row(Some(&row));
         }
     }
 
-    pub fn selected_repository(&self) -> Option<RepositoryRef> {
-        let index = self.repository_list.selected_row()?.index() as usize;
-        self.repositories.borrow().get(index).cloned()
+    pub fn connect_repository_toggle(&self, callback: impl Fn(RepositoryRef) + 'static) {
+        self.repository_toggle_handlers
+            .borrow_mut()
+            .push(Rc::new(callback));
     }
 
     fn clear_results(&self) {

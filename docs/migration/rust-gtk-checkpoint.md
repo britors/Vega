@@ -19,7 +19,8 @@
 
 ## Implementado
 
-- Crate/pacote `lyra-vega-gtk` no diretório `vega-gtk/`, tema escuro Lyra e shell próximo ao Electron.
+- Crate/pacote `lyra-vega-gtk` no diretório `vega-gtk/`, tema Lyra que acompanha
+  o esquema claro/escuro do GNOME e shell nativo.
 - Sidebar de 240 px, busca de módulos, navegação persistente e cabeçalho nativo.
 - Sidebar usa ícones simbólicos nativos para Painel, Software, Backup, Hardware
   e Sobre, herdando as cores do tema e do estado ativo.

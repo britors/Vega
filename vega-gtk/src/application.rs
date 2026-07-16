@@ -30,7 +30,7 @@ pub fn run() -> glib::ExitCode {
 
 fn install_style() {
     gtk::Window::set_default_icon_name("vega");
-    adw::StyleManager::default().set_color_scheme(adw::ColorScheme::ForceDark);
+    adw::StyleManager::default().set_color_scheme(adw::ColorScheme::Default);
     let provider = gtk::CssProvider::new();
     provider.load_from_data(include_str!("../resources/style.css"));
     gtk::style_context_add_provider_for_display(
@@ -2446,7 +2446,6 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         }
         repositories_page.select_repositories();
         repositories_page.repository_list.set_sensitive(false);
-        repositories_page.repository_action.set_sensitive(false);
         let page = repositories_page.clone();
         let client = repositories_dbus.software();
         glib::MainContext::default().spawn_local(async move {
@@ -2460,7 +2459,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         });
     });
 
-    connect_repository_toggle(&page.repository_action, &page, &dbus);
+    connect_repository_toggle(&page, &dbus);
 
     let mirrors_page = page.clone();
     let mirrors_dbus = dbus.clone();
@@ -2694,17 +2693,10 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
     });
 }
 
-fn connect_repository_toggle(
-    button: &gtk::Button,
-    page: &crate::ui::SoftwarePage,
-    dbus: &VegaDbus,
-) {
+fn connect_repository_toggle(page: &crate::ui::SoftwarePage, dbus: &VegaDbus) {
     let page = page.clone();
     let dbus = dbus.clone();
-    button.connect_clicked(move |_| {
-        let Some(repository) = page.selected_repository() else {
-            return;
-        };
+    page.clone().connect_repository_toggle(move |repository| {
         let enabled = !repository.enabled;
         let verb = if enabled { "Ativar" } else { "Desativar" };
         let dialog = adw::AlertDialog::new(
@@ -2729,7 +2721,6 @@ fn connect_repository_toggle(
                 return;
             }
             page.repository_list.set_sensitive(false);
-            page.repository_action.set_sensitive(false);
             page.begin_transaction(&format!("{verb} {}…", repository.name));
             match client.set_repo_enabled(&repository.name, enabled).await {
                 Ok(()) => {

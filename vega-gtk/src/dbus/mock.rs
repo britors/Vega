@@ -50,7 +50,7 @@ mod tests {
     #[test]
     fn connected_mock_returns_typed_values() {
         let expected = BackendStatus {
-            version: "2.0.2".into(),
+            version: "2.0.3".into(),
             distro: "Test Linux".into(),
             logo_path: "/test/logo.svg".into(),
         };
