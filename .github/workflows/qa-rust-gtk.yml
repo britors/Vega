@@ -10,7 +10,7 @@ jobs:
   rust:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Dependências GTK
         run: |
           sudo apt-get update
@@ -29,10 +29,11 @@ jobs:
   daemon:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version-file: vegad/go.mod
+          cache-dependency-path: vegad/go.sum
       - name: Testes do daemon e mocks D-Bus
         working-directory: vegad
         run: go test ./...
@@ -40,7 +41,7 @@ jobs:
   package-policy:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Pacotes finais não incluem Electron/Node
         run: |
           files=(packaging/vega/PKGBUILD packaging/fedora/vega.spec \

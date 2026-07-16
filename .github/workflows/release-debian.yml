@@ -23,7 +23,7 @@ jobs:
             build-essential debhelper dpkg-dev fakeroot golang-go \
             cargo rustc pkg-config libgtk-4-dev libadwaita-1-dev ca-certificates git
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # O cargo do Ubuntu satisfaz o Build-Depends; o toolchain estável evita
       # prender o build ao compilador antigo da imagem LTS.
