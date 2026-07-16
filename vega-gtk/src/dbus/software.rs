@@ -400,7 +400,7 @@ mod tests {
             ("GetAurPkgbuild".into(), args(&[("in", "s"), ("out", "s")])),
             (
                 "GetPackageDetails".into(),
-                args(&[("in", "s"), ("in", "s"), ("out", "(ssssbssssasass)")]),
+                args(&[("in", "s"), ("in", "s"), ("out", "(ssssbssssasasss)")]),
             ),
             (
                 "Install".into(),

@@ -115,6 +115,30 @@ private slots:
         QVERIFY(window.findChild<QPushButton *>(QStringLiteral("action.Backup.CreateConfig")));
         QVERIFY(window.findChild<QPushButton *>(QStringLiteral("action.Backup.RestoreItems")));
     }
+    void allComplexDbusTypesMatchThePublishedContract() {
+        registerDbusTypes();
+        const auto signature = []<typename T> {
+            return QString::fromLatin1(QDBusMetaType::typeToSignature(QMetaType::fromType<T>()));
+        };
+        QCOMPARE(signature.operator()<BackupConfig>(), QStringLiteral("(sassss)"));
+        QCOMPARE(signature.operator()<QList<BackupSnapshot>>(), QStringLiteral("a(sxtt)"));
+        QCOMPARE(signature.operator()<BluetoothStatus>(), QStringLiteral("(bbbbbssbbs)"));
+        QCOMPARE(signature.operator()<QList<BluetoothDevice>>(), QStringLiteral("a(ssssbbbbi)"));
+        QCOMPARE(signature.operator()<DateTimeStatus>(), QStringLiteral("(sbss)"));
+        QCOMPARE(signature.operator()<QList<FirewallService>>(), QStringLiteral("a(ssb)"));
+        QCOMPARE(signature.operator()<HardwareInventory>(), QStringLiteral("(sss)"));
+        QCOMPARE(signature.operator()<KernelBootStatus>(), QStringLiteral("(ssus)"));
+        QCOMPARE(signature.operator()<QList<NetworkInterface>>(), QStringLiteral("a(ssssssssssusb)"));
+        QCOMPARE(signature.operator()<QList<WifiNetwork>>(), QStringLiteral("a(ssubs)"));
+        QCOMPARE(signature.operator()<ProxyConfig>(), QStringLiteral("(ssss)"));
+        QCOMPARE(signature.operator()<QList<ServiceInfo>>(), QStringLiteral("a(sssbbb)"));
+        QCOMPARE(signature.operator()<QList<SnapshotInfo>>(), QStringLiteral("a(uxss)"));
+        QCOMPARE(signature.operator()<PackageDetails>(), QStringLiteral("(ssssbssssasasss)"));
+        QCOMPARE(signature.operator()<QList<PackageRef>>(), QStringLiteral("a(ssssbs)"));
+        QCOMPARE(signature.operator()<QList<RepoInfo>>(), QStringLiteral("a(sb)"));
+        QCOMPARE(signature.operator()<QList<StorageVolume>>(), QStringLiteral("a(sssssssussbbb)"));
+        QCOMPARE(signature.operator()<QList<UserInfo>>(), QStringLiteral("a(sb)"));
+    }
     void backupConfigIsMarshalledAsTheContractStructure() {
         auto *client = new MockDbusClient;
         MainWindow window(nullptr, client);

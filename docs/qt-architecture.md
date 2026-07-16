@@ -16,7 +16,9 @@ cutover. As duas interfaces consomem o mesmo `vegad` em `/org/lyraos/Vega1`.
 
 ## Estado, concorrência e falhas
 
-Estado testável fica fora de widgets. Chamadas usam `QDBusConnection::asyncCall` e
+Estado testável fica fora de widgets. Proxies são gerados com `qdbusxml2cpp` para
+todos os contratos em escopo; estruturas complexas possuem tipos registrados e
+testes de assinatura. Chamadas usam `QDBusConnection::asyncCall` e
 `QDBusPendingCallWatcher`; watchers pertencem à página e são cancelados/ignorados quando ela é
 descartada. Operações longas são correlacionadas por `transactionId`. Erros distinguem daemon
 ausente, timeout, polkit negado/cancelado, capability ausente e falha genérica. Segredos jamais

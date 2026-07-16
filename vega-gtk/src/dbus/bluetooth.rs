@@ -238,5 +238,7 @@ mod tests {
         ] {
             assert!(xml.contains(&format!("<method name=\"{method}\">")));
         }
+        assert!(xml.contains("type=\"(bbbbbssbbs)\""));
+        assert!(!xml.contains("type=\"(bbbbbsssbs)\""));
     }
 }

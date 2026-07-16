@@ -18,7 +18,8 @@ real com a GTK, falhando diante de qualquer caminho compartilhado. O teste Qt
 também cria e descarta todas as páginas vinte
 vezes e verifica rotas, fluxos de leitura obrigatórios, acessibilidade,
 correlação de transações, AUR,
-Secret Service, redação da auditoria e métodos obrigatórios do contrato.
+Secret Service, redação da auditoria, métodos obrigatórios do contrato e todas
+as assinaturas D-Bus estruturadas usadas pelos proxies gerados.
 
 ## Resultados locais
 

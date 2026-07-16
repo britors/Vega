@@ -10,9 +10,22 @@ include(CTest)
 find_package(Qt6 6.4 REQUIRED COMPONENTS Core DBus Network Widgets)
 
 set(VEGA_DBUS_XML
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Backup.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Bluetooth.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.DateTime.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Firewall.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Hardware.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Kernel.xml
     ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Logs.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Network.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Services.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Snapshots.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Software.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Storage.xml
     ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.System.xml
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/org.lyraos.Vega1.Users.xml
 )
+set_source_files_properties(${VEGA_DBUS_XML} PROPERTIES INCLUDE dbustypes.h)
 qt_add_dbus_interfaces(VEGA_DBUS_SOURCES ${VEGA_DBUS_XML})
 
 add_library(vegaqt_core STATIC
