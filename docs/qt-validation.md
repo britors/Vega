@@ -2,6 +2,10 @@
 
 Última execução local: 2026-07-16, Fedora 44, GNOME/Wayland, Qt 6.11.1.
 
+Validação manual informada pelo mantenedor: a interface GTK foi testada em
+Fedora Workstation e Linux Mint. Esta evidência confirma a preservação da GTK,
+mas não substitui os gates específicos da interface Qt nessas sessões.
+
 ## Comandos reproduzíveis
 
 ```sh
@@ -20,7 +24,9 @@ também cria e descarta todas as páginas vinte
 vezes e verifica rotas, fluxos de leitura obrigatórios, acessibilidade,
 carregamento sob demanda, correlação de transações, AUR,
 Secret Service, redação da auditoria, métodos obrigatórios do contrato e todas
-as assinaturas D-Bus estruturadas usadas pelos proxies gerados.
+as assinaturas D-Bus estruturadas usadas pelos proxies gerados. Um gate percorre
+os 14 XMLs em escopo e exige que cada método esteja exposto por uma rota ou ação;
+Monitor permanece fora do escopo aprovado da milestone.
 
 ## Resultados locais
 

@@ -28,6 +28,7 @@
 #include <QDBusPendingCallWatcher>
 #include <QDBusMessage>
 #include <QDBusMetaType>
+#include <QDir>
 #include <memory>
 
 class MockDbusClient final : public DbusClient {
@@ -102,6 +103,31 @@ private slots:
             QVERIFY2(!xml.hasError(), qPrintable(xml.errorString()));
             for (const auto &method : it.value())
                 QVERIFY2(methods.contains(method), qPrintable(it.key() + QStringLiteral(".") + method));
+        }
+    }
+    void everyInScopeDbusMethodIsExposedByARouteOrAction() {
+        MainWindow window;
+        const auto exposed = window.exposedDbusMethods();
+        QDir directory(QStringLiteral(VEGA_SOURCE_DIR "/dbus"));
+        const auto contracts = directory.entryList(
+            {QStringLiteral("org.lyraos.Vega1.*.xml")}, QDir::Files, QDir::Name);
+        QCOMPARE(contracts.size(), 15); // 14 superfícies + Monitor, fora do escopo.
+        for (const auto &contract : contracts) {
+            const auto interface = contract.mid(QStringLiteral("org.lyraos.Vega1.").size())
+                                       .chopped(QStringLiteral(".xml").size());
+            if (interface == QStringLiteral("Monitor")) continue;
+            QFile file(directory.filePath(contract));
+            QVERIFY2(file.open(QIODevice::ReadOnly), qPrintable(file.fileName()));
+            QXmlStreamReader xml(&file);
+            while (!xml.atEnd()) {
+                xml.readNext();
+                if (xml.isStartElement() && xml.name() == QStringLiteral("method")) {
+                    const auto method = interface + QStringLiteral(".") +
+                                        xml.attributes().value(QStringLiteral("name")).toString();
+                    QVERIFY2(exposed.contains(method), qPrintable(method));
+                }
+            }
+            QVERIFY2(!xml.hasError(), qPrintable(xml.errorString()));
         }
     }
     void representativeMutationsAreExposed() {
@@ -226,6 +252,21 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(&window, "transactionFinished", Qt::DirectConnection,
                                           Q_ARG(quint32, 42), Q_ARG(bool, true), Q_ARG(QString, QStringLiteral("ok"))));
         QVERIFY(!window.tracksTransaction(42));
+    }
+    void informationalContractSignalsReachAccessibleFeedback() {
+        MainWindow window;
+        auto *notification = window.findChild<QLabel *>(QStringLiteral("notificationText"));
+        QVERIFY(notification);
+        QVERIFY(!notification->accessibleName().isEmpty());
+        QVERIFY(QMetaObject::invokeMethod(&window, "updatesAvailable", Qt::DirectConnection,
+                                          Q_ARG(quint32, 3)));
+        QVERIFY(notification->text().contains(QStringLiteral("3")));
+        QVERIFY(QMetaObject::invokeMethod(&window, "backupAlert", Qt::DirectConnection,
+                                          Q_ARG(QString, QStringLiteral("home")),
+                                          Q_ARG(quint32, 2),
+                                          Q_ARG(QString, QStringLiteral("sem espaço"))));
+        QVERIFY(notification->text().contains(QStringLiteral("home")));
+        QVERIFY(notification->text().contains(QStringLiteral("sem espaço")));
     }
     void onlyLongRunningMethodsStartTransactions() {
         QVERIFY(DbusClient::startsTransaction(QStringLiteral("Software"), QStringLiteral("Install")));

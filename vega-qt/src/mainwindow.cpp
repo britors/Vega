@@ -273,6 +273,8 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
     m_navigation->setAccessibleName(tr("Navegação principal"));
     m_navigation->setObjectName(QStringLiteral("mainNavigation"));
     m_progressText->setWordWrap(true);
+    m_progressText->setObjectName(QStringLiteral("notificationText"));
+    m_progressText->setAccessibleName(tr("Notificações de operações"));
     m_progressText->setVisible(false);
     m_progress->setRange(0, 100);
     m_progress->setObjectName(QStringLiteral("transactionProgress"));
@@ -359,6 +361,12 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
         bus.connect(QString::fromLatin1(DbusClient::Service), QString::fromLatin1(DbusClient::Path),
                     QStringLiteral("org.lyraos.Vega1.Backup"), signal, this,
                     SLOT(transactionFinished(uint,bool,QString)));
+    bus.connect(QString::fromLatin1(DbusClient::Service), QString::fromLatin1(DbusClient::Path),
+                QStringLiteral("org.lyraos.Vega1.Software"), QStringLiteral("UpdatesAvailable"),
+                this, SLOT(updatesAvailable(uint)));
+    bus.connect(QString::fromLatin1(DbusClient::Service), QString::fromLatin1(DbusClient::Path),
+                QStringLiteral("org.lyraos.Vega1.Backup"), QStringLiteral("BackupAlert"),
+                this, SLOT(backupAlert(QString,uint,QString)));
     connect(m_serviceWatcher, &QDBusServiceWatcher::serviceRegistered, this,
             [this] { checkBackend(); });
     connect(m_serviceWatcher, &QDBusServiceWatcher::serviceUnregistered, this, [this] {
@@ -897,6 +905,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                    {tr("Limite"), InputType::Unsigned}}, false);
     } else if (id == QStringLiteral("dashboard")) {
         addAction(layout, QStringLiteral("System"), QStringLiteral("Ping"), tr("Verificar saúde do serviço"), {}, false);
+        addAction(layout, QStringLiteral("System"), QStringLiteral("Logo"), tr("Exibir identidade da distribuição"), {}, false);
         addAction(layout, QStringLiteral("System"), QStringLiteral("Distro"), tr("Exibir distribuição"), {}, false);
         addAction(layout, QStringLiteral("Software"), QStringLiteral("ListUpdates"), tr("Exibir atualizações"), {}, false);
         addAction(layout, QStringLiteral("Backup"), QStringLiteral("ListConfigs"), tr("Exibir backups"), {}, false);
@@ -1188,6 +1197,20 @@ void MainWindow::checkBackend() {
 
 QStringList MainWindow::routeNames() const { return m_routes.keys(); }
 
+QStringList MainWindow::exposedDbusMethods() const {
+    QSet<QString> methods;
+    for (auto it = m_routeSpecs.cbegin(); it != m_routeSpecs.cend(); ++it)
+        methods.insert(QString::fromLatin1(it->interface) + QStringLiteral(".") +
+                       QString::fromLatin1(it->readMethod));
+    for (const auto *button : findChildren<QPushButton *>()) {
+        const auto name = button->objectName();
+        if (name.startsWith(QStringLiteral("action."))) methods.insert(name.mid(7));
+    }
+    auto values = methods.values();
+    values.sort();
+    return values;
+}
+
 bool MainWindow::tracksTransaction(quint32 id) const { return m_transactions.contains(id); }
 
 bool MainWindow::canInstallAur(const QString &packageId) const {
@@ -1218,4 +1241,17 @@ void MainWindow::transactionFinished(quint32 id, bool success, const QString &me
     m_progressText->setText(tr("Transação %1 %2: %3").arg(id).arg(
         success ? tr("concluída") : tr("falhou"), message));
     if (m_transactions.isEmpty()) m_progress->setVisible(false);
+}
+
+void MainWindow::updatesAvailable(quint32 count) {
+    m_progressText->setText(tr("%n atualização(ões) disponível(is).", nullptr,
+                               static_cast<int>(count)));
+    m_progressText->setVisible(true);
+}
+
+void MainWindow::backupAlert(const QString &configId, quint32 consecutiveFailures,
+                             const QString &message) {
+    m_progressText->setText(tr("Alerta do backup %1 após %2 falha(s): %3")
+                                .arg(configId).arg(consecutiveFailures).arg(message));
+    m_progressText->setVisible(true);
 }

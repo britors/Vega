@@ -20,6 +20,7 @@ class MainWindow final : public QMainWindow {
 public:
     explicit MainWindow(QWidget *parent = nullptr, DbusClient *client = nullptr);
     QStringList routeNames() const;
+    QStringList exposedDbusMethods() const;
     bool tracksTransaction(quint32 id) const;
     void trackTransaction(quint32 id);
     bool canInstallAur(const QString &packageId) const;
@@ -28,6 +29,8 @@ public:
 private slots:
     void transactionProgress(quint32 id, quint32 percent, const QString &message);
     void transactionFinished(quint32 id, bool success, const QString &message);
+    void updatesAvailable(quint32 count);
+    void backupAlert(const QString &configId, quint32 consecutiveFailures, const QString &message);
 
 private:
     struct RouteSpec {
