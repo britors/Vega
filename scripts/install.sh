@@ -10,10 +10,17 @@
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
 #
-# VEGA_VERSION=v1.3.4 sudo -E bash install.sh   # trava numa tag específica
+# VEGA_UI=qt sudo -E bash install.sh             # gtk (padrão), qt ou both
+# VEGA_VERSION=v1.3.4 sudo -E bash install.sh    # trava numa tag específica
 set -euo pipefail
 
 REPO="britors/Vega"
+VEGA_UI="${VEGA_UI:-gtk}"
+
+case "$VEGA_UI" in
+  gtk|qt|both) ;;
+  *) echo "VEGA_UI deve ser 'gtk', 'qt' ou 'both'." >&2; exit 2 ;;
+esac
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Rode como root (sudo bash install.sh, ou via curl ... | sudo bash)." >&2
@@ -65,6 +72,19 @@ download_release_assets() {
   done
 }
 
+filter_ui_assets() {
+  local file base
+  for file in "$workdir"/*; do
+    [ -e "$file" ] || continue
+    base="$(basename "$file")"
+    case "$VEGA_UI:$base" in
+      gtk:lyra-vega-qt-*|gtk:lyra-vega-qt_*|qt:lyra-vega-gtk-*|qt:lyra-vega-gtk_*)
+        rm -f "$file"
+        ;;
+    esac
+  done
+}
+
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
@@ -74,7 +94,9 @@ case "$distro_id $distro_id_like" in
 Detectei Arch. Este instalador só empacota RPM/.deb pra openSUSE/Fedora/
 Ubuntu; em Arch use o pacote do AUR, que já é o caminho suportado:
 
-  yay -S lyra-vega-gtk
+  yay -S lyra-vega-gtk       # GTK
+  yay -S lyra-vega-qt        # Qt
+  yay -S lyra-vega-gtk lyra-vega-qt  # ambas
 
 (ou `paru -S lyra-vega-gtk`, se preferir).
 EOF
@@ -94,6 +116,7 @@ EOF
     # packaging/fedora/*.spec definem "dist .fcNN" (terminam em
     # "-1.fcNN.x86_64.rpm") — usa isso pra distinguir os dois conjuntos.
     download_release_assets '-1\.x86_64\.rpm'
+    filter_ui_assets
 
     echo "==> Instalando via zypper"
     echo "Aviso: os RPMs desta release ainda não são assinados (sem chave GPG"
@@ -107,6 +130,7 @@ EOF
     fi
 
     download_release_assets '-1\.fc[0-9]+\.x86_64\.rpm'
+    filter_ui_assets
 
     echo "==> Instalando via dnf"
     echo "Aviso: empacotamento Fedora ainda é considerado de teste, não"
@@ -121,6 +145,7 @@ EOF
     fi
 
     download_release_assets '\.deb'
+    filter_ui_assets
 
     echo "==> Instalando via apt"
     echo "Aviso: empacotamento Ubuntu/Debian ainda é considerado de teste,"
@@ -141,7 +166,8 @@ cat <<'EOF'
 
 Instalação concluída.
 - Daemon: vegad, ativado sob demanda via D-Bus (org.lyraos.Vega1)
-- App: /usr/bin/vega (ou pelo atalho "Vega" no menu)
+- Interface selecionada por VEGA_UI (gtk, qt ou both)
+- GTK: /usr/bin/lyra-vega-gtk; Qt: /usr/bin/lyra-vega-qt
 
 Empacotamento ainda é considerado de teste — reporte problemas em
 https://github.com/britors/Vega/issues.

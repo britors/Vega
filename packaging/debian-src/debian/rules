@@ -15,6 +15,9 @@ export DH_VERBOSE=1
 
 override_dh_auto_build:
 	cd vega-gtk && cargo build --release --locked
+	cmake -S vega-qt -B build/vega-qt -G Ninja \
+		-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF
+	cmake --build build/vega-qt
 	cd vegad && go build -trimpath -buildvcs=false \
 		-ldflags "-X github.com/lyraos/vegad/internal/version.Version=$(DEB_VERSION_UPSTREAM)" \
 		-o vegad ./cmd/vegad
@@ -29,6 +32,7 @@ override_dh_auto_install:
 		debian/lyra-vega-gtk/usr/share/applications/vega.desktop
 	install -Dm644 packaging/vega/vega.svg \
 		debian/lyra-vega-gtk/usr/share/icons/hicolor/scalable/apps/vega.svg
+	DESTDIR=$(CURDIR)/debian/lyra-vega-qt cmake --install build/vega-qt
 
 	install -Dm755 vegad/vegad debian/vegad/usr/lib/vega/vegad
 	install -Dm644 packaging/vegad/vegad.service \

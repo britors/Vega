@@ -1,7 +1,6 @@
 name: Release DEBs (Ubuntu/Debian)
 
-# Builda lyra-vega-gtk.deb e vegad.deb num container Ubuntu a partir do template em
-# packaging/debian-src/ e anexa os dois na GitHub Release da tag empurrada.
+# Builda as interfaces GTK/Qt e o vegad em pacotes independentes.
 on:
   push:
     tags:
@@ -22,6 +21,7 @@ jobs:
           apt-get install -y --no-install-recommends \
             build-essential debhelper dpkg-dev fakeroot golang-go \
             cargo rustc pkg-config libgtk-4-dev libadwaita-1-dev \
+            cmake ninja-build qt6-base-dev \
             ca-certificates curl git
 
       - uses: actions/checkout@v7

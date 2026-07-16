@@ -29,6 +29,7 @@ packaging/*/*.pkg.tar.*.sig
 # RPM packaging (openSUSE)
 *.rpm
 dist-test/
+/build/
 
 # Editors / OS
 .DS_Store

@@ -1,0 +1,19 @@
+name: QA Qt6
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  qt:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Dependências Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build qt6-base-dev
+      - name: Build e testes headless
+        run: ./scripts/qa-qt.sh

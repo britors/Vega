@@ -1,6 +1,6 @@
 name: Release RPMs (openSUSE)
 
-# Builda vegad.rpm e lyra-vega-gtk.rpm num container openSUSE Leap a partir dos specs
+# Builda vegad e as interfaces GTK/Qt em RPMs independentes a partir dos specs
 # em packaging/opensuse/ e anexa os dois na GitHub Release da tag empurrada.
 # Empacotamento ainda de teste, ver packaging/opensuse/vegad.spec.
 on:
@@ -19,7 +19,8 @@ jobs:
       - name: Instalar dependências de build
         run: |
           zypper --non-interactive install -y tar gzip go rust cargo gcc \
-            pkg-config gtk4-devel libadwaita-devel rpm-build rpmdevtools
+            pkg-config gtk4-devel libadwaita-devel cmake ninja qt6-base-devel \
+            rpm-build rpmdevtools
 
       - uses: actions/checkout@v7
 
@@ -34,6 +35,7 @@ jobs:
             .
           rpmbuild -bb --define "version $version" packaging/opensuse/vegad.spec
           rpmbuild -bb --define "version $version" packaging/opensuse/vega.spec
+          rpmbuild -bb --define "version $version" packaging/opensuse/vega-qt.spec
 
       - name: Coletar RPMs finais (sem debuginfo/debugsource)
         run: |

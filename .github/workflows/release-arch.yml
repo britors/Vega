@@ -1,0 +1,57 @@
+name: Release packages (Arch Linux)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Dependências
+        run: pacman -Syu --noconfirm base-devel git go rust gtk4 libadwaita cmake ninja qt6-base
+      - uses: actions/checkout@v7
+      - name: Construir pacotes locais
+        run: |
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          version="${GITHUB_REF_NAME#v}"
+          version="${version%%-*}"
+          mkdir -p dist
+          for package in vega vega-qt vegad; do
+            work="/tmp/pkg-$package"
+            install -d -o builder -g builder "$work/src"
+            cp "packaging/$package/PKGBUILD" "$work/PKGBUILD"
+            cp -a . "$work/src/Vega"
+            chown -R builder:builder "$work"
+            sed -i "s/^pkgver=.*/pkgver=$version/" "$work/PKGBUILD"
+            su builder -c "cd '$work' && VEGA_SOURCE_DIR='$work/src/Vega' makepkg --noconfirm --nodeps --noextract"
+            cp "$work"/*.pkg.tar.* dist/
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-packages
+          path: dist/*.pkg.tar.*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: arch-packages
+          path: dist
+      - name: Publicar pacotes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --generate-notes
+          fi
+          gh release upload "$tag" dist/*.pkg.tar.* --repo "$GITHUB_REPOSITORY" --clobber

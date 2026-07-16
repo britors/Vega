@@ -2,13 +2,13 @@ Source: vega
 Section: admin
 Priority: optional
 Maintainer: Rodrigo Brito <rodrigo@w3ti.com.br>
-Build-Depends: debhelper-compat (= 13), cargo, rustc, golang-go, pkg-config, libgtk-4-dev, libadwaita-1-dev
+Build-Depends: debhelper-compat (= 13), cargo, rustc, golang-go, pkg-config, libgtk-4-dev, libadwaita-1-dev, cmake, ninja-build, qt6-base-dev
 Standards-Version: 4.6.2
 Homepage: https://github.com/britors/Vega
 
 Package: lyra-vega-gtk
 Architecture: amd64
-Depends: ${misc:Depends}, ${shlibs:Depends}, vegad (= ${binary:Version})
+Depends: ${misc:Depends}, ${shlibs:Depends}, libsecret-tools, vegad (= ${binary:Version})
 Provides: vega
 Conflicts: vega
 Replaces: vega
@@ -26,3 +26,10 @@ Description: Daemon privilegiado do Vega, centro de controle para Linux
  polkit. Ativado sob demanda pelo D-Bus (Type=dbus), não roda como
  serviço permanente.
  .
+
+Package: lyra-vega-qt
+Architecture: amd64
+Depends: ${misc:Depends}, ${shlibs:Depends}, vegad (= ${binary:Version})
+Description: Interface Qt do centro de controle Vega
+ Interface Qt independente do Vega. Possui binário, desktop file e configurações
+ próprios e pode ser instalada junto da interface GTK.

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.lyraos.VegaQt</id>
+  <name>Vega (Qt)</name>
+  <summary>Administração do sistema LyraOS com Qt</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <launchable type="desktop-id">org.lyraos.VegaQt.desktop</launchable>
+  <description><p>Interface Qt independente para o serviço vegad.</p></description>
+</component>

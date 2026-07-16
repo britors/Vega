@@ -1,0 +1,7 @@
+QMainWindow { background: palette(window); }
+#brand { font-size: 24px; font-weight: 700; padding: 8px 4px; }
+#pageTitle { font-size: 26px; font-weight: 650; }
+QListWidget { border: 0; background: transparent; }
+QListWidget::item { padding: 9px; border-radius: 7px; }
+QListWidget::item:selected { background: palette(highlight); color: palette(highlighted-text); }
+QPushButton { padding: 7px 14px; }
