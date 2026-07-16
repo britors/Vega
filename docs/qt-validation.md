@@ -16,7 +16,8 @@ contratos XML, metadados Arch, identidades de pacote e smoke Qt nos plugins
 offscreen e minimal. Ele instala a Qt numa raiz temporária e compara o manifesto
 real com a GTK, falhando diante de qualquer caminho compartilhado. O teste Qt
 também cria e descarta todas as páginas vinte
-vezes e verifica rotas, acessibilidade, correlação de transações, AUR,
+vezes e verifica rotas, fluxos de leitura obrigatórios, acessibilidade,
+correlação de transações, AUR,
 Secret Service, redação da auditoria e métodos obrigatórios do contrato.
 
 ## Resultados locais
@@ -46,8 +47,9 @@ hardware de referência, além de execução em VMs Arch, openSUSE e Ubuntu/Debi
 | Ubuntu/Debian / Wayland e X11 | workflow criado | pendente CI/VM | pendente CI/VM | pendente CI/VM |
 
 As linhas pendentes não devem ser declaradas aprovadas sem execução nos ambientes
-correspondentes. Os workflows geram artefatos independentes e preservam todos os
-jobs GTK; não existe etapa de cutover.
+correspondentes. Os workflows geram artefatos independentes, instalam GTK, Qt e
+`vegad` juntos e removem cada interface separadamente, verificando que a outra e
+o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cutover.
 
 ## Segurança e acessibilidade
 

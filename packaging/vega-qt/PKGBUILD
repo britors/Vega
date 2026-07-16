@@ -12,7 +12,8 @@ source=("Vega::git+https://github.com/britors/Vega.git#tag=v${pkgver}")
 sha256sums=('SKIP')
 
 build() {
-  cmake -S Vega/vega-qt -B build -G Ninja \
+  local _srcroot="${VEGA_SOURCE_DIR:-$srcdir/Vega}"
+  cmake -S "$_srcroot/vega-qt" -B build -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF
   cmake --build build
 }

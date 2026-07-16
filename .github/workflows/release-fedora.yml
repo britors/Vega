@@ -45,6 +45,25 @@ jobs:
           find "$HOME/rpmbuild/RPMS/x86_64" -maxdepth 1 -name '*.rpm' \
             ! -name '*debuginfo*' ! -name '*debugsource*' -exec cp {} dist/ \;
           ls -lh dist/
+      - name: Validar instalação, coexistência e remoção independente
+        run: |
+          dnf install -y dist/*.rpm
+          test -x /usr/bin/lyra-vega-gtk
+          test -x /usr/bin/lyra-vega-qt
+          test -x /usr/lib/vega/vegad
+          test -f /usr/share/applications/vega.desktop
+          test -f /usr/share/applications/org.lyraos.VegaQt.desktop
+
+          dnf remove -y lyra-vega-qt
+          test -x /usr/bin/lyra-vega-gtk
+          test -x /usr/lib/vega/vegad
+          test ! -e /usr/bin/lyra-vega-qt
+
+          dnf install -y dist/lyra-vega-qt-*.rpm
+          dnf remove -y lyra-vega-gtk
+          test -x /usr/bin/lyra-vega-qt
+          test -x /usr/lib/vega/vegad
+          test ! -e /usr/bin/lyra-vega-gtk
       - uses: actions/upload-artifact@v4
         with:
           name: fedora-rpms

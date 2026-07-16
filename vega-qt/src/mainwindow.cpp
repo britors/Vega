@@ -321,10 +321,16 @@ void MainWindow::addRoute(const RouteSpec &spec) {
     layout->addWidget(retry, 0, Qt::AlignLeft);
     const auto iface = QString::fromLatin1(spec.interface);
     if (id == QStringLiteral("software")) {
+        addAction(layout, iface, QStringLiteral("Search"), tr("Buscar software"),
+                  {{tr("Termo de busca"), InputType::Text}}, false);
+        addAction(layout, iface, QStringLiteral("GetPackageDetails"), tr("Ver detalhes do pacote"),
+                  {{tr("Origem"), InputType::Text}, {tr("Identificador"), InputType::Text}}, false);
+        addAction(layout, iface, QStringLiteral("ListInstalled"), tr("Listar instalados"), {}, false);
+        addAction(layout, iface, QStringLiteral("ListRepos"), tr("Listar repositórios"), {}, false);
         addAction(layout, iface, QStringLiteral("GetAurPkgbuild"), tr("Revisar PKGBUILD do AUR"),
                   {{tr("Identificador"), InputType::Text}}, false);
         addAction(layout, iface, QStringLiteral("Install"), tr("Instalar pacote"),
-                  {{tr("Origem"), InputType::Text}, {tr("Identificador"), InputType::Text}}, false);
+                  {{tr("Origem"), InputType::Text}, {tr("Identificador"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("Remove"), tr("Remover pacote"),
                   {{tr("Origem"), InputType::Text}, {tr("Identificador"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("UpdateAll"), tr("Atualizar tudo"), {}, true);
@@ -689,16 +695,23 @@ void MainWindow::addRoute(const RouteSpec &spec) {
             });
         });
     } else if (id == QStringLiteral("backup")) {
-        addAction(layout, iface, QStringLiteral("RunBackupNow"), tr("Executar backup"),
+        addAction(layout, iface, QStringLiteral("ListSnapshots"), tr("Listar backups"),
                   {{tr("ID da configuração"), InputType::Text}}, false);
+        addAction(layout, iface, QStringLiteral("ListSnapshotPaths"), tr("Listar arquivos do backup"),
+                  {{tr("ID da configuração"), InputType::Text}, {tr("ID do snapshot"), InputType::Text}}, false);
+        addAction(layout, iface, QStringLiteral("RunBackupNow"), tr("Executar backup"),
+                  {{tr("ID da configuração"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("RestoreSnapshot"), tr("Restaurar snapshot"),
                   {{tr("ID do snapshot"), InputType::Text}, {tr("Destino"), InputType::Text},
                    {tr("Modo"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("DeleteConfig"), tr("Excluir configuração"),
                   {{tr("ID da configuração"), InputType::Text}}, true);
     } else if (id == QStringLiteral("snapshots")) {
+        addAction(layout, iface, QStringLiteral("Available"), tr("Verificar disponibilidade"), {}, false);
+        addAction(layout, iface, QStringLiteral("DiffPackages"), tr("Comparar pacotes"),
+                  {{tr("ID"), InputType::Unsigned}}, false);
         addAction(layout, iface, QStringLiteral("CreateSnapshot"), tr("Criar ponto"),
-                  {{tr("Descrição"), InputType::Text}}, false);
+                  {{tr("Descrição"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("Rollback"), tr("Aplicar ponto"),
                   {{tr("ID"), InputType::Unsigned}}, true);
         addAction(layout, iface, QStringLiteral("DeleteSnapshot"), tr("Excluir ponto"),
@@ -706,6 +719,9 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         addAction(layout, iface, QStringLiteral("SetRetentionPolicy"), tr("Definir retenção"),
                   {{tr("Quantidade mantida"), InputType::Unsigned}}, true);
     } else if (id == QStringLiteral("kernel")) {
+        addAction(layout, iface, QStringLiteral("AvailablePackages"), tr("Listar kernels disponíveis"), {}, false);
+        addAction(layout, iface, QStringLiteral("BootStatus"), tr("Exibir estado do bootloader"), {}, false);
+        addAction(layout, iface, QStringLiteral("ListBootEntries"), tr("Listar entradas de boot"), {}, false);
         addAction(layout, iface, QStringLiteral("Install"), tr("Instalar kernel"),
                   {{tr("Pacote"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("Remove"), tr("Remover kernel"),
@@ -717,12 +733,15 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         addAction(layout, iface, QStringLiteral("SwitchNvidiaDriver"), tr("Aplicar driver NVIDIA"),
                   {{tr("Pacote do driver"), InputType::Text}}, true);
     } else if (id == QStringLiteral("datetime")) {
+        addAction(layout, iface, QStringLiteral("ListTimezones"), tr("Listar fusos horários"), {}, false);
+        addAction(layout, iface, QStringLiteral("ListLocales"), tr("Listar idiomas"), {}, false);
+        addAction(layout, iface, QStringLiteral("ListKeymaps"), tr("Listar mapas de teclado"), {}, false);
         addAction(layout, iface, QStringLiteral("Apply"), tr("Aplicar localização"),
                   {{tr("Fuso horário"), InputType::Text}, {tr("Usar NTP"), InputType::Boolean},
                    {tr("Locale"), InputType::Text}, {tr("Mapa de teclado"), InputType::Text}}, true);
     } else if (id == QStringLiteral("storage")) {
         addAction(layout, iface, QStringLiteral("Mount"), tr("Montar volume"),
-                  {{tr("Dispositivo ou caminho"), InputType::Text}}, false);
+                  {{tr("Dispositivo ou caminho"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("Unmount"), tr("Desmontar volume"),
                   {{tr("Dispositivo ou caminho"), InputType::Text}}, true);
     } else if (id == QStringLiteral("users")) {
@@ -733,6 +752,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         addAction(layout, iface, QStringLiteral("SetAdmin"), tr("Alterar papel"),
                   {{tr("Usuário"), InputType::Text}, {tr("Administrador"), InputType::Boolean}}, true);
     } else if (id == QStringLiteral("services")) {
+        addAction(layout, iface, QStringLiteral("ListAllServices"), tr("Listar todos os serviços"), {}, false);
         addAction(layout, iface, QStringLiteral("RestartService"), tr("Reiniciar serviço"),
                   {{tr("Unidade"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("SetServiceRunning"), tr("Iniciar/parar serviço"),
@@ -740,8 +760,12 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         addAction(layout, iface, QStringLiteral("SetServiceEnabled"), tr("Habilitar/desabilitar serviço"),
                   {{tr("Unidade"), InputType::Text}, {tr("Habilitado"), InputType::Boolean}}, true);
     } else if (id == QStringLiteral("network")) {
+        addAction(layout, iface, QStringLiteral("ListWifi"), tr("Listar redes Wi-Fi"), {}, false);
+        addAction(layout, iface, QStringLiteral("GetProxy"), tr("Exibir configuração de proxy"), {}, false);
+        addAction(layout, QStringLiteral("Firewall"), QStringLiteral("Status"), tr("Exibir estado do firewall"), {}, false);
+        addAction(layout, QStringLiteral("Firewall"), QStringLiteral("ListServices"), tr("Listar serviços do firewall"), {}, false);
         addAction(layout, iface, QStringLiteral("ConnectWifi"), tr("Conectar ao Wi-Fi"),
-                  {{tr("SSID"), InputType::Text}, {tr("Senha"), InputType::Secret}}, false);
+                  {{tr("SSID"), InputType::Text}, {tr("Senha"), InputType::Secret}}, true);
         addAction(layout, iface, QStringLiteral("Disconnect"), tr("Desconectar interface"),
                   {{tr("Dispositivo"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("SetStaticIPv4"), tr("Configurar IPv4 estático"),
@@ -756,20 +780,21 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                   tr("Alterar serviço do firewall"),
                   {{tr("Serviço"), InputType::Text}, {tr("Habilitado"), InputType::Boolean}}, true);
     } else if (id == QStringLiteral("bluetooth")) {
+        addAction(layout, iface, QStringLiteral("ListDevices"), tr("Listar dispositivos"), {}, false);
         addAction(layout, iface, QStringLiteral("SetPowered"), tr("Ligar/desligar Bluetooth"),
-                  {{tr("Ligado"), InputType::Boolean}}, false);
+                  {{tr("Ligado"), InputType::Boolean}}, true);
         addAction(layout, iface, QStringLiteral("Pair"), tr("Parear dispositivo"),
-                  {{tr("Endereço"), InputType::Text}}, false);
+                  {{tr("Endereço"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("SetScanning"), tr("Iniciar/parar descoberta"),
-                  {{tr("Procurando"), InputType::Boolean}}, false);
+                  {{tr("Procurando"), InputType::Boolean}}, true);
         addAction(layout, iface, QStringLiteral("SetDiscoverable"), tr("Alterar visibilidade"),
-                  {{tr("Visível"), InputType::Boolean}}, false);
+                  {{tr("Visível"), InputType::Boolean}}, true);
         addAction(layout, iface, QStringLiteral("SetPairable"), tr("Alterar pareamento"),
-                  {{tr("Aceitar pareamento"), InputType::Boolean}}, false);
+                  {{tr("Aceitar pareamento"), InputType::Boolean}}, true);
         addAction(layout, iface, QStringLiteral("Connect"), tr("Conectar dispositivo"),
-                  {{tr("Endereço"), InputType::Text}}, false);
+                  {{tr("Endereço"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("Disconnect"), tr("Desconectar dispositivo"),
-                  {{tr("Endereço"), InputType::Text}}, false);
+                  {{tr("Endereço"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("Trust"), tr("Alterar confiança"),
                   {{tr("Endereço"), InputType::Text}, {tr("Confiável"), InputType::Boolean}}, true);
         addAction(layout, iface, QStringLiteral("Remove"), tr("Remover dispositivo"),
@@ -783,6 +808,15 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                   {{tr("Unidade"), InputType::OptionalText}, {tr("Prioridade"), InputType::OptionalText},
                    {tr("Desde"), InputType::OptionalText}, {tr("Busca"), InputType::OptionalText},
                    {tr("Limite"), InputType::Unsigned}}, false);
+    } else if (id == QStringLiteral("dashboard")) {
+        addAction(layout, QStringLiteral("System"), QStringLiteral("Distro"), tr("Exibir distribuição"), {}, false);
+        addAction(layout, QStringLiteral("Software"), QStringLiteral("ListUpdates"), tr("Exibir atualizações"), {}, false);
+        addAction(layout, QStringLiteral("Backup"), QStringLiteral("ListConfigs"), tr("Exibir backups"), {}, false);
+        addAction(layout, QStringLiteral("Snapshots"), QStringLiteral("ListSnapshots"), tr("Exibir snapshots"), {}, false);
+        addAction(layout, QStringLiteral("Services"), QStringLiteral("ListServices"), tr("Exibir serviços"), {}, false);
+    } else if (id == QStringLiteral("about")) {
+        addAction(layout, QStringLiteral("System"), QStringLiteral("Distro"), tr("Exibir distribuição"), {}, false);
+        addAction(layout, QStringLiteral("System"), QStringLiteral("Ping"), tr("Testar conexão"), {}, false);
     }
     layout->addStretch();
     m_navigation->addItem(spec.title);

@@ -87,6 +87,20 @@ private slots:
                  "action.Bluetooth.SendFile", "action.Hardware.SwitchNvidiaDriver"})
             QVERIFY2(window.findChild<QPushButton *>(QString::fromLatin1(name)), name);
     }
+    void requiredReadFlowsAreExposed() {
+        MainWindow window;
+        for (const auto &name : {
+                 "action.Software.Search", "action.Software.GetPackageDetails",
+                 "action.Software.ListInstalled", "action.Software.ListRepos",
+                 "action.Backup.ListSnapshots", "action.Backup.ListSnapshotPaths",
+                 "action.Snapshots.DiffPackages", "action.Kernel.AvailablePackages",
+                 "action.Kernel.BootStatus", "action.DateTime.ListTimezones",
+                 "action.DateTime.ListLocales", "action.DateTime.ListKeymaps",
+                 "action.Network.ListWifi", "action.Network.GetProxy",
+                 "action.Firewall.Status", "action.Firewall.ListServices",
+                 "action.Bluetooth.ListDevices", "action.Services.ListAllServices"})
+            QVERIFY2(window.findChild<QPushButton *>(QString::fromLatin1(name)), name);
+    }
     void transactionSignalsAreCorrelated() {
         MainWindow window;
         auto *progress = window.findChild<QProgressBar *>(QStringLiteral("transactionProgress"));

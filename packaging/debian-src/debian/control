@@ -29,7 +29,7 @@ Description: Daemon privilegiado do Vega, centro de controle para Linux
 
 Package: lyra-vega-qt
 Architecture: amd64
-Depends: ${misc:Depends}, ${shlibs:Depends}, vegad (= ${binary:Version})
+Depends: ${misc:Depends}, ${shlibs:Depends}, libsecret-tools, vegad (= ${binary:Version})
 Description: Interface Qt do centro de controle Vega
  Interface Qt independente do Vega. Possui binário, desktop file e configurações
  próprios e pode ser instalada junto da interface GTK.

@@ -10,13 +10,16 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - cliente D-Bus assíncrono, timeout, reconexão, descarte por ownership e erros distintos;
 - leituras e ações dos domínios Software, Backup, Snapshots, Hardware, Kernel,
   Storage, DateTime, Network/Firewall, Bluetooth, Users, Services e Logs;
-- confirmação para impacto relevante e correlação de progresso por `transactionId`;
+- buscas/detalhes/listas auxiliares dos contratos expostos, incluindo repositórios,
+  histórico de backup, diff de snapshots, bootloader, locale, Wi-Fi e firewall;
+- confirmação para toda mutação privilegiada e correlação de progresso por `transactionId`;
 - AUR bloqueado até revisão integral do PKGBUILD por ID;
 - Assistente Anthropic/OpenAI/Gemini com Secret Service, modelos, histórico privado,
   limite diário, preview dos dados enviados, streaming, timeout, cancelamento,
   auditoria redigida e tools de leitura/mutação com resultados delimitados e
   aprovação explícita;
-- pacotes Arch, Fedora, openSUSE e Debian; workflows para as quatro famílias;
+- pacotes Arch, Fedora, openSUSE e Debian; workflows para as quatro famílias com
+  gates de instalação simultânea e remoção independente;
 - instalador com `VEGA_UI=gtk|qt|both` e GTK como padrão;
 - QA integrado, benchmark Qt e teste automático de coexistência de arquivos.
 
@@ -34,7 +37,7 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 
 ## Pendências que exigem ambiente externo
 
-- executar `makepkg` final e os workflows/pacotes em Arch, openSUSE e Ubuntu/Debian reais;
+- executar os novos gates dos workflows em Arch, openSUSE e Ubuntu/Debian reais;
 - instalação, upgrade e remoção simultânea em VMs descartáveis das quatro famílias;
 - leitor de tela e escala fracionária com avaliação humana;
 - operações polkit reais com sucesso, negação e cancelamento;

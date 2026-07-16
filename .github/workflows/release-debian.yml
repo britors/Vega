@@ -48,6 +48,26 @@ jobs:
           cp ../*.deb dist/
           ls -lh dist/
 
+      - name: Validar instalação, coexistência e remoção independente
+        run: |
+          apt-get install -y ./dist/*.deb
+          test -x /usr/bin/lyra-vega-gtk
+          test -x /usr/bin/lyra-vega-qt
+          test -x /usr/lib/vega/vegad
+          test -f /usr/share/applications/vega.desktop
+          test -f /usr/share/applications/org.lyraos.VegaQt.desktop
+
+          apt-get remove -y lyra-vega-qt
+          test -x /usr/bin/lyra-vega-gtk
+          test -x /usr/lib/vega/vegad
+          test ! -e /usr/bin/lyra-vega-qt
+
+          apt-get install -y ./dist/lyra-vega-qt_*.deb
+          apt-get remove -y lyra-vega-gtk
+          test -x /usr/bin/lyra-vega-qt
+          test -x /usr/lib/vega/vegad
+          test ! -e /usr/bin/lyra-vega-gtk
+
       - uses: actions/upload-artifact@v4
         with:
           name: debian-debs
