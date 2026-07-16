@@ -58,7 +58,7 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - dez amostras Qt após carregamento sob demanda: startup médio 154,3 ms,
   PSS médio 63.602,1 KiB, CPU média 0,70%, binário 888.072 bytes;
 - contraste de texto normal nos temas Claro/Escuro validado em pelo menos 4,5:1
-  e 750 trocas de rota sem recarregar domínios já visitados;
+  e 750 trocas de rota sem recarregar domínios nem acumular objetos Qt;
 - Logs preserva até 2.000 linhas do limite do contrato em visualização rolável
   e limitada; PKGBUILD usa visualização rolável sem truncar o texto;
 - validação local de IPv4/CIDR e usuários segue as regras do backend; entradas

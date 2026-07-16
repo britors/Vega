@@ -485,12 +485,15 @@ private slots:
             QCoreApplication::processEvents();
         }
         const auto callsAfterFirstTour = client->calls.size();
+        const auto objectsAfterFirstTour = window.findChildren<QObject *>().size();
         for (int tour = 0; tour < 50; ++tour)
             for (int route = 0; route < navigation->count(); ++route) {
                 navigation->setCurrentRow(route);
                 QCoreApplication::processEvents();
             }
         QCOMPARE(client->calls.size(), callsAfterFirstTour);
+        QVERIFY2(window.findChildren<QObject *>().size() <= objectsAfterFirstTour,
+                 "A navegação repetida acumulou objetos Qt");
     }
 };
 
