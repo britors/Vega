@@ -4,7 +4,7 @@
 |---|---|---:|---|
 | Painel / Sobre | System | sim | leitura |
 | Software | Software | sim | leitura + ações principais |
-| Backup | Backup | sim | leitura + executar/restaurar |
+| Backup | Backup | sim | configurar, listar, executar e restaurar total/parcial |
 | Pontos de Restauração | Snapshots | sim | leitura + criar/aplicar/excluir |
 | Hardware | Hardware | sim | leitura + driver |
 | Kernel | Kernel | sim | leitura + instalar/remover |

@@ -20,6 +20,8 @@ add_library(vegaqt_core STATIC
     src/audit.h
     src/dbusclient.cpp
     src/dbusclient.h
+    src/dbustypes.cpp
+    src/dbustypes.h
     src/mainwindow.cpp
     src/mainwindow.h
     src/secretstore.cpp

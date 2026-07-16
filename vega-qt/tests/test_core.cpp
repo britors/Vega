@@ -1,5 +1,6 @@
 #include "audit.h"
 #include "dbusclient.h"
+#include "dbustypes.h"
 #include "mainwindow.h"
 #include "secretstore.h"
 
@@ -9,18 +10,23 @@
 #include <QProgressBar>
 #include <QCheckBox>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QSpinBox>
 #include <QXmlStreamReader>
+#include <QTimer>
 #include <QDBusPendingCallWatcher>
 #include <QDBusMessage>
+#include <QDBusMetaType>
 #include <memory>
 
 class MockDbusClient final : public DbusClient {
 public:
     QStringList calls;
+    QVariantList lastArguments;
     QDBusPendingCallWatcher *watch(const QString &interface, const QString &method,
-                                   const QVariantList &, QObject *owner) override {
+                                   const QVariantList &arguments, QObject *owner) override {
         calls.append(interface + QStringLiteral(".") + method);
+        lastArguments = arguments;
         const auto call = QDBusMessage::createMethodCall(
             QStringLiteral("org.test"), QStringLiteral("/test"), interface, method);
         auto reply = call.createReply(method == QStringLiteral("Ping")
@@ -100,6 +106,42 @@ private slots:
                  "action.Firewall.Status", "action.Firewall.ListServices",
                  "action.Bluetooth.ListDevices", "action.Services.ListAllServices"})
             QVERIFY2(window.findChild<QPushButton *>(QString::fromLatin1(name)), name);
+    }
+    void backupStructuredTypesAndPartialRestoreAreExposed() {
+        registerDbusTypes();
+        QCOMPARE(QString::fromLatin1(QDBusMetaType::typeToSignature(QMetaType::fromType<BackupConfig>())),
+                 QStringLiteral("(sassss)"));
+        MainWindow window;
+        QVERIFY(window.findChild<QPushButton *>(QStringLiteral("action.Backup.CreateConfig")));
+        QVERIFY(window.findChild<QPushButton *>(QStringLiteral("action.Backup.RestoreItems")));
+    }
+    void backupConfigIsMarshalledAsTheContractStructure() {
+        auto *client = new MockDbusClient;
+        MainWindow window(nullptr, client);
+        auto *button = window.findChild<QPushButton *>(QStringLiteral("action.Backup.CreateConfig"));
+        QVERIFY(button);
+        const auto editors = button->parentWidget()->findChildren<QLineEdit *>();
+        QCOMPARE(editors.size(), 5);
+        editors.at(0)->setText(QStringLiteral("documents"));
+        editors.at(1)->setText(QStringLiteral("/home/demo/Documents, /home/demo/Pictures"));
+        editors.at(2)->setText(QStringLiteral("/mnt/backup"));
+        editors.at(3)->setText(QString());
+        editors.at(4)->setText(QStringLiteral("daily"));
+        QTimer::singleShot(0, [] {
+            for (auto *widget : QApplication::topLevelWidgets())
+                if (auto *dialog = qobject_cast<QMessageBox *>(widget))
+                    dialog->button(QMessageBox::Ok)->click();
+        });
+        button->click();
+        QCoreApplication::processEvents();
+        QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.Backup.CreateConfig")));
+        QCOMPARE(client->lastArguments.size(), 1);
+        QVERIFY(client->lastArguments.first().canConvert<BackupConfig>());
+        const auto config = client->lastArguments.first().value<BackupConfig>();
+        QCOMPARE(config.id, QStringLiteral("documents"));
+        QCOMPARE(config.paths, QStringList({QStringLiteral("/home/demo/Documents"),
+                                            QStringLiteral("/home/demo/Pictures")}));
+        QCOMPARE(config.frequency, QStringLiteral("daily"));
     }
     void transactionSignalsAreCorrelated() {
         MainWindow window;

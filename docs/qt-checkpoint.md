@@ -12,6 +12,8 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
   Storage, DateTime, Network/Firewall, Bluetooth, Users, Services e Logs;
 - buscas/detalhes/listas auxiliares dos contratos expostos, incluindo repositórios,
   histórico de backup, diff de snapshots, bootloader, locale, Wi-Fi e firewall;
+- configuração de backup e restauração parcial com o tipo D-Bus estruturado
+  `(sassss)` registrado e validado em teste;
 - confirmação para toda mutação privilegiada e correlação de progresso por `transactionId`;
 - AUR bloqueado até revisão integral do PKGBUILD por ID;
 - Assistente Anthropic/OpenAI/Gemini com Secret Service, modelos, histórico privado,

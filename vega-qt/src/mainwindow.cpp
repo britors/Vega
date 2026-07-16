@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "audit.h"
 #include "dbusclient.h"
+#include "dbustypes.h"
 #include "secretstore.h"
 
 #include <QApplication>
@@ -213,6 +214,7 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
           QDBusConnection::systemBus(),
           QDBusServiceWatcher::WatchForRegistration | QDBusServiceWatcher::WatchForUnregistration,
           this)), m_secretStore(new SecretStore(this)) {
+    registerDbusTypes();
     m_client->setParent(this);
     setWindowTitle(tr("Vega — Qt"));
     setMinimumSize(760, 520);
@@ -695,6 +697,12 @@ void MainWindow::addRoute(const RouteSpec &spec) {
             });
         });
     } else if (id == QStringLiteral("backup")) {
+        addAction(layout, iface, QStringLiteral("CreateConfig"), tr("Criar configuração de backup"),
+                  {{tr("Identificador"), InputType::OptionalText},
+                   {tr("Caminhos (um por linha)"), InputType::StringList},
+                   {tr("Destino"), InputType::Text},
+                   {tr("UUID do destino"), InputType::OptionalText},
+                   {tr("Frequência"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("ListSnapshots"), tr("Listar backups"),
                   {{tr("ID da configuração"), InputType::Text}}, false);
         addAction(layout, iface, QStringLiteral("ListSnapshotPaths"), tr("Listar arquivos do backup"),
@@ -704,6 +712,10 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         addAction(layout, iface, QStringLiteral("RestoreSnapshot"), tr("Restaurar snapshot"),
                   {{tr("ID do snapshot"), InputType::Text}, {tr("Destino"), InputType::Text},
                    {tr("Modo"), InputType::Text}}, true);
+        addAction(layout, iface, QStringLiteral("RestoreItems"), tr("Restaurar arquivos selecionados"),
+                  {{tr("ID do snapshot"), InputType::Text}, {tr("Destino"), InputType::Text},
+                   {tr("Modo"), InputType::Text},
+                   {tr("Caminhos (um por linha)"), InputType::StringList}}, true);
         addAction(layout, iface, QStringLiteral("DeleteConfig"), tr("Excluir configuração"),
                   {{tr("ID da configuração"), InputType::Text}}, true);
     } else if (id == QStringLiteral("snapshots")) {
@@ -886,9 +898,20 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
                     return;
                 }
                 arguments.append(number);
+            } else if (type == InputType::StringList) {
+                const auto paths = value.split(QRegularExpression(QStringLiteral("[\\r\\n,]+")), Qt::SkipEmptyParts);
+                QStringList normalized;
+                for (const auto &path : paths) normalized.append(path.trimmed());
+                arguments.append(normalized);
             } else {
                 arguments.append(value);
             }
+        }
+        if (interface == QStringLiteral("Backup") && method == QStringLiteral("CreateConfig")) {
+            const BackupConfig config{
+                arguments.at(0).toString(), arguments.at(1).toStringList(), arguments.at(2).toString(),
+                arguments.at(3).toString(), arguments.at(4).toString()};
+            arguments = {QVariant::fromValue(config)};
         }
         if (interface == QStringLiteral("Software") && method == QStringLiteral("Install") &&
             arguments.size() >= 2 && arguments.at(0).toString().compare(QStringLiteral("aur"), Qt::CaseInsensitive) == 0 &&
