@@ -9,6 +9,7 @@
 #   rm -rf debian
 
 export DH_VERBOSE=1
+DEB_VERSION_UPSTREAM := $(shell dpkg-parsechangelog -SVersion | sed 's/-[^-]*$$//')
 
 %:
 	dh $@

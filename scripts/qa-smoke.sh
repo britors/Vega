@@ -18,6 +18,7 @@ echo "[4/9] Qt build, tests and headless smoke"
 echo "[5/9] Packaging metadata"
 bash -n "$repo_root/scripts/build-local-packages.sh"
 bash -n "$repo_root/scripts/install.sh"
+bash -n "$repo_root/scripts/validate-debian-packages.sh"
 test "$(XDG_CURRENT_DESKTOP=KDE VEGA_UI=auto bash "$repo_root/scripts/install.sh" --detect-ui)" = qt
 test "$(VEGA_UI=gtk bash "$repo_root/scripts/install.sh" --detect-ui)" = gtk
 if command -v makepkg >/dev/null; then
@@ -45,6 +46,7 @@ package_files=(
   "$repo_root/.github/workflows/release-opensuse.yml"
   "$repo_root/.github/workflows/release-debian.yml"
   "$repo_root/.github/workflows/release-arch.yml"
+  "$repo_root/scripts/validate-debian-packages.sh"
 )
 if grep -Ei '(electron|node_modules|npm (ci|install|run)|nodejs)' "${package_files[@]}"; then
   echo "Erro: referência ao runtime legado no pacote GTK" >&2
@@ -53,6 +55,8 @@ fi
 grep -q 'cmake(Qt6Network)' "$repo_root/packaging/fedora/vega-qt.spec"
 grep -q 'cmake(Qt6Network)' "$repo_root/packaging/opensuse/vega-qt.spec"
 grep -q '%cmake -S ../vega-qt' "$repo_root/packaging/opensuse/vega-qt.spec"
+grep -q 'DEB_VERSION_UPSTREAM.*dpkg-parsechangelog' \
+  "$repo_root/packaging/debian-src/debian/rules"
 
 echo "[8/9] Identidades GTK/Qt independentes"
 grep -q 'org.lyraos.VegaQt' "$repo_root/vega-qt/packaging/org.lyraos.VegaQt.desktop"

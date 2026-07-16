@@ -51,6 +51,8 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
   privada `libvegaqt_core.so` após tornar o core estático;
 - RPM openSUSE Leap 16.0 construído em contêiner limpo; manifesto e dependências
   Qt Core/DBus/Network/Widgets inspecionados no artefato;
+- Ubuntu 24.04: pacotes `vegad`, GTK e Qt construídos com Rust estável; instalação
+  simultânea e remoção independente das duas interfaces passaram em contêiner limpo;
 - dez amostras Qt após carregamento sob demanda: startup médio 154,3 ms,
   PSS médio 63.602,1 KiB, CPU média 0,70%, binário 888.072 bytes;
 - contraste de texto normal nos temas Claro/Escuro validado em pelo menos 4,5:1
@@ -65,7 +67,7 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 
 ## Pendências que exigem ambiente externo
 
-- executar os gates completos dos workflows em Arch, openSUSE e Ubuntu/Debian reais;
+- executar os gates completos dos workflows em Arch e openSUSE reais;
 - instalação, upgrade e remoção simultânea em VMs descartáveis das quatro famílias;
 - leitor de tela e escala fracionária com avaliação humana;
 - operações polkit reais com sucesso, negação e cancelamento;
