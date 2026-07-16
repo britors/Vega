@@ -46,6 +46,7 @@
 #include <QSettings>
 #include <QSplitter>
 #include <QStackedWidget>
+#include <QStyleHints>
 #include <QVBoxLayout>
 
 namespace {
@@ -241,6 +242,21 @@ void applyTheme(const QString &theme, const QPalette &systemPalette) {
     palette.setColor(QPalette::PlaceholderText, dark ? QColor(170, 170, 170) : QColor(100, 100, 100));
     qApp->setPalette(palette);
 }
+
+void applySystemTheme(const QPalette &systemPalette) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    const auto scheme = qApp->styleHints()->colorScheme();
+    if (scheme == Qt::ColorScheme::Dark) {
+        applyTheme(QStringLiteral("dark"), systemPalette);
+        return;
+    }
+    if (scheme == Qt::ColorScheme::Light) {
+        applyTheme(QStringLiteral("light"), systemPalette);
+        return;
+    }
+#endif
+    applyTheme(QStringLiteral("system"), systemPalette);
+}
 }
 
 MainWindow::MainWindow(QWidget *parent, DbusClient *client)
@@ -271,7 +287,8 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
     const auto savedTheme = appearanceSettings.value(QStringLiteral("appearance/theme"),
                                                        QStringLiteral("system")).toString();
     theme->setCurrentIndex(qMax(0, theme->findData(savedTheme)));
-    applyTheme(theme->currentData().toString(), systemPalette);
+    if (theme->currentData().toString() == QStringLiteral("system")) applySystemTheme(systemPalette);
+    else applyTheme(theme->currentData().toString(), systemPalette);
     auto *search = new QLineEdit;
     brand->setObjectName(QStringLiteral("brand"));
     search->setPlaceholderText(tr("Buscar configuração…"));
@@ -295,8 +312,14 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
     connect(theme, &QComboBox::currentIndexChanged, this, [theme] {
         const auto value = theme->currentData().toString();
         setPrivateSetting(QStringLiteral("appearance/theme"), value);
-        applyTheme(value, systemPalette);
+        if (value == QStringLiteral("system")) applySystemTheme(systemPalette);
+        else applyTheme(value, systemPalette);
     });
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    connect(qApp->styleHints(), &QStyleHints::colorSchemeChanged, this, [theme] {
+        if (theme->currentData().toString() == QStringLiteral("system")) applySystemTheme(systemPalette);
+    });
+#endif
 
     const RouteSpec routes[] = {
         {"dashboard", tr("Painel"), tr("Saúde do sistema, atualizações, backup, serviços e disco."), "System", "DiskUsage", {}},

@@ -65,5 +65,6 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 - caminhos de VPN, restauração e transferência usam seletores nativos Qt em vez
   de depender exclusivamente de entrada manual;
 - Qt 6 fornece escala HiDPI e tema claro/escuro do desktop; páginas são roláveis
-  na janela mínima de 760×520; o usuário também pode forçar Claro ou Escuro sem
-  alterar a preferência da GTK.
+  na janela mínima de 760×520; o modo Sistema acompanha `QStyleHints::colorScheme`
+  no GNOME/KDE e o usuário pode forçar Claro ou Escuro sem alterar a preferência
+  da GTK.

@@ -9,6 +9,7 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - 15 rotas, busca, páginas roláveis, foco/nomes acessíveis e estados de erro/retry;
 - navegação por teclado restaura o foco no título da página selecionada;
 - temas Sistema, Claro e Escuro com preferência Qt persistente e independente;
+  o modo Sistema acompanha mudanças de esquema de cores reportadas por GNOME/KDE;
 - cliente D-Bus assíncrono, timeout, reconexão, descarte por ownership e erros distintos;
 - proxies Qt gerados para os 14 contratos em escopo e tipos complexos registrados,
   com assinaturas verificadas automaticamente;
