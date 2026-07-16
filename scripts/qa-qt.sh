@@ -20,4 +20,13 @@ for platform in offscreen minimal; do
   fi
 done
 
+set +e
+QT_QPA_PLATFORM=offscreen QT_SCALE_FACTOR=1.25 timeout 2s "$build_dir/lyra-vega-qt"
+scaled_status=$?
+set -e
+if [[ $scaled_status -ne 124 ]]; then
+  echo "Smoke Qt falhou com escala fracionária 1,25 (status $scaled_status)" >&2
+  exit 1
+fi
+
 echo "QA Qt concluído"

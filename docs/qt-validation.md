@@ -36,6 +36,7 @@ Monitor permanece fora do escopo aprovado da milestone.
 | vegad: testes | passou em todos os pacotes Go |
 | Qt: build Release e testes | passou |
 | Qt: smoke offscreen/minimal | passou |
+| Qt: smoke com escala fracionária 1,25 | passou em offscreen |
 | Fedora: RPM Qt real | passou |
 | openSUSE Leap 16.0: RPM Qt real | passou em contêiner limpo |
 | Ubuntu 24.04: três pacotes Debian reais | build, instalação simultânea e remoção independente passaram |
@@ -88,4 +89,5 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 - Qt 6 fornece escala HiDPI e tema claro/escuro do desktop; páginas são roláveis
   na janela mínima de 760×520; o modo Sistema acompanha `QStyleHints::colorScheme`
   no GNOME/KDE e o usuário pode forçar Claro ou Escuro sem alterar a preferência
-  da GTK.
+  da GTK. O smoke automatizado inicia o binário com fator 1,25; inspeção visual
+  em monitor real continua na matriz manual.
