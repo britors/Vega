@@ -1,12 +1,11 @@
 # Checkpoint da migração Rust + GTK4
 
-Última atualização: 2026-07-15.
+Última atualização: 2026-07-16.
 
 ## Decisões vigentes
 
-- `vegad` permanece em Go; apenas a interface está sendo migrada.
-- A aplicação GTK é paralela à Electron e usa o ID de desenvolvimento
-  `org.lyraos.Vega.Gtk.Devel`.
+- `vegad` permanece em Go e a interface oficial é Rust/GTK4.
+- O aplicativo oficial usa o ID `org.lyraos.Vega`.
 - A janela padrão usa 1280 × 800 para acomodar a grade compacta sem ultrapassar
   a área central em telas Full HD.
 - A interface usa Rust, GTK4, libadwaita e clientes D-Bus tipados com `zbus`.
@@ -90,7 +89,7 @@
 
 ## Estado da validação
 
-- `cargo test`: 30 aprovados e 4 testes do daemon real ignorados
+- `cargo test`: 37 aprovados e 4 testes do daemon real ignorados
   intencionalmente.
 - `cargo clippy --all-targets -- -D warnings`: limpo.
 - `cargo fmt`: limpo.
@@ -102,15 +101,11 @@
 
 ## Próxima tarefa recomendada
 
-Avançar para Assistente de IA, credenciais e auditoria (#73), mantendo acabamento
-e acessibilidade como revisão contínua.
+Concluir a matriz manual de acessibilidade e ambientes da issue #74.
 
 ## Arquivos e cuidados
 
-- O trabalho da migração ainda está sem commit.
 - Preservar alterações não relacionadas do usuário.
-- `docs/adr/0001-vegad-permanece-em-go.md` já existia como arquivo não rastreado
-  e não deve ser sobrescrito sem solicitação.
 - Antes de entregar cada etapa, executar:
 
 ```bash

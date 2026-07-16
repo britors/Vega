@@ -1,10 +1,13 @@
 # Contribuindo com o Vega
 
-Obrigado por contribuir com o Vega. Este projeto combina uma interface Electron/React com o daemon `vegad`, que executa operacoes de sistema via D-Bus e polkit. Mudancas devem ser pequenas, revisaveis e cuidadosas com a seguranca do sistema.
+Obrigado por contribuir com o Vega. Este projeto combina uma interface nativa
+Rust/GTK4 com o daemon `vegad`, que executa operações de sistema via D-Bus e
+polkit. Mudanças devem ser pequenas, revisáveis e cuidadosas com a segurança do
+sistema.
 
 ## Ambiente
 
-- Node.js e npm para a interface em `vega/`.
+- Rust 1.92 ou mais recente, GTK4 e libadwaita para a interface em `vega-gtk/`.
 - Go para o daemon em `vegad/`.
 - Linux com systemd, D-Bus e polkit para testar integracoes reais.
 - Em Arch, use os scripts em `scripts/` e os PKGBUILDs em `packaging/vega/` e `packaging/vegad/` para validar instalacao local.
@@ -16,7 +19,7 @@ Obrigado por contribuir com o Vega. Este projeto combina uma interface Electron/
 1. Abra uma issue ou use uma issue existente para explicar o problema.
 2. Crie uma branch curta e descritiva.
 3. Mantenha o escopo da mudanca focado.
-4. Atualize UI, preload, processo principal, daemon e arquivos D-Bus quando uma API nova atravessar essas camadas.
+4. Atualize UI, cliente tipado, daemon e arquivos D-Bus quando uma API nova atravessar essas camadas.
 5. Inclua mensagens de erro claras quando uma dependencia opcional nao estiver instalada.
 
 ## Validacao
@@ -29,8 +32,10 @@ GOCACHE=/tmp/vega-gocache go test ./...
 ```
 
 ```bash
-cd vega
-npm run typecheck
+cd vega-gtk
+cargo fmt --check
+cargo test --locked
+cargo clippy --locked --all-targets -- -D warnings
 ```
 
 Quando a mudanca tocar empacotamento, D-Bus, polkit ou integracao com ferramentas do sistema, rode tambem o smoke test aplicavel em `scripts/` e documente o ambiente usado.
@@ -41,14 +46,17 @@ Quando a mudanca tocar empacotamento, D-Bus, polkit ou integracao com ferramenta
 - Acoes que alteram o sistema devem passar por `requirePolkit`.
 - Prefira comandos padrao do sistema e trate ausencia deles com erro legivel.
 - Operacoes de alto risco, como kernel, bootloader, pacotes e rollback, devem criar snapshot quando possivel.
-- Nunca exponha acesso direto do renderer ao D-Bus; use `src/main/dbusClient.ts`, IPC e `src/preload/index.ts`.
+- A UI acessa apenas os métodos tipados publicados nos XMLs em `dbus/`.
+- Nunca mova autorização para a UI: toda mutação privilegiada deve continuar
+  protegida no `vegad` por polkit.
 
 ## Frontend
 
 - Siga os padroes visuais existentes: telas densas, claras e sem estados vazios genericos.
 - Toda acao destrutiva ou global ao sistema deve pedir confirmacao.
 - Loading, erro e vazio precisam ser tratados explicitamente.
-- O mock em `vega/src/renderer/src/demoVega.ts` deve acompanhar novas APIs expostas no preload.
+- Clientes e mocks em `vega-gtk/src/dbus/` devem acompanhar qualquer alteração
+  no contrato.
 
 ## Commits e pull requests
 

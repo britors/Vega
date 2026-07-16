@@ -5,16 +5,15 @@ instalações Arch-like baseadas em `systemd`.
 
 ## Pacotes
 
-- `lyra-vega`
+- `lyra-vega-gtk`
 - `vegad`
 
 ## Pré-requisitos
 
 - `systemd`, `dbus` e `polkit` disponíveis no sistema alvo
 - `pacman` no daemon
-- `electron43` disponível para a UI (via `electron43-bin`; acompanhar a versão
-  de `electron` em `vega/package.json` a cada bump)
-- `go` e `npm` apenas no ambiente de build
+- `cargo` e as dependências de desenvolvimento GTK4/libadwaita para a UI
+- `go` para compilar o daemon
 - acesso SSH à conta do AUR que mantém `lyra-vega` e `vegad`
   (`ssh aur@aur.archlinux.org list-repos` deve listar os dois)
 
@@ -49,12 +48,12 @@ mão, direto para os repositórios git do AUR:
 
 1. Atualizar `pkgver` (e `pkgrel` se for só correção de empacotamento) em
    `packaging/vega/PKGBUILD` e `packaging/vegad/PKGBUILD` neste repositório,
-   junto com qualquer dependência que tenha mudado (ex.: versão do
-   `electronNN-bin`). Commitar essa mudança normalmente no Vega.
+   junto com qualquer dependência que tenha mudado. Commitar essa mudança
+   normalmente no Vega.
 2. Clonar (ou atualizar um clone existente) dos repositórios do AUR:
 
    ```bash
-   git clone ssh://aur@aur.archlinux.org/lyra-vega.git
+   git clone ssh://aur@aur.archlinux.org/lyra-vega-gtk.git
    git clone ssh://aur@aur.archlinux.org/vegad.git
    ```
 
@@ -73,7 +72,7 @@ mão, direto para os repositórios git do AUR:
 6. Confirmar a publicação:
 
    ```bash
-   curl -s "https://aur.archlinux.org/rpc/?v=5&type=info&arg[]=lyra-vega&arg[]=vegad"
+   curl -s "https://aur.archlinux.org/rpc/?v=5&type=info&arg[]=lyra-vega-gtk&arg[]=vegad"
    ```
 
 Isso continua sem validar instalação/upgrade de fato — isso é sempre manual:

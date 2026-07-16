@@ -39,7 +39,7 @@ pub use network::{
 pub use services::{ManagedService, ServicesClient, ServicesClientError, ZbusServicesClient};
 pub use snapshots::{Snapshot, SnapshotsClient, SnapshotsClientError, ZbusSnapshotsClient};
 pub use software::{
-    PackageDetails, PackageRef, SoftwareClient, SoftwareClientError, SoftwareEvent,
+    PackageDetails, PackageRef, RepositoryRef, SoftwareClient, SoftwareClientError, SoftwareEvent,
     SoftwareEventStream, SoftwareTransactionFinished, SoftwareTransactionProgress,
     ZbusSoftwareClient,
 };

@@ -3,27 +3,29 @@
 Esta é a lista de aceite funcional entre a UI Electron atual e a UI nativa.
 Os estados iniciais indicam que a correspondente Rust ainda não foi validada.
 
-Estados permitidos: `pendente`, `em desenvolvimento`, `validado` e
-`desvio aprovado`. Um desvio precisa apontar para a decisão que o aprovou.
+Estados permitidos: `pendente`, `em desenvolvimento`, `implementado`,
+`validado` e `desvio aprovado`. `Implementado` indica que a superfície foi
+entregue e passou pelos gates automatizados; `validado` exige também a matriz
+manual da issue #74. Um desvio precisa apontar para a decisão que o aprovou.
 
 | Issue | Módulo | Superfície obrigatória | Estado Rust |
 |---|---|---|---|
-| #66 | Painel | saúde, atalhos, navegação e estados parciais | em desenvolvimento |
-| #66 | Hardware | inventário, firmware e troca de driver confirmada | em desenvolvimento |
-| #66 | Sobre | versões da UI/backend, distro e conexão | em desenvolvimento |
-| #67 | Software | busca, detalhes, instalados, atualizações, repositórios, AUR, cache e mirrors | em desenvolvimento |
-| #68 | Backup | configurações, execução, progresso, snapshots e restauração parcial | em desenvolvimento |
-| #68 | Pontos de Restauração | listar, criar, comparar, excluir, aplicar e retenção | em desenvolvimento |
-| #69 | Kernel | instalados, disponíveis, instalar, remover e bootloader | em desenvolvimento |
-| #69 | Data/Hora | timezone, NTP, locale e keymap | em desenvolvimento |
-| #69 | Armazenamento | volumes, uso, montar e desmontar | em desenvolvimento |
-| #70 | Rede/Firewall | interfaces, Wi-Fi, IPv4, VPN, proxy, zonas e serviços | em desenvolvimento |
-| #70 | Desktop | Bluetooth e transferência de arquivos | em desenvolvimento |
-| #71 | Usuários | listar, criar, remover e papel administrativo | em desenvolvimento |
-| #71 | Serviços | listas curada/completa, enable, start, stop e restart | em desenvolvimento |
-| #71 | Logs | filtros, unidades, limite e conteúdo extenso | em desenvolvimento |
+| #66 | Painel | saúde, atalhos, navegação e estados parciais | implementado |
+| #66 | Hardware | inventário, firmware e troca de driver confirmada | implementado |
+| #66 | Sobre | versões da UI/backend, distro e conexão | implementado |
+| #67 | Software | busca, detalhes, instalados, atualizações, repositórios, AUR, cache e mirrors | implementado |
+| #68 | Backup | configurações, execução, progresso, snapshots e restauração parcial | implementado |
+| #68 | Pontos de Restauração | listar, criar, comparar, excluir, aplicar e retenção | implementado |
+| #69 | Kernel | instalados, disponíveis, instalar, remover e bootloader | implementado |
+| #69 | Data/Hora | timezone, NTP, locale e keymap | implementado |
+| #69 | Armazenamento | volumes, uso, montar e desmontar | implementado |
+| #70 | Rede/Firewall | interfaces, Wi-Fi, IPv4, VPN, proxy, zonas e serviços | implementado |
+| #70 | Desktop | Bluetooth e transferência de arquivos | implementado |
+| #71 | Usuários | listar, criar, remover e papel administrativo | implementado |
+| #71 | Serviços | listas curada/completa, enable, start, stop e restart | implementado |
+| #71 | Logs | filtros, unidades, limite e conteúdo extenso | implementado |
 | #72 | Monitor | métricas, processos, ordenação, polling visível e encerramento | desvio aprovado |
-| #73 | Assistente | provedores, streaming, tools, aprovação, limites, histórico, credenciais e auditoria | em desenvolvimento |
+| #73 | Assistente | provedores, streaming, tools, aprovação, limites, histórico, credenciais e auditoria | implementado |
 
 Progresso de Software: a instalação de pacotes AUR exige a leitura e a
 confirmação explícita do PKGBUILD apresentado pela interface.
@@ -63,7 +65,7 @@ limita a Bluetooth e transferência de arquivos.
 
 ## Aprovação do cutover
 
-O cutover da issue #75 requer todas as linhas como `validado` ou `desvio
-aprovado`, nenhum bloqueador de acessibilidade e os resultados preenchidos no
-documento de baseline. A validação deve incluir instalação limpa e upgrade nas
-quatro famílias de distribuição.
+O cutover técnico da issue #75 foi entregue na versão 2.0.0 e corrigido na
+2.0.1. A promoção das linhas de `implementado` para `validado` pertence à issue
+#74 e requer instalação limpa, upgrade e matriz manual nas quatro famílias de
+distribuição.

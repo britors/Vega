@@ -1,14 +1,13 @@
 # Arquitetura da migração para Rust + GTK4
 
-Status: decisão inicial da issue #62. Este documento deve ser atualizado por
-ADR quando uma decisão incompatível for necessária.
+Status: arquitetura oficial desde o cutover da versão 2.0.0.
 
 ## Objetivos e limites
 
 A nova UI substitui Electron/React por Rust, GTK4 e libadwaita. O `vegad`
 permanece em Go, ativado sob demanda, e os XMLs em `dbus/` continuam sendo a
-fonte de verdade do contrato privilegiado. A UI Electron permanece utilizável
-até a aprovação do cutover.
+fonte de verdade do contrato privilegiado. A implementação Electron permanece
+somente como referência histórica em `vega/` e não integra os pacotes finais.
 
 Metas de aceite da milestone:
 
@@ -25,12 +24,11 @@ executados pelo `vegad`.
 
 ## Decisões
 
-### Estrutura durante a transição
+### Estrutura adotada
 
-A implementação nativa deve nascer em `vega-gtk/`, com workspace Cargo
-independente de `vega/`. O pacote e o binário nativos usam `lyra-vega-gtk`,
-mantendo a UI Electron no pacote `vega` durante a transição. Isso permite
-instalar e comparar as duas UIs sem alterar o daemon ou o nome D-Bus.
+A implementação nativa reside em `vega-gtk/`, com workspace Cargo independente
+de `vega/`. O pacote e o binário oficiais usam `lyra-vega-gtk`; o daemon e o
+nome D-Bus foram preservados.
 
 Estrutura inicial pretendida:
 
@@ -90,13 +88,10 @@ conclusão.
 
 ### Compatibilidade e entrega
 
-O contrato `org.lyraos.Vega1` não será alterado apenas para facilitar a
-reescrita. Extensões necessárias devem ser compatíveis com a UI Electron até o
-cutover e acompanhadas de XML, polkit e testes.
+O contrato `org.lyraos.Vega1` só deve ser ampliado por necessidade funcional e
+qualquer extensão deve ser acompanhada de XML, polkit quando aplicável e testes.
 
-O scaffold deve compilar no CI antes da migração do primeiro módulo. Pacotes
-experimentais podem ser produzidos em paralelo, mas `vega` continua apontando
-para Electron até a matriz de paridade e os benchmarks serem aprovados.
+O crate compila no CI e os pacotes oficiais apontam para a interface GTK.
 
 ## Portões de qualidade
 

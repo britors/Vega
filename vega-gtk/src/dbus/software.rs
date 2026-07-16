@@ -11,6 +11,23 @@ pub struct PackageRef {
     pub icon: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RepositoryRef {
+    pub name: String,
+    pub enabled: bool,
+}
+
+type RepositoryRefRow = (String, bool);
+
+impl From<RepositoryRefRow> for RepositoryRef {
+    fn from(row: RepositoryRefRow) -> Self {
+        Self {
+            name: row.0,
+            enabled: row.1,
+        }
+    }
+}
+
 type PackageRefRow = (String, String, String, String, bool, String);
 
 impl From<PackageRefRow> for PackageRef {
@@ -119,7 +136,7 @@ pub trait SoftwareClient: Send + Sync {
     async fn aur_pkgbuild(&self, id: &str) -> Result<String, SoftwareClientError>;
     async fn list_updates(&self) -> Result<Vec<PackageRef>, SoftwareClientError>;
     async fn list_installed(&self) -> Result<Vec<PackageRef>, SoftwareClientError>;
-    async fn list_repos(&self) -> Result<Vec<String>, SoftwareClientError>;
+    async fn list_repos(&self) -> Result<Vec<RepositoryRef>, SoftwareClientError>;
     async fn install(&self, origin: &str, id: &str) -> Result<u32, SoftwareClientError>;
     async fn remove(&self, origin: &str, id: &str) -> Result<u32, SoftwareClientError>;
     async fn update_all(&self) -> Result<u32, SoftwareClientError>;
@@ -141,7 +158,7 @@ trait Software {
     async fn get_aur_pkgbuild(&self, id: &str) -> zbus::Result<String>;
     async fn list_updates(&self) -> zbus::Result<Vec<PackageRefRow>>;
     async fn list_installed(&self) -> zbus::Result<Vec<PackageRefRow>>;
-    async fn list_repos(&self) -> zbus::Result<Vec<String>>;
+    async fn list_repos(&self) -> zbus::Result<Vec<RepositoryRefRow>>;
     async fn install(&self, origin: &str, id: &str) -> zbus::Result<u32>;
     async fn remove(&self, origin: &str, id: &str) -> zbus::Result<u32>;
     async fn update_all(&self) -> zbus::Result<u32>;
@@ -296,8 +313,8 @@ impl SoftwareClient for ZbusSoftwareClient {
         proxy_call!(self, list_installed()).map(|rows| rows.into_iter().map(Into::into).collect())
     }
 
-    async fn list_repos(&self) -> Result<Vec<String>, SoftwareClientError> {
-        proxy_call!(self, list_repos())
+    async fn list_repos(&self) -> Result<Vec<RepositoryRef>, SoftwareClientError> {
+        proxy_call!(self, list_repos()).map(|rows| rows.into_iter().map(Into::into).collect())
     }
 
     async fn install(&self, origin: &str, id: &str) -> Result<u32, SoftwareClientError> {
@@ -390,7 +407,7 @@ mod tests {
                 args(&[("in", "s"), ("in", "s"), ("out", "u")]),
             ),
             ("ListInstalled".into(), args(&[("out", package_rows)])),
-            ("ListRepos".into(), args(&[("out", "as")])),
+            ("ListRepos".into(), args(&[("out", "a(sb)")])),
             ("ListUpdates".into(), args(&[("out", package_rows)])),
             ("OptimizeMirrors".into(), args(&[("out", "u")])),
             ("PackageManagerName".into(), args(&[("out", "s")])),

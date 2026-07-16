@@ -2445,21 +2445,22 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
             return;
         }
         repositories_page.select_repositories();
-        repositories_page.repository_dropdown.set_sensitive(false);
-        repositories_page.repository_enable.set_sensitive(false);
-        repositories_page.repository_disable.set_sensitive(false);
+        repositories_page.repository_list.set_sensitive(false);
+        repositories_page.repository_action.set_sensitive(false);
         let page = repositories_page.clone();
         let client = repositories_dbus.software();
         glib::MainContext::default().spawn_local(async move {
             match client.list_repos().await {
-                Ok(repositories) => page.show_repositories(&repositories),
+                Ok(repositories) => {
+                    page.show_repositories(&repositories);
+                    page.repository_list.set_sensitive(true);
+                }
                 Err(error) => page.finish_transaction(false, &error.to_string()),
             }
         });
     });
 
-    connect_repository_toggle(&page.repository_enable, true, &page, &dbus);
-    connect_repository_toggle(&page.repository_disable, false, &page, &dbus);
+    connect_repository_toggle(&page.repository_action, &page, &dbus);
 
     let mirrors_page = page.clone();
     let mirrors_dbus = dbus.clone();
@@ -2695,7 +2696,6 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
 
 fn connect_repository_toggle(
     button: &gtk::Button,
-    enabled: bool,
     page: &crate::ui::SoftwarePage,
     dbus: &VegaDbus,
 ) {
@@ -2705,9 +2705,12 @@ fn connect_repository_toggle(
         let Some(repository) = page.selected_repository() else {
             return;
         };
+        let enabled = !repository.enabled;
         let verb = if enabled { "Ativar" } else { "Desativar" };
-        let dialog =
-            adw::AlertDialog::new(Some(&format!("{verb} repositório?")), Some(&repository));
+        let dialog = adw::AlertDialog::new(
+            Some(&format!("{verb} repositório?")),
+            Some(&repository.name),
+        );
         dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", verb)]);
         dialog.set_response_appearance(
             "confirm",
@@ -2725,15 +2728,20 @@ fn connect_repository_toggle(
             if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
                 return;
             }
-            page.repository_enable.set_sensitive(false);
-            page.repository_disable.set_sensitive(false);
-            page.begin_transaction(&format!("{verb} {repository}…"));
-            match client.set_repo_enabled(&repository, enabled).await {
-                Ok(()) => page.finish_transaction(true, "Repositório alterado com sucesso"),
+            page.repository_list.set_sensitive(false);
+            page.repository_action.set_sensitive(false);
+            page.begin_transaction(&format!("{verb} {}…", repository.name));
+            match client.set_repo_enabled(&repository.name, enabled).await {
+                Ok(()) => {
+                    page.finish_transaction(true, "Repositório alterado com sucesso");
+                    match client.list_repos().await {
+                        Ok(repositories) => page.show_repositories(&repositories),
+                        Err(error) => page.finish_transaction(false, &error.to_string()),
+                    }
+                }
                 Err(error) => page.finish_transaction(false, &error.to_string()),
             }
-            page.repository_enable.set_sensitive(true);
-            page.repository_disable.set_sensitive(true);
+            page.repository_list.set_sensitive(true);
         });
     });
 }
