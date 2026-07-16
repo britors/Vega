@@ -3,6 +3,7 @@
 #include "dbustypes.h"
 #include "mainwindow.h"
 #include "secretstore.h"
+#include "routestate.h"
 
 #include <QtTest>
 #include <QApplication>
@@ -307,13 +308,33 @@ private slots:
             QCoreApplication::processEvents();
         }
     }
-    void controllersWorkWithMockedDbusWithoutDaemon() {
+    void pagesLoadOnDemandWithMockedDbusWithoutDaemon() {
         auto *client = new MockDbusClient;
         MainWindow window(nullptr, client);
         QCoreApplication::processEvents();
         QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.System.Version")));
+        QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.System.DiskUsage")));
+        QVERIFY(!client->calls.contains(QStringLiteral("org.lyraos.Vega1.Software.ListUpdates")));
+        QVERIFY(!client->calls.contains(QStringLiteral("org.lyraos.Vega1.Users.ListUsers")));
+        auto *navigation = window.findChild<QListWidget *>(QStringLiteral("mainNavigation"));
+        QVERIFY(navigation);
+        navigation->setCurrentRow(1);
+        QCoreApplication::processEvents();
         QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.Software.ListUpdates")));
+        navigation->setCurrentRow(12);
+        QCoreApplication::processEvents();
         QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.Users.ListUsers")));
+    }
+    void routeLoadStateIsTestableWithoutWidgetsOrDbus() {
+        RouteLoadState state;
+        QVERIFY(state.beginFirstLoad(QStringLiteral("software")));
+        QVERIFY(state.isLoaded(QStringLiteral("software")));
+        QVERIFY(!state.beginFirstLoad(QStringLiteral("software")));
+        QVERIFY(!state.beginFirstLoad(QString()));
+        state.invalidate(QStringLiteral("software"));
+        QVERIFY(state.beginFirstLoad(QStringLiteral("software")));
+        state.clear();
+        QVERIFY(!state.isLoaded(QStringLiteral("software")));
     }
 };
 

@@ -24,7 +24,10 @@ descartada. Operações longas são correlacionadas por `transactionId`. Erros d
 ausente, timeout, polkit negado/cancelado, capability ausente e falha genérica. Segredos jamais
 são incluídos em mensagens de log.
 
-Cada superfície oferece loading, conteúdo, vazio, erro e retry. Mutações destrutivas exigem um
+Dados de cada superfície são carregados somente na primeira visita. O estado de
+carregamento de rotas vive em um controlador sem dependência de widgets ou D-Bus,
+permitindo teste headless; retry permanece explícito. Cada superfície oferece
+loading, conteúdo, vazio, erro e retry. Mutações destrutivas exigem um
 diálogo que descreve o impacto. A ordem de tabulação segue a ordem visual, `Ctrl+F` abre busca,
 todo controle recebe nome acessível e o layout mínimo é 760×520, com suporte nativo a HiDPI.
 

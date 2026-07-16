@@ -37,6 +37,8 @@ add_library(vegaqt_core STATIC
     src/dbustypes.h
     src/mainwindow.cpp
     src/mainwindow.h
+    src/routestate.cpp
+    src/routestate.h
     src/secretstore.cpp
     src/secretstore.h
     ${VEGA_DBUS_SOURCES}

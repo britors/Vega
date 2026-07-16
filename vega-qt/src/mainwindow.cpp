@@ -353,8 +353,13 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
         if (index < 0) return;
         auto *scroll = qobject_cast<QScrollArea *>(m_pages->widget(index));
         if (!scroll) return;
-        if (auto *heading = scroll->widget()->findChild<QLabel *>(QStringLiteral("pageTitle")))
+        auto *page = scroll->widget();
+        if (auto *heading = page->findChild<QLabel *>(QStringLiteral("pageTitle")))
             heading->setFocus(Qt::TabFocusReason);
+        const auto route = page->objectName();
+        if (m_routeLoadState.beginFirstLoad(route) && m_routeSpecs.contains(route) && m_routeStates.contains(route)) {
+            refresh(m_routeSpecs.value(route), m_routeStates.value(route));
+        }
     });
     connect(search, &QLineEdit::textChanged, this, [this](const QString &text) {
         for (int i = 0; i < m_navigation->count(); ++i)
@@ -951,8 +956,9 @@ void MainWindow::addRoute(const RouteSpec &spec) {
     scroll->setWidget(page);
     m_pages->addWidget(scroll);
     m_routes.insert(id, page);
+    m_routeSpecs.insert(id, spec);
+    m_routeStates.insert(id, state);
     connect(retry, &QPushButton::clicked, this, [this, spec, state] { refresh(spec, state); });
-    refresh(spec, state);
 }
 
 void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const QString &method,

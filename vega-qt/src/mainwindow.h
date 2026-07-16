@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include <QHash>
 #include <QSet>
+#include "routestate.h"
 
 class DbusClient;
 class QLabel;
@@ -53,7 +54,10 @@ private:
     QProgressBar *m_progress;
     QSet<quint32> m_transactions;
     QSet<QString> m_reviewedAurPackages;
+    RouteLoadState m_routeLoadState;
     QDBusServiceWatcher *m_serviceWatcher;
     SecretStore *m_secretStore;
     QHash<QString, QWidget *> m_routes;
+    QHash<QString, RouteSpec> m_routeSpecs;
+    QHash<QString, QLabel *> m_routeStates;
 };
