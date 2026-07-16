@@ -21,9 +21,10 @@ jobs:
     steps:
       - name: Instalar dependências de build
         run: |
-          dnf install -y golang rust cargo gcc pkgconf-pkg-config \
+          dnf install -y golang rust cargo gcc curl pkgconf-pkg-config \
             gtk4-devel libadwaita-devel rpm-build rpmdevtools
       - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
       - name: Buildar os RPMs
         run: |
           version="${GITHUB_REF_NAME#v}"

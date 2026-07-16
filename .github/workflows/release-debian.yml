@@ -21,7 +21,8 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             build-essential debhelper dpkg-dev fakeroot golang-go \
-            cargo rustc pkg-config libgtk-4-dev libadwaita-1-dev ca-certificates git
+            cargo rustc pkg-config libgtk-4-dev libadwaita-1-dev \
+            ca-certificates curl git
 
       - uses: actions/checkout@v7
 
