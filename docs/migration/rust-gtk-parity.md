@@ -1,7 +1,7 @@
 # Matriz de paridade Rust + GTK4
 
-Esta é a lista de aceite funcional entre a UI Electron atual e a UI nativa.
-Os estados iniciais indicam que a correspondente Rust ainda não foi validada.
+Esta é a lista de aceite funcional usada na migração da antiga UI Electron para
+a interface nativa. A implementação legada já foi removida dos fontes.
 
 Estados permitidos: `pendente`, `em desenvolvimento`, `implementado`,
 `validado` e `desvio aprovado`. `Implementado` indica que a superfície foi

@@ -10,9 +10,9 @@ o mesmo.
 
 ### Pacotes obrigatórios
 
-Instalados automaticamente por `depends=()` ao rodar `yay -S lyra-vega`:
+Instalados automaticamente por `depends=()` ao rodar `yay -S lyra-vega-gtk`:
 
-- `electron31-bin` — runtime do Electron usado pela UI (`vega`)
+- `gtk4` e `libadwaita` — toolkit da interface nativa
 - `vegad` — daemon privilegiado, que por sua vez exige:
   - `systemd`
   - `dbus`
@@ -38,7 +38,7 @@ Instalados automaticamente por `depends=()` ao rodar `yay -S lyra-vega`:
 
 ```sh
 # obrigatório
-yay -S lyra-vega
+yay -S lyra-vega-gtk
 
 # opcionais (conforme os módulos desejados)
 sudo pacman -S snapper flatpak networkmanager restic firewalld fwupd reflector
@@ -47,18 +47,16 @@ sudo systemctl enable --now firewalld
 
 ## openSUSE Leap
 
-Ainda não existe pacote `.rpm`; a instalação é manual via
-[`packaging/opensuse/install.sh`](packaging/opensuse/install.sh) (e
-`uninstall.sh`), que compila `vega`/`vegad` a partir do repositório e instala
-os arquivos de systemd/D-Bus/polkit. O backend Zypper/hardware NVIDIA
+Os RPMs são publicados em cada GitHub Release e também podem ser compilados
+localmente pelos specs em `packaging/opensuse/`. O backend Zypper/hardware NVIDIA
 (`vegad/internal/distro/zypper.go`, `hardware_opensuse.go`) ainda não foi
 validado ponta a ponta num Leap real — trate os nomes de pacote abaixo como
 ponto de partida, não garantia.
 
 ### Necessários só para compilar (o script verifica e aborta se faltar)
 
-- `go`
-- `nodejs` / `npm`
+- `go`, `rust`, `cargo` e `gcc`
+- `pkg-config`, `gtk4-devel` e `libadwaita-devel`
 
 ### Base de sistema (já presente em qualquer Leap com systemd/D-Bus/polkit; nada equivalente a `pacman`/`bluez` é obrigatório)
 
@@ -83,13 +81,13 @@ ponto de partida, não garantia.
 
 ```sh
 # dependências de build
-sudo zypper install go nodejs npm
+sudo zypper install go rust cargo gcc pkg-config gtk4-devel libadwaita-devel
 
 # opcionais (conforme os módulos desejados)
 sudo zypper install snapper flatpak NetworkManager restic firewalld fwupd bluez
 sudo systemctl enable --now firewalld
 
-# instala vega/vegad a partir do checkout do repo
+# instala a interface e o daemon a partir do checkout do repo
 sudo packaging/opensuse/install.sh
 ```
 
@@ -105,8 +103,8 @@ código novo, não validado ponta a ponta num Fedora real — mesmo aviso de
 
 ### Necessários só para compilar
 
-- `golang`
-- `nodejs` / `npm`
+- `golang`, `rust`, `cargo` e `gcc`
+- `pkgconf-pkg-config`, `gtk4-devel` e `libadwaita-devel`
 
 ### Base de sistema (já presente em qualquer Fedora Workstation com systemd/D-Bus/polkit)
 
@@ -131,7 +129,7 @@ código novo, não validado ponta a ponta num Fedora real — mesmo aviso de
 
 ```sh
 # dependências de build
-sudo dnf install golang nodejs npm
+sudo dnf install golang rust cargo gcc pkgconf-pkg-config gtk4-devel libadwaita-devel
 
 # opcionais (conforme os módulos desejados)
 sudo dnf install flatpak NetworkManager restic firewalld fwupd bluez
@@ -140,14 +138,14 @@ sudo dnf install flatpak NetworkManager restic firewalld fwupd bluez
 sudo dnf install akmod-nvidia
 
 # instala via RPM da release (ver scripts/install.sh) ou local:
-sudo rpmbuild -bb --define "version $(cat vega/package.json | grep -m1 version | cut -d'"' -f4)" packaging/fedora/vegad.spec
-sudo rpmbuild -bb --define "version $(cat vega/package.json | grep -m1 version | cut -d'"' -f4)" packaging/fedora/vega.spec
+sudo rpmbuild -bb --define "version 2.0.3" packaging/fedora/vegad.spec
+sudo rpmbuild -bb --define "version 2.0.3" packaging/fedora/vega.spec
 ```
 
 ## Ubuntu / Debian
 
-Ainda não existe pacote publicado (nem PPA, nem `.deb` numa release); veja
-[`packaging/debian-src/`](packaging/debian-src/) pro empacotamento local. O
+Os pacotes `.deb` são publicados em cada GitHub Release; veja
+[`packaging/debian-src/`](packaging/debian-src/) para o empacotamento local. O
 backend APT/hardware NVIDIA (`vegad/internal/distro/{apt,kernel_debian,hardware_debian}.go`)
 e o backend de Firewall (`vegad/internal/dbusserver/ufw.go`) são código novo,
 não validados ponta a ponta num Ubuntu real — mesmo aviso de "ponto de
@@ -159,8 +157,8 @@ real).
 
 ### Necessários só para compilar
 
-- `golang-go`
-- `nodejs` / `npm`
+- `golang-go`, `rustc`, `cargo` e `build-essential`
+- `pkg-config`, `libgtk-4-dev` e `libadwaita-1-dev`
 
 ### Base de sistema
 
@@ -185,7 +183,7 @@ real).
 
 ```sh
 # dependências de build
-sudo apt install golang-go nodejs npm
+sudo apt install golang-go rustc cargo build-essential pkg-config libgtk-4-dev libadwaita-1-dev
 
 # opcionais (conforme os módulos desejados)
 sudo apt install flatpak network-manager restic ufw fwupd bluez ubuntu-drivers-common

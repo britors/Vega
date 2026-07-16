@@ -10,7 +10,9 @@ O Vega **não tem servidor próprio** para o assistente — cada mensagem sua é
 
 Toda vez que você envia uma mensagem no chat, o seguinte é enviado para a API do provedor ativo:
 
-- **O texto da sua mensagem** e o histórico da conversa atual (a conversa vive só na memória do processo enquanto o Vega está aberto — fechar o app apaga o histórico).
+- **O texto da sua mensagem** e o histórico da conversa atual, armazenado
+  localmente no diretório privado de dados do Vega até você usar “Limpar
+  conversa”.
 - **Os resultados das ferramentas de leitura** que o modelo decidir usar para responder sua pergunta. Hoje isso pode incluir:
   - Busca de pacotes, lista de instalados, lista de atualizações disponíveis
   - Hardware (CPU, GPU, RAM) e status de firmware
@@ -26,9 +28,11 @@ Toda vez que você envia uma mensagem no chat, o seguinte é enviado para a API 
 
 ## O que **não** é enviado
 
-- Sua chave de API nunca é enviada a nenhum servidor além do próprio provedor escolhido (ela fica local, cifrada via `safeStorage` do Electron/keyring do sistema).
+- Sua chave de API nunca é enviada a nenhum servidor além do próprio provedor
+  escolhido; ela fica no Secret Service/keyring do sistema.
 - Nenhuma ação de mutação é executada sem confirmação explícita sua no diálogo — o modelo nunca autoriza uma ação sozinho a partir de texto livre.
-- Módulos ainda fora do escopo do assistente — Firewall (edição, só leitura de status existe), Backup, Bluetooth, Proxy, Boot/Bootloader, edição de repositórios (`SetRepoEnabled` nem está exposto no cliente Electron ainda) — não têm ferramenta implementada; nada desses fica disponível pra IA hoje.
+- Módulos ainda fora do escopo do assistente não têm ferramentas disponíveis
+  para o modelo, mesmo quando possuem controles próprios na interface.
 - O log de auditoria local (`ai-audit.jsonl`, na pasta de dados do usuário) nunca sai do seu computador — é só um registro local do que foi perguntado/feito, pra você auditar depois.
 
 ## Mitigação contra prompt injection
@@ -61,7 +65,9 @@ Todas seguem o mesmo fluxo: o modelo só propõe, você confirma no diálogo (ve
 - **Serviços**: habilitar/desabilitar no boot, iniciar/parar, reiniciar — o diálogo não impede desabilitar um serviço essencial (ex. rede, ssh); a confirmação humana é a única barreira, então preste atenção no nome do serviço antes de confirmar
 - **Armazenamento**: montar/desmontar volume — desmontar um volume em uso pode causar perda de dados; o Vega não verifica processos abertos antes de propor, então confirme com cuidado
 
-`SetRepoEnabled` (habilitar/desabilitar repositório) foi deliberadamente deixado fora — é edição de configuração persistente, não uma ação pontual, e o método nem está exposto no cliente Electron hoje.
+`SetRepoEnabled` (habilitar/desabilitar repositório) permanece fora das
+ferramentas da IA por alterar configuração persistente. A ação existe somente
+na tela Software e exige confirmação explícita do usuário.
 
 ## Cobertura de leitura
 

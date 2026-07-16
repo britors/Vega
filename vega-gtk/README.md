@@ -1,10 +1,8 @@
 # Vega GTK
 
-Implementação nativa, ainda experimental, da interface do Vega. Ela convive
-com a UI Electron até a aprovação de paridade, acessibilidade e desempenho.
-O `vegad` e o contrato em `../dbus/` permanecem compartilhados pelas duas UIs.
-O pacote e o binário nativos usam o nome `lyra-vega-gtk`; o diretório permanece
-`vega-gtk/` durante a migração.
+Interface oficial do Vega, implementada em Rust, GTK4 e libadwaita. O `vegad`
+e o contrato em `../dbus/` formam a fronteira privilegiada do aplicativo. O
+pacote e o binário usam o nome `lyra-vega-gtk`.
 
 ## Dependências no Fedora
 
@@ -24,8 +22,7 @@ cargo test --manifest-path vega-gtk/Cargo.toml
 cargo clippy --manifest-path vega-gtk/Cargo.toml --all-targets -- -D warnings
 ```
 
-O application ID temporário `org.lyraos.Vega.Gtk.Devel` e o modo non-unique
-permitem executar instâncias de medição sem assumir o lugar da UI oficial.
+O application ID oficial é `org.lyraos.Vega`.
 
 ## D-Bus
 

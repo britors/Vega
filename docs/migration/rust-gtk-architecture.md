@@ -6,8 +6,8 @@ Status: arquitetura oficial desde o cutover da versão 2.0.0.
 
 A nova UI substitui Electron/React por Rust, GTK4 e libadwaita. O `vegad`
 permanece em Go, ativado sob demanda, e os XMLs em `dbus/` continuam sendo a
-fonte de verdade do contrato privilegiado. A implementação Electron permanece
-somente como referência histórica em `vega/` e não integra os pacotes finais.
+fonte de verdade do contrato privilegiado. A implementação Electron foi
+removida após o cutover e não integra os pacotes finais.
 
 Metas de aceite da milestone:
 
@@ -26,9 +26,8 @@ executados pelo `vegad`.
 
 ### Estrutura adotada
 
-A implementação nativa reside em `vega-gtk/`, com workspace Cargo independente
-de `vega/`. O pacote e o binário oficiais usam `lyra-vega-gtk`; o daemon e o
-nome D-Bus foram preservados.
+A implementação nativa reside em `vega-gtk/`. O pacote e o binário oficiais
+usam `lyra-vega-gtk`; o daemon e o nome D-Bus foram preservados.
 
 Estrutura inicial pretendida:
 

@@ -71,7 +71,6 @@ documentado também em [`CONTRIBUTING.md`](CONTRIBUTING.md) e
 
 ```
 vega-gtk/    UI oficial (Rust + GTK4/libadwaita), roda como usuário comum
-vega/        UI Electron anterior, mantida temporariamente como referência histórica
 vegad/       Daemon privilegiado (Go), roda como root, exposto via D-Bus
 dbus/        Definições de interface D-Bus (XML de introspecção) — contrato entre vega e vegad
 packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs (Arch), specs RPM (openSUSE, Fedora) e debian/rules (Ubuntu/Debian)

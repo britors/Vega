@@ -13,15 +13,15 @@ Rode no checkout do projeto:
 O script valida:
 
 - `go test` em `vegad`
-- `npm run typecheck` em `vega`
-- `npm run build` em `vega`
+- `cargo fmt --check`, testes e Clippy em `vega-gtk`
+- build Rust otimizado com o lockfile versionado
 - sintaxe do helper de empacotamento
 - `makepkg --printsrcinfo` dos dois PKGBUILDs
 - presença dos contratos D-Bus versionados
 
 ## 2. Smoke test no Arch
 
-Executar em uma máquina/VM com os pacotes `vega` e `vegad` instalados.
+Executar em uma máquina/VM com os pacotes `lyra-vega-gtk` e `vegad` instalados.
 
 ### 2.1 Base do sistema
 
