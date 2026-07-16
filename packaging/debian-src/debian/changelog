@@ -1,3 +1,9 @@
+vega (2.0.1-1) unstable; urgency=medium
+
+  * Corrige a geração dos RPMs para openSUSE Leap.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Thu, 16 Jul 2026 07:45:33 -0300
+
 vega (2.0.0-1) unstable; urgency=medium
 
   * Promove a interface Rust + GTK4 a implementação oficial.
