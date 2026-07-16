@@ -57,6 +57,9 @@ grep -q 'cmake(Qt6Network)' "$repo_root/packaging/opensuse/vega-qt.spec"
 grep -q '%cmake -S ../vega-qt' "$repo_root/packaging/opensuse/vega-qt.spec"
 grep -q 'DEB_VERSION_UPSTREAM.*dpkg-parsechangelog' \
   "$repo_root/packaging/debian-src/debian/rules"
+for workflow in release-fedora.yml release-opensuse.yml release-debian.yml; do
+  grep -q 'dtolnay/rust-toolchain@stable' "$repo_root/.github/workflows/$workflow"
+done
 
 echo "[8/9] Identidades GTK/Qt independentes"
 grep -q 'org.lyraos.VegaQt' "$repo_root/vega-qt/packaging/org.lyraos.VegaQt.desktop"

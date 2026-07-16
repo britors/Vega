@@ -38,7 +38,8 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - mensagens, respostas e resultados de tools do Assistente são inseridos apenas
   como texto literal, sem interpretação de HTML remoto;
 - pacotes Arch, Fedora, openSUSE e Debian; workflows para as quatro famílias com
-  gates de instalação simultânea e remoção independente;
+  gates de instalação simultânea e remoção independente; builds RPM/DEB fixam
+  Rust estável para suportar a edição 2024 usada pela GTK;
 - instalador detecta KDE Plasma para escolher Qt e usa GTK nos demais desktops,
   mantendo `VEGA_UI=gtk|qt|both` como sobrescrita;
 - QA integrado, benchmark Qt e teste automático de coexistência de arquivos.
