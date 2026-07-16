@@ -10,6 +10,8 @@
 #include <QProgressBar>
 #include <QCheckBox>
 #include <QLineEdit>
+#include <QLabel>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QSpinBox>
 #include <QXmlStreamReader>
@@ -98,6 +100,7 @@ private slots:
         for (const auto &name : {
                  "action.Software.Search", "action.Software.GetPackageDetails",
                  "action.Software.ListInstalled", "action.Software.ListRepos",
+                 "action.Software.PackageManagerName", "action.Software.CommunityLayerName",
                  "action.Backup.ListSnapshots", "action.Backup.ListSnapshotPaths",
                  "action.Snapshots.DiffPackages", "action.Kernel.AvailablePackages",
                  "action.Kernel.BootStatus", "action.DateTime.ListTimezones",
@@ -106,6 +109,7 @@ private slots:
                  "action.Firewall.Status", "action.Firewall.ListServices",
                  "action.Bluetooth.ListDevices", "action.Services.ListAllServices"})
             QVERIFY2(window.findChild<QPushButton *>(QString::fromLatin1(name)), name);
+        QVERIFY(window.findChild<QPushButton *>(QStringLiteral("action.Hardware.FirmwareStatus")));
     }
     void backupStructuredTypesAndPartialRestoreAreExposed() {
         registerDbusTypes();
@@ -210,6 +214,30 @@ private slots:
         for (const auto *button : buttons)
             if (button->text() == QStringLiteral("Selecionar…")) ++nativePickers;
         QVERIFY(nativePickers >= 5);
+    }
+    void keyboardNavigationRestoresFocusToThePageHeading() {
+        MainWindow window;
+        window.show();
+        auto *navigation = window.findChild<QListWidget *>(QStringLiteral("mainNavigation"));
+        QVERIFY(navigation);
+        navigation->setCurrentRow(1);
+        QCoreApplication::processEvents();
+        auto *page = window.findChild<QWidget *>(QStringLiteral("software"));
+        QVERIFY(page);
+        auto *heading = page->findChild<QLabel *>(QStringLiteral("pageTitle"));
+        QVERIFY(heading);
+        QCOMPARE(heading->focusPolicy(), Qt::StrongFocus);
+        QVERIFY(heading->hasFocus());
+    }
+    void aboutShowsIndependentVersionsLicenseAndLinks() {
+        MainWindow window;
+        auto *versions = window.findChild<QLabel *>(QStringLiteral("aboutVersions"));
+        auto *release = window.findChild<QLabel *>(QStringLiteral("aboutRelease"));
+        auto *links = window.findChild<QLabel *>(QStringLiteral("aboutLinks"));
+        QVERIFY(versions && versions->text().contains(QStringLiteral(VEGA_QT_VERSION)));
+        QVERIFY(versions->text().contains(QString::fromLatin1(qVersion())));
+        QVERIFY(release && release->text().contains(QStringLiteral("GPL-3.0-only")));
+        QVERIFY(links && links->openExternalLinks());
     }
     void qtCredentialsUseAnIndependentSecretServiceIdentity() {
         QCOMPARE(SecretStore::applicationAttribute(), QStringLiteral("lyra-vega-qt"));

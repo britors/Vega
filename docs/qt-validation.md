@@ -60,6 +60,7 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 - AUR exige revisão por ID antes de instalar;
 - mutações de impacto usam confirmação com Cancelar como padrão;
 - controles possuem nomes acessíveis, foco padrão e busca por `Ctrl+F`;
+- a troca de rota por teclado move o foco para um título acessível da nova página;
 - caminhos de VPN, restauração e transferência usam seletores nativos Qt em vez
   de depender exclusivamente de entrada manual;
 - Qt 6 fornece escala HiDPI e tema claro/escuro do desktop; páginas são roláveis

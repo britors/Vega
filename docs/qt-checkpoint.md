@@ -7,6 +7,7 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - `vega-qt/`: Qt 6, C++20, CMake, Widgets, D-Bus e Network;
 - application ID `org.lyraos.VegaQt`, binário `lyra-vega-qt` e configurações independentes;
 - 15 rotas, busca, páginas roláveis, foco/nomes acessíveis e estados de erro/retry;
+- navegação por teclado restaura o foco no título da página selecionada;
 - cliente D-Bus assíncrono, timeout, reconexão, descarte por ownership e erros distintos;
 - proxies Qt gerados para os 14 contratos em escopo e tipos complexos registrados,
   com assinaturas verificadas automaticamente;
@@ -18,6 +19,8 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
   `(sassss)` registrado e validado em teste;
 - seletores nativos Qt para VPN, restauração e transferência Bluetooth, usando
   integração de portal do desktop em sessões Wayland;
+- Sobre exibe versões Vega Qt/Qt, canal, licença e links, além de consultar
+  versão do vegad, distribuição e conectividade;
 - confirmação para toda mutação privilegiada e correlação de progresso por `transactionId`;
 - AUR bloqueado até revisão integral do PKGBUILD por ID;
 - Assistente Anthropic/OpenAI/Gemini com Secret Service, modelos, histórico privado,

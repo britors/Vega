@@ -2,7 +2,7 @@
 
 | Superfície | Contrato | Rota | Estado |
 |---|---|---:|---|
-| Painel / Sobre | System | sim | leitura |
+| Painel / Sobre | System | sim | saúde, distro, versões, licença e links |
 | Software | Software | sim | leitura + ações principais |
 | Backup | Backup | sim | configurar, listar, executar e restaurar total/parcial |
 | Pontos de Restauração | Snapshots | sim | leitura + criar/aplicar/excluir |

@@ -231,6 +231,7 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
     search->setAccessibleName(tr("Buscar páginas"));
     m_backendStatus->setWordWrap(true);
     m_navigation->setAccessibleName(tr("Navegação principal"));
+    m_navigation->setObjectName(QStringLiteral("mainNavigation"));
     m_progressText->setWordWrap(true);
     m_progressText->setVisible(false);
     m_progress->setRange(0, 100);
@@ -270,7 +271,14 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
     splitter->setSizes({260, 840});
     setCentralWidget(splitter);
 
-    connect(m_navigation, &QListWidget::currentRowChanged, m_pages, &QStackedWidget::setCurrentIndex);
+    connect(m_navigation, &QListWidget::currentRowChanged, this, [this](int index) {
+        m_pages->setCurrentIndex(index);
+        if (index < 0) return;
+        auto *scroll = qobject_cast<QScrollArea *>(m_pages->widget(index));
+        if (!scroll) return;
+        if (auto *heading = scroll->widget()->findChild<QLabel *>(QStringLiteral("pageTitle")))
+            heading->setFocus(Qt::TabFocusReason);
+    });
     connect(search, &QLineEdit::textChanged, this, [this](const QString &text) {
         for (int i = 0; i < m_navigation->count(); ++i)
             m_navigation->item(i)->setHidden(!m_navigation->item(i)->text().contains(text, Qt::CaseInsensitive));
@@ -315,6 +323,8 @@ void MainWindow::addRoute(const RouteSpec &spec) {
     auto *state = new QLabel(tr("Aguardando atualização…"));
     auto *retry = new QPushButton(tr("Atualizar"));
     heading->setObjectName(QStringLiteral("pageTitle"));
+    heading->setFocusPolicy(Qt::StrongFocus);
+    heading->setAccessibleName(tr("Página %1").arg(spec.title));
     body->setWordWrap(true);
     state->setWordWrap(true);
     retry->setAccessibleName(tr("Atualizar %1").arg(spec.title));
@@ -325,6 +335,8 @@ void MainWindow::addRoute(const RouteSpec &spec) {
     layout->addWidget(retry, 0, Qt::AlignLeft);
     const auto iface = QString::fromLatin1(spec.interface);
     if (id == QStringLiteral("software")) {
+        addAction(layout, iface, QStringLiteral("PackageManagerName"), tr("Exibir gerenciador de pacotes"), {}, false);
+        addAction(layout, iface, QStringLiteral("CommunityLayerName"), tr("Exibir camada comunitária"), {}, false);
         addAction(layout, iface, QStringLiteral("Search"), tr("Buscar software"),
                   {{tr("Termo de busca"), InputType::Text}}, false);
         addAction(layout, iface, QStringLiteral("GetPackageDetails"), tr("Ver detalhes do pacote"),
@@ -744,6 +756,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                   {{tr("Entrada padrão"), InputType::Text}, {tr("Timeout"), InputType::Unsigned},
                    {tr("Linha de comando"), InputType::OptionalText}}, true);
     } else if (id == QStringLiteral("hardware")) {
+        addAction(layout, iface, QStringLiteral("FirmwareStatus"), tr("Exibir estado do firmware"), {}, false);
         addAction(layout, iface, QStringLiteral("SwitchNvidiaDriver"), tr("Aplicar driver NVIDIA"),
                   {{tr("Pacote do driver"), InputType::Text}}, true);
     } else if (id == QStringLiteral("datetime")) {
@@ -823,12 +836,32 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                    {tr("Desde"), InputType::OptionalText}, {tr("Busca"), InputType::OptionalText},
                    {tr("Limite"), InputType::Unsigned}}, false);
     } else if (id == QStringLiteral("dashboard")) {
+        addAction(layout, QStringLiteral("System"), QStringLiteral("Ping"), tr("Verificar saúde do serviço"), {}, false);
         addAction(layout, QStringLiteral("System"), QStringLiteral("Distro"), tr("Exibir distribuição"), {}, false);
         addAction(layout, QStringLiteral("Software"), QStringLiteral("ListUpdates"), tr("Exibir atualizações"), {}, false);
         addAction(layout, QStringLiteral("Backup"), QStringLiteral("ListConfigs"), tr("Exibir backups"), {}, false);
         addAction(layout, QStringLiteral("Snapshots"), QStringLiteral("ListSnapshots"), tr("Exibir snapshots"), {}, false);
         addAction(layout, QStringLiteral("Services"), QStringLiteral("ListServices"), tr("Exibir serviços"), {}, false);
     } else if (id == QStringLiteral("about")) {
+        auto *versions = new QLabel(tr("Vega Qt %1 · Qt %2").arg(
+            QStringLiteral(VEGA_QT_VERSION), QString::fromLatin1(qVersion())));
+        versions->setObjectName(QStringLiteral("aboutVersions"));
+        versions->setAccessibleName(tr("Versões: Vega Qt %1, Qt %2").arg(
+            QStringLiteral(VEGA_QT_VERSION), QString::fromLatin1(qVersion())));
+        versions->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+        auto *release = new QLabel(tr("Canal: estável · Licença: GPL-3.0-only"));
+        release->setObjectName(QStringLiteral("aboutRelease"));
+        release->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+        auto *links = new QLabel(QStringLiteral(
+            "<a href=\"https://github.com/britors/Vega\">%1</a> · "
+            "<a href=\"https://github.com/britors/Vega/issues\">%2</a>")
+            .arg(tr("Código-fonte"), tr("Relatar problema")));
+        links->setObjectName(QStringLiteral("aboutLinks"));
+        links->setOpenExternalLinks(true);
+        links->setAccessibleName(tr("Links do projeto Vega"));
+        layout->addWidget(versions);
+        layout->addWidget(release);
+        layout->addWidget(links);
         addAction(layout, QStringLiteral("System"), QStringLiteral("Distro"), tr("Exibir distribuição"), {}, false);
         addAction(layout, QStringLiteral("System"), QStringLiteral("Ping"), tr("Testar conexão"), {}, false);
     }
