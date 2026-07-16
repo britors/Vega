@@ -32,7 +32,7 @@ as assinaturas D-Bus estruturadas usadas pelos proxies gerados.
 | Fedora: RPM Qt real | passou |
 | RPM: dependência privada ausente | corrigida; não depende de `libvegaqt_core.so` |
 | RPM: conflito de arquivo GTK/Qt | nenhum |
-| Benchmark Qt (10 amostras) | média 233,9 ms; PSS 60.391,2 KiB; CPU 0,40%; binário 295.872 bytes |
+| Benchmark Qt (10 amostras) | média 154,3 ms; PSS 63.602,1 KiB; CPU 0,70%; binário 888.072 bytes |
 
 O CSV bruto está em `docs/qt-benchmark.csv`. Uma release exige dez amostras no
 hardware de referência, além de execução em VMs Arch, openSUSE e Ubuntu/Debian.
@@ -62,6 +62,8 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 - negação polkit, cancelamento e timeout possuem estados/mensagens distintos;
 - controles possuem nomes acessíveis, foco padrão e busca por `Ctrl+F`;
 - a troca de rota por teclado move o foco para um título acessível da nova página;
+- os temas explícitos passam contraste mínimo WCAG de 4,5:1 para texto normal,
+  inclusive em seleção; o gate falha se uma cor regredir;
 - caminhos de VPN, restauração e transferência usam seletores nativos Qt em vez
   de depender exclusivamente de entrada manual;
 - Qt 6 fornece escala HiDPI e tema claro/escuro do desktop; páginas são roláveis

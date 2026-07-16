@@ -4,6 +4,7 @@
 #include "mainwindow.h"
 #include "secretstore.h"
 #include "routestate.h"
+#include "theme.h"
 
 #include <QtTest>
 #include <QApplication>
@@ -30,11 +31,12 @@
 class MockDbusClient final : public DbusClient {
 public:
     QStringList calls;
-    QVariantList lastArguments;
+    QHash<QString, QVariantList> argumentsByCall;
     QDBusPendingCallWatcher *watch(const QString &interface, const QString &method,
                                    const QVariantList &arguments, QObject *owner) override {
-        calls.append(interface + QStringLiteral(".") + method);
-        lastArguments = arguments;
+        const auto callName = interface + QStringLiteral(".") + method;
+        calls.append(callName);
+        argumentsByCall.insert(callName, arguments);
         const auto call = QDBusMessage::createMethodCall(
             QStringLiteral("org.test"), QStringLiteral("/test"), interface, method);
         auto reply = call.createReply(method == QStringLiteral("Ping")
@@ -172,9 +174,10 @@ private slots:
         button->click();
         QCoreApplication::processEvents();
         QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.Backup.CreateConfig")));
-        QCOMPARE(client->lastArguments.size(), 1);
-        QVERIFY(client->lastArguments.first().canConvert<BackupConfig>());
-        const auto config = client->lastArguments.first().value<BackupConfig>();
+        const auto arguments = client->argumentsByCall.value(QStringLiteral("org.lyraos.Vega1.Backup.CreateConfig"));
+        QCOMPARE(arguments.size(), 1);
+        QVERIFY(arguments.first().canConvert<BackupConfig>());
+        const auto config = arguments.first().value<BackupConfig>();
         QCOMPARE(config.id, QStringLiteral("documents"));
         QCOMPARE(config.paths, QStringList({QStringLiteral("/home/demo/Documents"),
                                             QStringLiteral("/home/demo/Pictures")}));
@@ -270,6 +273,24 @@ private slots:
         QCOMPARE(qApp->palette().color(QPalette::WindowText), QColor(32, 32, 32));
         selector->setCurrentIndex(original);
     }
+    void explicitThemesMeetWcagNormalTextContrast() {
+        const QPalette system;
+        for (const auto &theme : {QStringLiteral("light"), QStringLiteral("dark")}) {
+            const auto palette = VegaTheme::palette(theme, system);
+            QVERIFY2(VegaTheme::contrastRatio(palette.color(QPalette::WindowText),
+                                               palette.color(QPalette::Window)) >= 4.5,
+                     qPrintable(theme));
+            QVERIFY2(VegaTheme::contrastRatio(palette.color(QPalette::Text),
+                                               palette.color(QPalette::Base)) >= 4.5,
+                     qPrintable(theme));
+            QVERIFY2(VegaTheme::contrastRatio(palette.color(QPalette::HighlightedText),
+                                               palette.color(QPalette::Highlight)) >= 4.5,
+                     qPrintable(theme));
+        }
+        QCOMPARE(VegaTheme::palette(QStringLiteral("system"), system,
+                                    VegaTheme::DesktopScheme::Dark).color(QPalette::Window),
+                 QColor(30, 30, 30));
+    }
     void assistantHistoryNeverRendersRemoteMarkup() {
         QSettings settings;
         const auto previous = settings.value(QStringLiteral("ai/history"));
@@ -335,6 +356,23 @@ private slots:
         QVERIFY(state.beginFirstLoad(QStringLiteral("software")));
         state.clear();
         QVERIFY(!state.isLoaded(QStringLiteral("software")));
+    }
+    void repeatedNavigationDoesNotDuplicateDomainLoads() {
+        auto *client = new MockDbusClient;
+        MainWindow window(nullptr, client);
+        auto *navigation = window.findChild<QListWidget *>(QStringLiteral("mainNavigation"));
+        QVERIFY(navigation);
+        for (int route = 0; route < navigation->count(); ++route) {
+            navigation->setCurrentRow(route);
+            QCoreApplication::processEvents();
+        }
+        const auto callsAfterFirstTour = client->calls.size();
+        for (int tour = 0; tour < 50; ++tour)
+            for (int route = 0; route < navigation->count(); ++route) {
+                navigation->setCurrentRow(route);
+                QCoreApplication::processEvents();
+            }
+        QCOMPARE(client->calls.size(), callsAfterFirstTour);
     }
 };
 

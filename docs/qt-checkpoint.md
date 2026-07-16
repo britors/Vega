@@ -48,8 +48,10 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - container Arch Linux: configuração, build, testes e instalação em staging passaram;
 - RPM Fedora construído por `rpmbuild`; nenhum conflito GTK e nenhuma dependência
   privada `libvegaqt_core.so` após tornar o core estático;
-- dez amostras Qt: startup médio 233,9 ms, PSS médio 60.391,2 KiB,
-  CPU média 0,40%, binário 295.872 bytes;
+- dez amostras Qt após carregamento sob demanda: startup médio 154,3 ms,
+  PSS médio 63.602,1 KiB, CPU média 0,70%, binário 888.072 bytes;
+- contraste de texto normal nos temas Claro/Escuro validado em pelo menos 4,5:1
+  e 750 trocas de rota sem recarregar domínios já visitados;
 - manifesto instalado Qt não compartilha caminhos com a GTK.
 
 ## Pendências que exigem ambiente externo

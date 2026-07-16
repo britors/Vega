@@ -41,6 +41,8 @@ add_library(vegaqt_core STATIC
     src/routestate.h
     src/secretstore.cpp
     src/secretstore.h
+    src/theme.cpp
+    src/theme.h
     ${VEGA_DBUS_SOURCES}
 )
 target_link_libraries(vegaqt_core PUBLIC Qt6::Core Qt6::DBus Qt6::Network Qt6::Widgets)

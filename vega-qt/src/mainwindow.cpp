@@ -3,6 +3,7 @@
 #include "dbusclient.h"
 #include "dbustypes.h"
 #include "secretstore.h"
+#include "theme.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -217,45 +218,13 @@ void appendPlainText(QTextEdit *view, const QString &text) {
     view->setTextCursor(cursor);
 }
 
-void applyTheme(const QString &theme, const QPalette &systemPalette) {
-    if (theme == QStringLiteral("system")) {
-        qApp->setPalette(systemPalette);
-        return;
-    }
-    QPalette palette;
-    const bool dark = theme == QStringLiteral("dark");
-    const QColor window = dark ? QColor(30, 30, 30) : QColor(250, 250, 250);
-    const QColor base = dark ? QColor(24, 24, 24) : QColor(255, 255, 255);
-    const QColor button = dark ? QColor(48, 48, 48) : QColor(240, 240, 240);
-    const QColor text = dark ? QColor(245, 245, 245) : QColor(32, 32, 32);
-    palette.setColor(QPalette::Window, window);
-    palette.setColor(QPalette::WindowText, text);
-    palette.setColor(QPalette::Base, base);
-    palette.setColor(QPalette::AlternateBase, button);
-    palette.setColor(QPalette::Text, text);
-    palette.setColor(QPalette::Button, button);
-    palette.setColor(QPalette::ButtonText, text);
-    palette.setColor(QPalette::ToolTipBase, base);
-    palette.setColor(QPalette::ToolTipText, text);
-    palette.setColor(QPalette::Highlight, QColor(53, 132, 228));
-    palette.setColor(QPalette::HighlightedText, QColor(255, 255, 255));
-    palette.setColor(QPalette::PlaceholderText, dark ? QColor(170, 170, 170) : QColor(100, 100, 100));
-    qApp->setPalette(palette);
-}
-
-void applySystemTheme(const QPalette &systemPalette) {
+VegaTheme::DesktopScheme desktopColorScheme() {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     const auto scheme = qApp->styleHints()->colorScheme();
-    if (scheme == Qt::ColorScheme::Dark) {
-        applyTheme(QStringLiteral("dark"), systemPalette);
-        return;
-    }
-    if (scheme == Qt::ColorScheme::Light) {
-        applyTheme(QStringLiteral("light"), systemPalette);
-        return;
-    }
+    if (scheme == Qt::ColorScheme::Dark) return VegaTheme::DesktopScheme::Dark;
+    if (scheme == Qt::ColorScheme::Light) return VegaTheme::DesktopScheme::Light;
 #endif
-    applyTheme(QStringLiteral("system"), systemPalette);
+    return VegaTheme::DesktopScheme::Unknown;
 }
 }
 
@@ -287,8 +256,8 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
     const auto savedTheme = appearanceSettings.value(QStringLiteral("appearance/theme"),
                                                        QStringLiteral("system")).toString();
     theme->setCurrentIndex(qMax(0, theme->findData(savedTheme)));
-    if (theme->currentData().toString() == QStringLiteral("system")) applySystemTheme(systemPalette);
-    else applyTheme(theme->currentData().toString(), systemPalette);
+    qApp->setPalette(VegaTheme::palette(theme->currentData().toString(), systemPalette,
+                                        desktopColorScheme()));
     auto *search = new QLineEdit;
     brand->setObjectName(QStringLiteral("brand"));
     search->setPlaceholderText(tr("Buscar configuração…"));
@@ -312,12 +281,13 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
     connect(theme, &QComboBox::currentIndexChanged, this, [theme] {
         const auto value = theme->currentData().toString();
         setPrivateSetting(QStringLiteral("appearance/theme"), value);
-        if (value == QStringLiteral("system")) applySystemTheme(systemPalette);
-        else applyTheme(value, systemPalette);
+        qApp->setPalette(VegaTheme::palette(value, systemPalette, desktopColorScheme()));
     });
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     connect(qApp->styleHints(), &QStyleHints::colorSchemeChanged, this, [theme] {
-        if (theme->currentData().toString() == QStringLiteral("system")) applySystemTheme(systemPalette);
+        if (theme->currentData().toString() == QStringLiteral("system"))
+            qApp->setPalette(VegaTheme::palette(QStringLiteral("system"), systemPalette,
+                                                desktopColorScheme()));
     });
 #endif
 
