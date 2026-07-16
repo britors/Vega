@@ -29,6 +29,11 @@ detect_desktop_ui() {
     printf '%s\n' qt
     return
   fi
+  # A sessão atual é mais autoritativa que sessões paralelas do logind.
+  if [ -n "${desktop//[[:space:]]/}" ]; then
+    printf '%s\n' gtk
+    return
+  fi
 
   if command -v loginctl >/dev/null 2>&1; then
     local session session_desktop

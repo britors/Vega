@@ -20,6 +20,7 @@ bash -n "$repo_root/scripts/build-local-packages.sh"
 bash -n "$repo_root/scripts/install.sh"
 bash -n "$repo_root/scripts/validate-debian-packages.sh"
 test "$(XDG_CURRENT_DESKTOP=KDE VEGA_UI=auto bash "$repo_root/scripts/install.sh" --detect-ui)" = qt
+test "$(XDG_CURRENT_DESKTOP=GNOME VEGA_UI=auto bash "$repo_root/scripts/install.sh" --detect-ui)" = gtk
 test "$(VEGA_UI=gtk bash "$repo_root/scripts/install.sh" --detect-ui)" = gtk
 if command -v makepkg >/dev/null; then
   (cd "$repo_root/packaging/vegad" && makepkg --printsrcinfo >/dev/null)
