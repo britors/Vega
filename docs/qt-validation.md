@@ -62,6 +62,8 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 - negação polkit, cancelamento e timeout possuem estados/mensagens distintos;
 - IPv4/CIDR e nomes de usuário inválidos são rejeitados antes de qualquer chamada
   D-Bus; o daemon continua validando novamente no limite privilegiado;
+- enumerações de origem/frequência/restauração são apresentadas como escolhas
+  acessíveis e também validadas antes do D-Bus;
 - controles possuem nomes acessíveis, foco padrão e busca por `Ctrl+F`;
 - a troca de rota por teclado move o foco para um título acessível da nova página;
 - os temas explícitos passam contraste mínimo WCAG de 4,5:1 para texto normal,

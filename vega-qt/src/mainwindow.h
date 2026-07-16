@@ -38,7 +38,8 @@ private:
         const char *readMethod;
         QVariantList readArguments;
     };
-    enum class InputType { Text, OptionalText, Secret, Boolean, Unsigned, StringList, File, Directory };
+    enum class InputType { Text, OptionalText, Secret, Boolean, Unsigned, StringList, File, Directory,
+                           PackageOrigin, BackupFrequency, RestoreMode };
     struct InputSpec { QString label; InputType type; };
     void addRoute(const RouteSpec &spec);
     void addAction(QVBoxLayout *layout, const QString &interface, const QString &method,

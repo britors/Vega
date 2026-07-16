@@ -399,15 +399,15 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         addAction(layout, iface, QStringLiteral("Search"), tr("Buscar software"),
                   {{tr("Termo de busca"), InputType::Text}}, false);
         addAction(layout, iface, QStringLiteral("GetPackageDetails"), tr("Ver detalhes do pacote"),
-                  {{tr("Origem"), InputType::Text}, {tr("Identificador"), InputType::Text}}, false);
+                  {{tr("Origem"), InputType::PackageOrigin}, {tr("Identificador"), InputType::Text}}, false);
         addAction(layout, iface, QStringLiteral("ListInstalled"), tr("Listar instalados"), {}, false);
         addAction(layout, iface, QStringLiteral("ListRepos"), tr("Listar repositórios"), {}, false);
         addAction(layout, iface, QStringLiteral("GetAurPkgbuild"), tr("Revisar PKGBUILD do AUR"),
                   {{tr("Identificador"), InputType::Text}}, false);
         addAction(layout, iface, QStringLiteral("Install"), tr("Instalar pacote"),
-                  {{tr("Origem"), InputType::Text}, {tr("Identificador"), InputType::Text}}, true);
+                  {{tr("Origem"), InputType::PackageOrigin}, {tr("Identificador"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("Remove"), tr("Remover pacote"),
-                  {{tr("Origem"), InputType::Text}, {tr("Identificador"), InputType::Text}}, true);
+                  {{tr("Origem"), InputType::PackageOrigin}, {tr("Identificador"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("UpdateAll"), tr("Atualizar tudo"), {}, true);
         addAction(layout, iface, QStringLiteral("SetRepoEnabled"), tr("Ativar/desativar repositório"),
                   {{tr("Repositório"), InputType::Text}, {tr("Habilitado"), InputType::Boolean}}, true);
@@ -776,7 +776,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                    {tr("Caminhos (um por linha)"), InputType::StringList},
                    {tr("Destino"), InputType::Text},
                    {tr("UUID do destino"), InputType::OptionalText},
-                   {tr("Frequência"), InputType::Text}}, true);
+                   {tr("Frequência"), InputType::BackupFrequency}}, true);
         addAction(layout, iface, QStringLiteral("ListSnapshots"), tr("Listar backups"),
                   {{tr("ID da configuração"), InputType::Text}}, false);
         addAction(layout, iface, QStringLiteral("ListSnapshotPaths"), tr("Listar arquivos do backup"),
@@ -785,10 +785,10 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                   {{tr("ID da configuração"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("RestoreSnapshot"), tr("Restaurar snapshot"),
                   {{tr("ID do snapshot"), InputType::Text}, {tr("Destino"), InputType::Directory},
-                   {tr("Modo"), InputType::Text}}, true);
+                   {tr("Modo"), InputType::RestoreMode}}, true);
         addAction(layout, iface, QStringLiteral("RestoreItems"), tr("Restaurar arquivos selecionados"),
                   {{tr("ID do snapshot"), InputType::Text}, {tr("Destino"), InputType::Directory},
-                   {tr("Modo"), InputType::Text},
+                   {tr("Modo"), InputType::RestoreMode},
                    {tr("Caminhos (um por linha)"), InputType::StringList}}, true);
         addAction(layout, iface, QStringLiteral("DeleteConfig"), tr("Excluir configuração"),
                   {{tr("ID da configuração"), InputType::Text}}, true);
@@ -951,6 +951,24 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
         if (input.type == InputType::Boolean) {
             editor = new QCheckBox;
             rowWidget = editor;
+        } else if (input.type == InputType::PackageOrigin || input.type == InputType::BackupFrequency ||
+                   input.type == InputType::RestoreMode) {
+            auto *choice = new QComboBox;
+            if (input.type == InputType::PackageOrigin) {
+                choice->addItem(tr("Oficial"), QStringLiteral("official"));
+                choice->addItem(tr("Flathub"), QStringLiteral("flathub"));
+                choice->addItem(tr("AUR"), QStringLiteral("aur"));
+            } else if (input.type == InputType::BackupFrequency) {
+                choice->addItem(tr("Manual"), QStringLiteral("manual"));
+                choice->addItem(tr("Diária"), QStringLiteral("daily"));
+                choice->addItem(tr("Semanal"), QStringLiteral("weekly"));
+                choice->addItem(tr("Ao conectar"), QStringLiteral("on-connect"));
+            } else {
+                choice->addItem(tr("Substituir no destino"), QStringLiteral("replace"));
+                choice->addItem(tr("Pasta separada"), QStringLiteral("separate-folder"));
+            }
+            editor = choice;
+            rowWidget = editor;
         } else {
             auto *line = new QLineEdit;
             if (input.type == InputType::Secret) line->setEchoMode(QLineEdit::Password);
@@ -1013,6 +1031,11 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
                 arguments.append(qobject_cast<QCheckBox *>(editors.at(index))->isChecked());
                 continue;
             }
+            if (type == InputType::PackageOrigin || type == InputType::BackupFrequency ||
+                type == InputType::RestoreMode) {
+                arguments.append(qobject_cast<QComboBox *>(editors.at(index))->currentData().toString());
+                continue;
+            }
             const auto value = qobject_cast<QLineEdit *>(editors.at(index))->text().trimmed();
             if (value.isEmpty() && type != InputType::OptionalText) {
                 setResultText(result, tr("Preencha todos os campos obrigatórios."));
@@ -1039,7 +1062,24 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
             const BackupConfig config{
                 arguments.at(0).toString(), arguments.at(1).toStringList(), arguments.at(2).toString(),
                 arguments.at(3).toString(), arguments.at(4).toString()};
+            if (!Validation::backupFrequency(config.frequency)) {
+                setResultText(result, tr("Use uma frequência válida: manual, daily, weekly ou on-connect."));
+                return;
+            }
             arguments = {QVariant::fromValue(config)};
+        }
+        if (interface == QStringLiteral("Backup") &&
+            (method == QStringLiteral("RestoreSnapshot") || method == QStringLiteral("RestoreItems")) &&
+            (arguments.size() < 3 || !Validation::restoreMode(arguments.at(2).toString()))) {
+            setResultText(result, tr("Use um modo de restauração válido: replace ou separate-folder."));
+            return;
+        }
+        if (interface == QStringLiteral("Software") &&
+            (method == QStringLiteral("Install") || method == QStringLiteral("Remove") ||
+             method == QStringLiteral("GetPackageDetails")) &&
+            (arguments.isEmpty() || !Validation::packageOrigin(arguments.first().toString()))) {
+            setResultText(result, tr("Use uma origem válida: official, flathub ou aur."));
+            return;
         }
         if (interface == QStringLiteral("Network") && method == QStringLiteral("SetStaticIPv4") &&
             (arguments.size() < 2 || !Validation::staticIpv4Cidr(arguments.at(1).toString()))) {

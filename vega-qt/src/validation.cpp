@@ -18,3 +18,20 @@ bool Validation::username(const QString &value) {
     static const QRegularExpression pattern(QStringLiteral("^[a-z_][a-z0-9_-]*\\$?$"));
     return pattern.match(value.trimmed()).hasMatch();
 }
+
+bool Validation::packageOrigin(const QString &value) {
+    const auto normalized = value.trimmed().toLower();
+    return normalized == QStringLiteral("official") || normalized == QStringLiteral("flathub") ||
+           normalized == QStringLiteral("aur");
+}
+
+bool Validation::backupFrequency(const QString &value) {
+    const auto normalized = value.trimmed().toLower();
+    return normalized == QStringLiteral("manual") || normalized == QStringLiteral("daily") ||
+           normalized == QStringLiteral("weekly") || normalized == QStringLiteral("on-connect");
+}
+
+bool Validation::restoreMode(const QString &value) {
+    const auto normalized = value.trimmed().toLower();
+    return normalized == QStringLiteral("replace") || normalized == QStringLiteral("separate-folder");
+}

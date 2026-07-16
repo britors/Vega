@@ -56,6 +56,8 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
   e limitada; PKGBUILD usa visualização rolável sem truncar o texto;
 - validação local de IPv4/CIDR e usuários segue as regras do backend; entradas
   inválidas e remoção de `root` não chegam ao D-Bus/polkit;
+- origem de pacote, frequência de Backup e modo de restauração usam seletores
+  tipados; validação defensiva impede valores fora do contrato;
 - manifesto instalado Qt não compartilha caminhos com a GTK.
 
 ## Pendências que exigem ambiente externo

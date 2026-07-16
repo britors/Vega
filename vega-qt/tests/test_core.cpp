@@ -186,12 +186,14 @@ private slots:
         auto *button = window.findChild<QPushButton *>(QStringLiteral("action.Backup.CreateConfig"));
         QVERIFY(button);
         const auto editors = button->parentWidget()->findChildren<QLineEdit *>();
-        QCOMPARE(editors.size(), 5);
+        QCOMPARE(editors.size(), 4);
         editors.at(0)->setText(QStringLiteral("documents"));
         editors.at(1)->setText(QStringLiteral("/home/demo/Documents, /home/demo/Pictures"));
         editors.at(2)->setText(QStringLiteral("/mnt/backup"));
         editors.at(3)->setText(QString());
-        editors.at(4)->setText(QStringLiteral("daily"));
+        auto *frequency = button->parentWidget()->findChild<QComboBox *>();
+        QVERIFY(frequency);
+        frequency->setCurrentIndex(frequency->findData(QStringLiteral("daily")));
         QTimer::singleShot(0, [] {
             for (auto *widget : QApplication::topLevelWidgets())
                 if (auto *dialog = qobject_cast<QMessageBox *>(widget))
@@ -253,6 +255,9 @@ private slots:
         const auto checks = window.findChildren<QCheckBox *>();
         QVERIFY(!checks.isEmpty());
         for (const auto *check : checks) QVERIFY(!check->accessibleName().isEmpty());
+        const auto combos = window.findChildren<QComboBox *>();
+        QVERIFY(!combos.isEmpty());
+        for (const auto *combo : combos) QVERIFY2(!combo->accessibleName().isEmpty(), qPrintable(combo->objectName()));
         const auto buttons = window.findChildren<QPushButton *>();
         for (const auto *button : buttons)
             QVERIFY2(!button->accessibleName().isEmpty() || !button->text().isEmpty(), qPrintable(button->objectName()));
@@ -394,6 +399,14 @@ private slots:
         QVERIFY(!Validation::username(QStringLiteral("Ana")));
         QVERIFY(!Validation::username(QStringLiteral("9user")));
         QVERIFY(!Validation::username(QStringLiteral("user name")));
+        QVERIFY(Validation::packageOrigin(QStringLiteral("official")));
+        QVERIFY(Validation::packageOrigin(QStringLiteral("FLATHUB")));
+        QVERIFY(!Validation::packageOrigin(QStringLiteral("rpm")));
+        QVERIFY(Validation::backupFrequency(QStringLiteral("on-connect")));
+        QVERIFY(!Validation::backupFrequency(QStringLiteral("hourly")));
+        QVERIFY(Validation::restoreMode(QStringLiteral("replace")));
+        QVERIFY(Validation::restoreMode(QStringLiteral("separate-folder")));
+        QVERIFY(!Validation::restoreMode(QStringLiteral("overwrite")));
     }
     void invalidDomainInputsNeverReachDbusOrPolkit() {
         auto *client = new MockDbusClient;
