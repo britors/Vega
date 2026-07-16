@@ -1,3 +1,11 @@
+vega (2.0.0-1) unstable; urgency=medium
+
+  * Promove a interface Rust + GTK4 a implementação oficial.
+  * Remove Electron, Node e npm dos pacotes finais.
+  * Renomeia o pacote da interface para lyra-vega-gtk.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Wed, 15 Jul 2026 21:05:00 -0300
+
 vega (1.6.0-1) unstable; urgency=medium
 
   * Empacotamento inicial para Debian/Ubuntu (backend apt/dpkg, Timeshift,
