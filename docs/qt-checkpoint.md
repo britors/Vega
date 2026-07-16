@@ -13,7 +13,8 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - confirmação para impacto relevante e correlação de progresso por `transactionId`;
 - AUR bloqueado até revisão integral do PKGBUILD por ID;
 - Assistente Anthropic/OpenAI/Gemini com Secret Service, modelos, histórico privado,
-  limite diário, preview dos dados enviados, timeout, cancelamento e auditoria redigida;
+  limite diário, preview dos dados enviados, timeout, cancelamento, auditoria redigida
+  e tools de leitura/mutação com resultados delimitados e aprovação explícita;
 - pacotes Arch, Fedora, openSUSE e Debian; workflows para as quatro famílias;
 - instalador com `VEGA_UI=gtk|qt|both` e GTK como padrão;
 - QA integrado, benchmark Qt e teste automático de coexistência de arquivos.
@@ -36,7 +37,7 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - leitor de tela e escala fracionária com avaliação humana;
 - operações polkit reais com sucesso, negação e cancelamento;
 - testes com contas reais dos três provedores do Assistente;
-- streaming incremental e tools do Assistente continuam como desvio conhecido;
+- streaming incremental do Assistente continua como desvio conhecido;
 - proxies gerados cobrem System/Logs; estruturas complexas usam o decoder D-Bus
   genérico validado contra os XMLs.
 
