@@ -30,6 +30,7 @@ as assinaturas D-Bus estruturadas usadas pelos proxies gerados.
 | Qt: build Release e testes | passou |
 | Qt: smoke offscreen/minimal | passou |
 | Fedora: RPM Qt real | passou |
+| openSUSE Leap 16.0: RPM Qt real | passou em contêiner limpo |
 | RPM: dependência privada ausente | corrigida; não depende de `libvegaqt_core.so` |
 | RPM: conflito de arquivo GTK/Qt | nenhum |
 | Benchmark Qt (10 amostras) | média 154,3 ms; PSS 63.602,1 KiB; CPU 0,70%; binário 888.072 bytes |
@@ -44,7 +45,7 @@ hardware de referência, além de execução em VMs Arch, openSUSE e Ubuntu/Debi
 | Fedora 44 / Wayland | validado | metadados validados | validado | pendente VM descartável |
 | Fedora 44 / X11 | validado | metadados validados | validado via xcb | pendente VM |
 | Arch / container | build/test/install validado com Qt 6.11.1 | manifesto validado | headless validado | pendente VM |
-| openSUSE Leap / Wayland e X11 | workflow criado | pendente CI/VM | pendente CI/VM | pendente CI/VM |
+| openSUSE Leap 16.0 / container | RPM validado; manifesto e dependências inspecionados | metadados validados | pendente sessão gráfica | pendente VM |
 | Ubuntu/Debian / Wayland e X11 | workflow criado | pendente CI/VM | pendente CI/VM | pendente CI/VM |
 
 As linhas pendentes não devem ser declaradas aprovadas sem execução nos ambientes

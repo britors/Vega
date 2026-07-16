@@ -10,6 +10,7 @@ BuildRequires:  cmake
 BuildRequires:  ninja-build
 BuildRequires:  cmake(Qt6Core)
 BuildRequires:  cmake(Qt6DBus)
+BuildRequires:  cmake(Qt6Network)
 BuildRequires:  cmake(Qt6Widgets)
 Requires:       vegad
 Requires:       libsecret

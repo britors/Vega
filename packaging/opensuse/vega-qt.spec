@@ -7,9 +7,9 @@ License:        GPL-3.0-only
 URL:            https://github.com/britors/Vega
 Source0:        vega-src.tar.gz
 BuildRequires:  cmake
-BuildRequires:  ninja
 BuildRequires:  cmake(Qt6Core)
 BuildRequires:  cmake(Qt6DBus)
+BuildRequires:  cmake(Qt6Network)
 BuildRequires:  cmake(Qt6Widgets)
 Requires:       vegad
 Requires:       libsecret-tools
@@ -21,7 +21,7 @@ Interface Qt independente do Vega. Pode ser instalada junto da interface GTK.
 %setup -q -c -n vega-src
 
 %build
-%cmake -S vega-qt -G Ninja -DBUILD_TESTING=OFF
+%cmake -S ../vega-qt -DBUILD_TESTING=OFF
 %cmake_build
 
 %install

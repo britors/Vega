@@ -33,7 +33,9 @@ package_files=(
   "$repo_root/packaging/vega/PKGBUILD"
   "$repo_root/packaging/vega-qt/PKGBUILD"
   "$repo_root/packaging/fedora/vega.spec"
+  "$repo_root/packaging/fedora/vega-qt.spec"
   "$repo_root/packaging/opensuse/vega.spec"
+  "$repo_root/packaging/opensuse/vega-qt.spec"
   "$repo_root/packaging/debian-src/debian/control"
   "$repo_root/packaging/debian-src/debian/rules"
   "$repo_root/.github/workflows/release-fedora.yml"
@@ -45,6 +47,9 @@ if grep -Ei '(electron|node_modules|npm (ci|install|run)|nodejs)' "${package_fil
   echo "Erro: referência ao runtime legado no pacote GTK" >&2
   exit 1
 fi
+grep -q 'cmake(Qt6Network)' "$repo_root/packaging/fedora/vega-qt.spec"
+grep -q 'cmake(Qt6Network)' "$repo_root/packaging/opensuse/vega-qt.spec"
+grep -q '%cmake -S ../vega-qt' "$repo_root/packaging/opensuse/vega-qt.spec"
 
 echo "[8/9] Identidades GTK/Qt independentes"
 grep -q 'org.lyraos.VegaQt' "$repo_root/vega-qt/packaging/org.lyraos.VegaQt.desktop"
