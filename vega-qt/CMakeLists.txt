@@ -62,6 +62,8 @@ install(TARGETS lyra-vega-qt RUNTIME DESTINATION bin)
 install(FILES packaging/org.lyraos.VegaQt.desktop DESTINATION share/applications)
 install(FILES packaging/org.lyraos.VegaQt.metainfo.xml DESTINATION share/metainfo)
 install(FILES packaging/org.lyraos.VegaQt.svg DESTINATION share/icons/hicolor/scalable/apps)
+# Distribuições podem instalar catálogos `lyra-vega-qt_<locale>.qm` em
+# share/lyra-vega-qt/translations sem alterar o binário.
 
 if(BUILD_TESTING)
     find_package(Qt6 6.4 REQUIRED COMPONENTS Test)

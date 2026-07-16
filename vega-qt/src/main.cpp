@@ -4,6 +4,8 @@
 #include <QFile>
 #include <QLoggingCategory>
 #include <QElapsedTimer>
+#include <QLocale>
+#include <QStandardPaths>
 #include <QTranslator>
 #include <cstdio>
 
@@ -16,6 +18,16 @@ int main(int argc, char **argv) {
     QCoreApplication::setApplicationVersion(QStringLiteral(VEGA_QT_VERSION));
     QGuiApplication::setDesktopFileName(QStringLiteral("org.lyraos.VegaQt"));
     QLoggingCategory::setFilterRules(QStringLiteral("qt.dbus.debug=false"));
+
+    QTranslator translator;
+    const QString translationPath = QStandardPaths::locate(
+        QStandardPaths::GenericDataLocation, QStringLiteral("lyra-vega-qt/translations"),
+        QStandardPaths::LocateDirectory);
+    if (!translationPath.isEmpty() &&
+        translator.load(QLocale::system(), QStringLiteral("lyra-vega-qt"),
+                        QStringLiteral("_"), translationPath)) {
+        app.installTranslator(&translator);
+    }
 
     QFile style(QStringLiteral(":/style.qss"));
     if (style.open(QIODevice::ReadOnly)) app.setStyleSheet(QString::fromUtf8(style.readAll()));

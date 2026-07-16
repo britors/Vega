@@ -19,4 +19,5 @@
 
 As ações acima usam chamadas assíncronas ao system bus, confirmação para impacto relevante,
 campos secretos não persistentes e mensagens distintas para indisponibilidade, timeout,
-capability ausente e polkit negado. “Shell” ainda não representa paridade funcional completa.
+capability ausente e polkit negado. As validações dependentes de sessão/hardware estão
+discriminadas em `docs/qt-validation.md`, sem reduzir a paridade implementada.

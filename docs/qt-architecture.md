@@ -7,7 +7,7 @@ Status: aceito (2026-07-16).
 A segunda interface usa Qt 6.4+, C++20, Qt Widgets e CMake. Widgets foi escolhido por oferecer
 boa integração desktop, acessibilidade madura, menor superfície de runtime que Qt Quick e
 disponibilidade nas versões estáveis de Arch, Fedora, openSUSE e Ubuntu/Debian. Apenas módulos
-LGPL do Qt (Core, DBus, Widgets e Test) são necessários; distribuição dinâmica preserva os
+LGPL do Qt (Core, DBus, Network, Widgets e Test) são necessários; distribuição dinâmica preserva os
 termos da LGPL.
 
 O binário, application ID, desktop file, ícone, metainfo e configurações são independentes:
@@ -30,6 +30,8 @@ permitindo teste headless; retry permanece explícito. Cada superfície oferece
 loading, conteúdo, vazio, erro e retry. Mutações destrutivas exigem um
 diálogo que descreve o impacto. A ordem de tabulação segue a ordem visual, `Ctrl+F` abre busca,
 todo controle recebe nome acessível e o layout mínimo é 760×520, com suporte nativo a HiDPI.
+Textos de interface usam `tr()` e o processo carrega catálogos Qt do locale da
+sessão em `/usr/share/lyra-vega-qt/translations`, mantendo o português como fonte.
 
 ## Validação
 
