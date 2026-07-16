@@ -18,7 +18,9 @@
 #include <QDBusVariant>
 #include <QFrame>
 #include <QFile>
+#include <QFileDialog>
 #include <QFormLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -710,10 +712,10 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         addAction(layout, iface, QStringLiteral("RunBackupNow"), tr("Executar backup"),
                   {{tr("ID da configuração"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("RestoreSnapshot"), tr("Restaurar snapshot"),
-                  {{tr("ID do snapshot"), InputType::Text}, {tr("Destino"), InputType::Text},
+                  {{tr("ID do snapshot"), InputType::Text}, {tr("Destino"), InputType::Directory},
                    {tr("Modo"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("RestoreItems"), tr("Restaurar arquivos selecionados"),
-                  {{tr("ID do snapshot"), InputType::Text}, {tr("Destino"), InputType::Text},
+                  {{tr("ID do snapshot"), InputType::Text}, {tr("Destino"), InputType::Directory},
                    {tr("Modo"), InputType::Text},
                    {tr("Caminhos (um por linha)"), InputType::StringList}}, true);
         addAction(layout, iface, QStringLiteral("DeleteConfig"), tr("Excluir configuração"),
@@ -784,7 +786,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                   {{tr("Conexão"), InputType::Text}, {tr("Endereço/prefixo"), InputType::Text},
                    {tr("Gateway"), InputType::Text}, {tr("DNS"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("ImportVPN"), tr("Importar VPN"),
-                  {{tr("Arquivo"), InputType::Text}}, true);
+                  {{tr("Arquivo"), InputType::File}}, true);
         addAction(layout, iface, QStringLiteral("SetProxy"), tr("Aplicar proxy"),
                   {{tr("HTTP"), InputType::OptionalText}, {tr("HTTPS"), InputType::OptionalText},
                    {tr("SOCKS"), InputType::OptionalText}, {tr("Exceções"), InputType::OptionalText}}, true);
@@ -812,9 +814,9 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         addAction(layout, iface, QStringLiteral("Remove"), tr("Remover dispositivo"),
                   {{tr("Endereço"), InputType::Text}}, true);
         addAction(layout, iface, QStringLiteral("SendFile"), tr("Enviar arquivo"),
-                  {{tr("Endereço"), InputType::Text}, {tr("Caminho"), InputType::Text}}, true);
+                  {{tr("Endereço"), InputType::Text}, {tr("Arquivo"), InputType::File}}, true);
         addAction(layout, iface, QStringLiteral("StartFileReceiver"), tr("Receber arquivos"),
-                  {{tr("Diretório"), InputType::Text}}, true);
+                  {{tr("Diretório"), InputType::Directory}}, true);
     } else if (id == QStringLiteral("logs")) {
         addAction(layout, iface, QStringLiteral("Query"), tr("Consultar logs"),
                   {{tr("Unidade"), InputType::OptionalText}, {tr("Prioridade"), InputType::OptionalText},
@@ -851,8 +853,10 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
     QList<QWidget *> editors;
     for (const auto &input : inputs) {
         QWidget *editor = nullptr;
+        QWidget *rowWidget = nullptr;
         if (input.type == InputType::Boolean) {
             editor = new QCheckBox;
+            rowWidget = editor;
         } else {
             auto *line = new QLineEdit;
             if (input.type == InputType::Secret) line->setEchoMode(QLineEdit::Password);
@@ -860,9 +864,26 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
                 line->setValidator(new QRegularExpressionValidator(
                     QRegularExpression(QStringLiteral("[0-9]{1,10}")), line));
             editor = line;
+            rowWidget = line;
+            if (input.type == InputType::File || input.type == InputType::Directory) {
+                auto *picker = new QWidget;
+                auto *pickerLayout = new QHBoxLayout(picker);
+                auto *browse = new QPushButton(tr("Selecionar…"));
+                pickerLayout->setContentsMargins(0, 0, 0, 0);
+                pickerLayout->addWidget(line, 1);
+                pickerLayout->addWidget(browse);
+                browse->setAccessibleName(tr("Selecionar %1").arg(input.label));
+                connect(browse, &QPushButton::clicked, picker, [line, panel, input] {
+                    const auto selected = input.type == InputType::File
+                        ? QFileDialog::getOpenFileName(panel, QObject::tr("Selecionar arquivo"))
+                        : QFileDialog::getExistingDirectory(panel, QObject::tr("Selecionar diretório"));
+                    if (!selected.isEmpty()) line->setText(selected);
+                });
+                rowWidget = picker;
+            }
         }
         editor->setAccessibleName(input.label);
-        form->addRow(input.label, editor);
+        form->addRow(input.label, rowWidget);
         editors.append(editor);
     }
     auto *button = new QPushButton(label);

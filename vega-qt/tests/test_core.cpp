@@ -206,6 +206,10 @@ private slots:
         const auto buttons = window.findChildren<QPushButton *>();
         for (const auto *button : buttons)
             QVERIFY2(!button->accessibleName().isEmpty() || !button->text().isEmpty(), qPrintable(button->objectName()));
+        qsizetype nativePickers = 0;
+        for (const auto *button : buttons)
+            if (button->text() == QStringLiteral("Selecionar…")) ++nativePickers;
+        QVERIFY(nativePickers >= 5);
     }
     void qtCredentialsUseAnIndependentSecretServiceIdentity() {
         QCOMPARE(SecretStore::applicationAttribute(), QStringLiteral("lyra-vega-qt"));
