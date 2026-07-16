@@ -8,6 +8,7 @@
 #include "validation.h"
 
 #include <QtTest>
+#include <QAccessible>
 #include <QApplication>
 #include <QComboBox>
 #include <QFile>
@@ -306,6 +307,27 @@ private slots:
         for (const auto *button : buttons)
             if (button->text() == QStringLiteral("Selecionar…")) ++nativePickers;
         QVERIFY(nativePickers >= 5);
+    }
+    void qtAccessibilityTreeExposesNamedInteractiveControls() {
+        MainWindow window;
+        window.show();
+        QCoreApplication::processEvents();
+        auto *windowInterface = QAccessible::queryAccessibleInterface(&window);
+        QVERIFY(windowInterface);
+        QCOMPARE(windowInterface->role(), QAccessible::Window);
+
+        auto assertAccessible = [](QWidget *widget) {
+            QVERIFY(widget);
+            auto *interface = QAccessible::queryAccessibleInterface(widget);
+            QVERIFY2(interface, qPrintable(widget->objectName()));
+            QVERIFY2(!interface->text(QAccessible::Name).trimmed().isEmpty(),
+                     qPrintable(widget->objectName()));
+        };
+        assertAccessible(window.findChild<QListWidget *>(QStringLiteral("mainNavigation")));
+        assertAccessible(window.findChild<QComboBox *>(QStringLiteral("themeSelector")));
+        for (auto *button : window.findChildren<QPushButton *>()) assertAccessible(button);
+        for (auto *combo : window.findChildren<QComboBox *>()) assertAccessible(combo);
+        for (auto *check : window.findChildren<QCheckBox *>()) assertAccessible(check);
     }
     void keyboardNavigationRestoresFocusToThePageHeading() {
         MainWindow window;

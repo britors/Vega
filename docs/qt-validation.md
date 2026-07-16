@@ -74,6 +74,8 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 - enumerações de origem/frequência/restauração são apresentadas como escolhas
   acessíveis e também validadas antes do D-Bus;
 - controles possuem nomes acessíveis, foco padrão e busca por `Ctrl+F`;
+- o gate consulta `QAccessible` (a árvore consumida por tecnologias assistivas)
+  e exige papel/nome para janela, navegação e todos os controles interativos;
 - a troca de rota por teclado move o foco para um título acessível da nova página;
 - os temas explícitos passam contraste mínimo WCAG de 4,5:1 para texto normal,
   inclusive em seleção; o gate falha se uma cor regredir;
