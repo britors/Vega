@@ -10,17 +10,55 @@
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
 #
-# VEGA_UI=qt sudo -E bash install.sh             # gtk (padrão), qt ou both
+# VEGA_UI=qt sudo -E bash install.sh             # sobrescreve auto: gtk, qt ou both
 # VEGA_VERSION=v1.3.4 sudo -E bash install.sh    # trava numa tag específica
 set -euo pipefail
 
 REPO="britors/Vega"
-VEGA_UI="${VEGA_UI:-gtk}"
+VEGA_UI="${VEGA_UI:-auto}"
 
 case "$VEGA_UI" in
-  gtk|qt|both) ;;
-  *) echo "VEGA_UI deve ser 'gtk', 'qt' ou 'both'." >&2; exit 2 ;;
+  auto|gtk|qt|both) ;;
+  *) echo "VEGA_UI deve ser 'auto', 'gtk', 'qt' ou 'both'." >&2; exit 2 ;;
 esac
+
+detect_desktop_ui() {
+  local desktop="${XDG_CURRENT_DESKTOP:-} ${XDG_SESSION_DESKTOP:-} ${DESKTOP_SESSION:-}"
+  if [[ "$desktop" =~ [Kk][Dd][Ee]|[Pp][Ll][Aa][Ss][Mm][Aa] ]] ||
+     [ "${KDE_FULL_SESSION:-}" = "true" ]; then
+    printf '%s\n' qt
+    return
+  fi
+
+  if command -v loginctl >/dev/null 2>&1; then
+    local session session_desktop
+    while read -r session _; do
+      [ -n "$session" ] || continue
+      session_desktop="$(loginctl show-session "$session" -p Desktop --value 2>/dev/null || true)"
+      if [[ "$session_desktop" =~ [Kk][Dd][Ee]|[Pp][Ll][Aa][Ss][Mm][Aa] ]]; then
+        printf '%s\n' qt
+        return
+      fi
+    done < <(loginctl list-sessions --no-legend 2>/dev/null || true)
+  fi
+
+  if command -v pgrep >/dev/null 2>&1 && pgrep -x plasmashell >/dev/null 2>&1; then
+    printf '%s\n' qt
+    return
+  fi
+
+  printf '%s\n' gtk
+}
+
+if [ "$VEGA_UI" = auto ]; then
+  VEGA_UI="$(detect_desktop_ui)"
+  echo "==> Interface detectada para a sessão: $VEGA_UI" >&2
+fi
+
+if [ "${1:-}" = "--detect-ui" ]; then
+  printf '%s\n' "$VEGA_UI"
+  exit 0
+fi
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Rode como root (sudo bash install.sh, ou via curl ... | sudo bash)." >&2
@@ -94,9 +132,13 @@ case "$distro_id $distro_id_like" in
 Detectei Arch. Este instalador só empacota RPM/.deb pra openSUSE/Fedora/
 Ubuntu; em Arch use o pacote do AUR, que já é o caminho suportado:
 
-  yay -S lyra-vega-gtk       # GTK
-  yay -S lyra-vega-qt        # Qt
-  yay -S lyra-vega-gtk lyra-vega-qt  # ambas
+EOF
+    if [ "$VEGA_UI" = both ]; then
+      echo "  yay -S lyra-vega-gtk lyra-vega-qt"
+    else
+      echo "  yay -S lyra-vega-$VEGA_UI"
+    fi
+    cat >&2 <<'EOF'
 
 (ou `paru -S lyra-vega-gtk`, se preferir).
 EOF
@@ -162,11 +204,11 @@ EOF
     ;;
 esac
 
-cat <<'EOF'
+cat <<EOF
 
 Instalação concluída.
 - Daemon: vegad, ativado sob demanda via D-Bus (org.lyraos.Vega1)
-- Interface selecionada por VEGA_UI (gtk, qt ou both)
+- Interface instalada: $VEGA_UI
 - GTK: /usr/bin/lyra-vega-gtk; Qt: /usr/bin/lyra-vega-qt
 
 Empacotamento ainda é considerado de teste — reporte problemas em

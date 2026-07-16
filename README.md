@@ -40,13 +40,16 @@ recente:
 curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
 ```
 
-O padrão preserva a interface GTK. Para escolher Qt ou instalar ambas:
+O instalador detecta a sessão gráfica: KDE Plasma recebe a interface Qt e os
+demais desktops recebem GTK. Para sobrescrever a detecção ou instalar ambas:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh -o install.sh
 VEGA_UI=qt sudo -E bash install.sh
 VEGA_UI=both sudo -E bash install.sh
 ```
+
+Para conferir a escolha sem instalar: `bash install.sh --detect-ui`.
 
 Em openSUSE isso baixa `vegad-*.rpm`/`lyra-vega-gtk-*.rpm` (gerados por
 [`.github/workflows/release-opensuse.yml`](.github/workflows/release-opensuse.yml)

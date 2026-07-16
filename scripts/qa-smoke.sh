@@ -17,6 +17,9 @@ echo "[4/9] Qt build, tests and headless smoke"
 
 echo "[5/9] Packaging metadata"
 bash -n "$repo_root/scripts/build-local-packages.sh"
+bash -n "$repo_root/scripts/install.sh"
+test "$(XDG_CURRENT_DESKTOP=KDE VEGA_UI=auto bash "$repo_root/scripts/install.sh" --detect-ui)" = qt
+test "$(VEGA_UI=gtk bash "$repo_root/scripts/install.sh" --detect-ui)" = gtk
 if command -v makepkg >/dev/null; then
   (cd "$repo_root/packaging/vegad" && makepkg --printsrcinfo >/dev/null)
   (cd "$repo_root/packaging/vega" && makepkg --printsrcinfo >/dev/null)
