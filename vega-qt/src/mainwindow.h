@@ -17,7 +17,7 @@ class SecretStore;
 class MainWindow final : public QMainWindow {
     Q_OBJECT
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget *parent = nullptr, DbusClient *client = nullptr);
     QStringList routeNames() const;
     bool tracksTransaction(quint32 id) const;
     void trackTransaction(quint32 id);

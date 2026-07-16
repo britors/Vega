@@ -15,7 +15,7 @@
 | Usuários | Users | sim | leitura + criar/remover/papel |
 | Serviços | Services | sim | leitura + executar/reiniciar |
 | Logs | Logs | sim | filtros e consulta |
-| Assistente | cliente HTTP + vegad | sim | provedores, keyring, histórico, limites, tools e consentimento |
+| Assistente | cliente HTTP + vegad | sim | provedores, streaming, keyring, histórico, limites, tools e consentimento |
 
 As ações acima usam chamadas assíncronas ao system bus, confirmação para impacto relevante,
 campos secretos não persistentes e mensagens distintas para indisponibilidade, timeout,

@@ -41,7 +41,7 @@ hardware de referência, além de execução em VMs Arch, openSUSE e Ubuntu/Debi
 |---|---:|---:|---:|---:|
 | Fedora 44 / Wayland | validado | metadados validados | validado | pendente VM descartável |
 | Fedora 44 / X11 | validado | metadados validados | validado via xcb | pendente VM |
-| Arch / Wayland e X11 | workflow criado | pendente CI/VM | pendente CI/VM | pendente CI/VM |
+| Arch / container | build/test/install validado com Qt 6.11.1 | manifesto validado | headless validado | pendente VM |
 | openSUSE Leap / Wayland e X11 | workflow criado | pendente CI/VM | pendente CI/VM | pendente CI/VM |
 | Ubuntu/Debian / Wayland e X11 | workflow criado | pendente CI/VM | pendente CI/VM | pendente CI/VM |
 

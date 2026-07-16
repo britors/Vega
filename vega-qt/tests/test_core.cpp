@@ -11,7 +11,23 @@
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QXmlStreamReader>
+#include <QDBusPendingCallWatcher>
+#include <QDBusMessage>
 #include <memory>
+
+class MockDbusClient final : public DbusClient {
+public:
+    QStringList calls;
+    QDBusPendingCallWatcher *watch(const QString &interface, const QString &method,
+                                   const QVariantList &, QObject *owner) override {
+        calls.append(interface + QStringLiteral(".") + method);
+        const auto call = QDBusMessage::createMethodCall(
+            QStringLiteral("org.test"), QStringLiteral("/test"), interface, method);
+        auto reply = call.createReply(method == QStringLiteral("Ping")
+            ? QVariant(true) : QVariant(QStringLiteral("mock")));
+        return new QDBusPendingCallWatcher(QDBusPendingCall::fromCompletedCall(reply), owner);
+    }
+};
 
 class CoreTest final : public QObject {
     Q_OBJECT
@@ -117,6 +133,8 @@ private slots:
         QVERIFY(attributes.contains(QStringLiteral("application")));
         QVERIFY(attributes.contains(QStringLiteral("provider")));
         QVERIFY(!attributes.contains(QStringLiteral("lyra-vega-gtk")));
+        MainWindow window;
+        QVERIFY(window.findChild<QCheckBox *>(QStringLiteral("assistantStreaming")));
     }
     void auditRedactsSensitiveValues() {
         const auto value = Audit::redact(QStringLiteral("ana@example.com sk-123456789 /home/ana/doc 192.168.1.2"));
@@ -132,6 +150,14 @@ private slots:
             window.reset();
             QCoreApplication::processEvents();
         }
+    }
+    void controllersWorkWithMockedDbusWithoutDaemon() {
+        auto *client = new MockDbusClient;
+        MainWindow window(nullptr, client);
+        QCoreApplication::processEvents();
+        QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.System.Version")));
+        QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.Software.ListUpdates")));
+        QVERIFY(client->calls.contains(QStringLiteral("org.lyraos.Vega1.Users.ListUsers")));
     }
 };
 

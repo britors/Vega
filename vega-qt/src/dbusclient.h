@@ -6,7 +6,7 @@
 
 class QDBusPendingCallWatcher;
 
-class DbusClient final : public QObject {
+class DbusClient : public QObject {
     Q_OBJECT
 public:
     enum class Error { None, Unavailable, Timeout, Denied, Unsupported, Cancelled, Other };
@@ -15,8 +15,8 @@ public:
     explicit DbusClient(QObject *parent = nullptr);
     QDBusPendingCall call(const QString &interface, const QString &method,
                           const QVariantList &arguments = {});
-    QDBusPendingCallWatcher *watch(const QString &interface, const QString &method,
-                                   const QVariantList &arguments = {}, QObject *owner = nullptr);
+    virtual QDBusPendingCallWatcher *watch(const QString &interface, const QString &method,
+                                           const QVariantList &arguments = {}, QObject *owner = nullptr);
     static Error classify(const QString &dbusErrorName);
     static QString userMessage(Error error);
 

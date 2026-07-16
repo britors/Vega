@@ -13,8 +13,9 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - confirmação para impacto relevante e correlação de progresso por `transactionId`;
 - AUR bloqueado até revisão integral do PKGBUILD por ID;
 - Assistente Anthropic/OpenAI/Gemini com Secret Service, modelos, histórico privado,
-  limite diário, preview dos dados enviados, timeout, cancelamento, auditoria redigida
-  e tools de leitura/mutação com resultados delimitados e aprovação explícita;
+  limite diário, preview dos dados enviados, streaming, timeout, cancelamento,
+  auditoria redigida e tools de leitura/mutação com resultados delimitados e
+  aprovação explícita;
 - pacotes Arch, Fedora, openSUSE e Debian; workflows para as quatro famílias;
 - instalador com `VEGA_UI=gtk|qt|both` e GTK como padrão;
 - QA integrado, benchmark Qt e teste automático de coexistência de arquivos.
@@ -24,6 +25,7 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - `./scripts/qa-smoke.sh`: passou (vegad, GTK e Qt);
 - Qt: testes headless passaram, incluindo 20 ciclos de criação/descarte das páginas;
 - smoke gráfico Fedora 44: Wayland e X11/xcb passaram;
+- container Arch Linux: configuração, build, testes e instalação em staging passaram;
 - RPM Fedora construído por `rpmbuild`; nenhum conflito GTK e nenhuma dependência
   privada `libvegaqt_core.so` após tornar o core estático;
 - dez amostras Qt: startup médio 233,9 ms, PSS médio 60.391,2 KiB,
@@ -32,12 +34,11 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 
 ## Pendências que exigem ambiente externo
 
-- executar os workflows/pacotes em Arch, openSUSE e Ubuntu/Debian reais;
+- executar `makepkg` final e os workflows/pacotes em Arch, openSUSE e Ubuntu/Debian reais;
 - instalação, upgrade e remoção simultânea em VMs descartáveis das quatro famílias;
 - leitor de tela e escala fracionária com avaliação humana;
 - operações polkit reais com sucesso, negação e cancelamento;
 - testes com contas reais dos três provedores do Assistente;
-- streaming incremental do Assistente continua como desvio conhecido;
 - proxies gerados cobrem System/Logs; estruturas complexas usam o decoder D-Bus
   genérico validado contra os XMLs.
 
