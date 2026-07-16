@@ -4,6 +4,7 @@
 #include "dbustypes.h"
 #include "secretstore.h"
 #include "theme.h"
+#include "validation.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -1039,6 +1040,21 @@ void MainWindow::addAction(QVBoxLayout *layout, const QString &interface, const 
                 arguments.at(0).toString(), arguments.at(1).toStringList(), arguments.at(2).toString(),
                 arguments.at(3).toString(), arguments.at(4).toString()};
             arguments = {QVariant::fromValue(config)};
+        }
+        if (interface == QStringLiteral("Network") && method == QStringLiteral("SetStaticIPv4") &&
+            (arguments.size() < 2 || !Validation::staticIpv4Cidr(arguments.at(1).toString()))) {
+            setResultText(result, tr("Informe um endereço IPv4 com prefixo válido, por exemplo 192.168.1.20/24."));
+            return;
+        }
+        if (interface == QStringLiteral("Users") && !arguments.isEmpty() &&
+            !Validation::username(arguments.first().toString())) {
+            setResultText(result, tr("Informe um nome de usuário Linux válido."));
+            return;
+        }
+        if (interface == QStringLiteral("Users") && method == QStringLiteral("RemoveUser") &&
+            arguments.first().toString() == QStringLiteral("root")) {
+            setResultText(result, tr("A conta root não pode ser removida."));
+            return;
         }
         if (interface == QStringLiteral("Software") && method == QStringLiteral("Install") &&
             arguments.size() >= 2 && arguments.at(0).toString().compare(QStringLiteral("aur"), Qt::CaseInsensitive) == 0 &&

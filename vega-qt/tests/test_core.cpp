@@ -5,6 +5,7 @@
 #include "secretstore.h"
 #include "routestate.h"
 #include "theme.h"
+#include "validation.h"
 
 #include <QtTest>
 #include <QApplication>
@@ -381,6 +382,44 @@ private slots:
         QVERIFY(state.beginFirstLoad(QStringLiteral("software")));
         state.clear();
         QVERIFY(!state.isLoaded(QStringLiteral("software")));
+    }
+    void domainInputValidationMatchesBackendSafetyRules() {
+        QVERIFY(Validation::staticIpv4Cidr(QStringLiteral("192.168.1.20/24")));
+        QVERIFY(Validation::staticIpv4Cidr(QStringLiteral("10.0.0.1/32")));
+        QVERIFY(!Validation::staticIpv4Cidr(QStringLiteral("192.168.1.20")));
+        QVERIFY(!Validation::staticIpv4Cidr(QStringLiteral("999.1.1.1/24")));
+        QVERIFY(!Validation::staticIpv4Cidr(QStringLiteral("192.168.1.20/33")));
+        QVERIFY(Validation::username(QStringLiteral("ana")));
+        QVERIFY(Validation::username(QStringLiteral("service_account$")));
+        QVERIFY(!Validation::username(QStringLiteral("Ana")));
+        QVERIFY(!Validation::username(QStringLiteral("9user")));
+        QVERIFY(!Validation::username(QStringLiteral("user name")));
+    }
+    void invalidDomainInputsNeverReachDbusOrPolkit() {
+        auto *client = new MockDbusClient;
+        MainWindow window(nullptr, client);
+        auto *network = window.findChild<QPushButton *>(QStringLiteral("action.Network.SetStaticIPv4"));
+        QVERIFY(network);
+        const auto networkInputs = network->parentWidget()->findChildren<QLineEdit *>();
+        QCOMPARE(networkInputs.size(), 4);
+        networkInputs.at(0)->setText(QStringLiteral("office"));
+        networkInputs.at(1)->setText(QStringLiteral("192.168.1.20"));
+        networkInputs.at(2)->setText(QStringLiteral("192.168.1.1"));
+        networkInputs.at(3)->setText(QStringLiteral("1.1.1.1"));
+        network->click();
+        QVERIFY(!client->calls.contains(QStringLiteral("org.lyraos.Vega1.Network.SetStaticIPv4")));
+
+        auto *createUser = window.findChild<QPushButton *>(QStringLiteral("action.Users.CreateUser"));
+        QVERIFY(createUser);
+        createUser->parentWidget()->findChild<QLineEdit *>()->setText(QStringLiteral("Invalid User"));
+        createUser->click();
+        QVERIFY(!client->calls.contains(QStringLiteral("org.lyraos.Vega1.Users.CreateUser")));
+
+        auto *removeUser = window.findChild<QPushButton *>(QStringLiteral("action.Users.RemoveUser"));
+        QVERIFY(removeUser);
+        removeUser->parentWidget()->findChild<QLineEdit *>()->setText(QStringLiteral("root"));
+        removeUser->click();
+        QVERIFY(!client->calls.contains(QStringLiteral("org.lyraos.Vega1.Users.RemoveUser")));
     }
     void repeatedNavigationDoesNotDuplicateDomainLoads() {
         auto *client = new MockDbusClient;
