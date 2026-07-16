@@ -5,6 +5,8 @@
 #include "secretstore.h"
 
 #include <QtTest>
+#include <QApplication>
+#include <QComboBox>
 #include <QFile>
 #include <QPushButton>
 #include <QProgressBar>
@@ -13,7 +15,10 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QPalette>
 #include <QSpinBox>
+#include <QSettings>
+#include <QTextEdit>
 #include <QXmlStreamReader>
 #include <QTimer>
 #include <QDBusPendingCallWatcher>
@@ -249,6 +254,34 @@ private slots:
         QVERIFY(versions->text().contains(QString::fromLatin1(qVersion())));
         QVERIFY(release && release->text().contains(QStringLiteral("GPL-3.0-only")));
         QVERIFY(links && links->openExternalLinks());
+    }
+    void explicitLightDarkAndSystemThemesAreAvailable() {
+        MainWindow window;
+        auto *selector = window.findChild<QComboBox *>(QStringLiteral("themeSelector"));
+        QVERIFY(selector);
+        QCOMPARE(selector->count(), 3);
+        const auto original = selector->currentIndex();
+        selector->setCurrentIndex(selector->findData(QStringLiteral("dark")));
+        QCOMPARE(qApp->palette().color(QPalette::Window), QColor(30, 30, 30));
+        QCOMPARE(qApp->palette().color(QPalette::WindowText), QColor(245, 245, 245));
+        selector->setCurrentIndex(selector->findData(QStringLiteral("light")));
+        QCOMPARE(qApp->palette().color(QPalette::Window), QColor(250, 250, 250));
+        QCOMPARE(qApp->palette().color(QPalette::WindowText), QColor(32, 32, 32));
+        selector->setCurrentIndex(original);
+    }
+    void assistantHistoryNeverRendersRemoteMarkup() {
+        QSettings settings;
+        const auto previous = settings.value(QStringLiteral("ai/history"));
+        settings.setValue(QStringLiteral("ai/history"),
+                          QStringList{QStringLiteral("assistant\t<img src=https://invalid.example/pixel>texto")});
+        MainWindow window;
+        auto *conversation = window.findChild<QTextEdit *>(QStringLiteral("assistantConversation"));
+        QVERIFY(conversation);
+        QVERIFY(conversation->toPlainText().contains(QStringLiteral("<img src=https://invalid.example/pixel>")));
+        QVERIFY(!conversation->toHtml().contains(QStringLiteral("<img src=\"https://invalid.example/pixel\"")));
+        if (previous.isValid()) settings.setValue(QStringLiteral("ai/history"), previous);
+        else settings.remove(QStringLiteral("ai/history"));
+        settings.sync();
     }
     void qtCredentialsUseAnIndependentSecretServiceIdentity() {
         QCOMPARE(SecretStore::applicationAttribute(), QStringLiteral("lyra-vega-qt"));

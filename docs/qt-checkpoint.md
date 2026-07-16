@@ -8,6 +8,7 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - application ID `org.lyraos.VegaQt`, binário `lyra-vega-qt` e configurações independentes;
 - 15 rotas, busca, páginas roláveis, foco/nomes acessíveis e estados de erro/retry;
 - navegação por teclado restaura o foco no título da página selecionada;
+- temas Sistema, Claro e Escuro com preferência Qt persistente e independente;
 - cliente D-Bus assíncrono, timeout, reconexão, descarte por ownership e erros distintos;
 - proxies Qt gerados para os 14 contratos em escopo e tipos complexos registrados,
   com assinaturas verificadas automaticamente;
@@ -29,6 +30,8 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
   limite diário, preview dos dados enviados, streaming, timeout, cancelamento,
   auditoria redigida e tools de leitura/mutação com resultados delimitados e
   aprovação explícita;
+- mensagens, respostas e resultados de tools do Assistente são inseridos apenas
+  como texto literal, sem interpretação de HTML remoto;
 - pacotes Arch, Fedora, openSUSE e Debian; workflows para as quatro famílias com
   gates de instalação simultânea e remoção independente;
 - instalador com `VEGA_UI=gtk|qt|both` e GTK como padrão;

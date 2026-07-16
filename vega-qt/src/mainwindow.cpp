@@ -41,6 +41,7 @@
 #include <QTextCursor>
 #include <QDate>
 #include <QPointer>
+#include <QPalette>
 #include <memory>
 #include <QSettings>
 #include <QSplitter>
@@ -206,6 +207,40 @@ void removePrivateSetting(const QString &key) {
     settings.sync();
     QFile::setPermissions(settings.fileName(), QFileDevice::ReadOwner | QFileDevice::WriteOwner);
 }
+
+void appendPlainText(QTextEdit *view, const QString &text) {
+    auto cursor = view->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    if (!view->document()->isEmpty()) cursor.insertBlock();
+    cursor.insertText(text);
+    view->setTextCursor(cursor);
+}
+
+void applyTheme(const QString &theme, const QPalette &systemPalette) {
+    if (theme == QStringLiteral("system")) {
+        qApp->setPalette(systemPalette);
+        return;
+    }
+    QPalette palette;
+    const bool dark = theme == QStringLiteral("dark");
+    const QColor window = dark ? QColor(30, 30, 30) : QColor(250, 250, 250);
+    const QColor base = dark ? QColor(24, 24, 24) : QColor(255, 255, 255);
+    const QColor button = dark ? QColor(48, 48, 48) : QColor(240, 240, 240);
+    const QColor text = dark ? QColor(245, 245, 245) : QColor(32, 32, 32);
+    palette.setColor(QPalette::Window, window);
+    palette.setColor(QPalette::WindowText, text);
+    palette.setColor(QPalette::Base, base);
+    palette.setColor(QPalette::AlternateBase, button);
+    palette.setColor(QPalette::Text, text);
+    palette.setColor(QPalette::Button, button);
+    palette.setColor(QPalette::ButtonText, text);
+    palette.setColor(QPalette::ToolTipBase, base);
+    palette.setColor(QPalette::ToolTipText, text);
+    palette.setColor(QPalette::Highlight, QColor(53, 132, 228));
+    palette.setColor(QPalette::HighlightedText, QColor(255, 255, 255));
+    palette.setColor(QPalette::PlaceholderText, dark ? QColor(170, 170, 170) : QColor(100, 100, 100));
+    qApp->setPalette(palette);
+}
 }
 
 MainWindow::MainWindow(QWidget *parent, DbusClient *client)
@@ -225,6 +260,18 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
     auto *sidebar = new QWidget;
     auto *sideLayout = new QVBoxLayout(sidebar);
     auto *brand = new QLabel(tr("Vega"));
+    auto *theme = new QComboBox;
+    theme->setObjectName(QStringLiteral("themeSelector"));
+    theme->setAccessibleName(tr("Tema da interface"));
+    theme->addItem(tr("Sistema"), QStringLiteral("system"));
+    theme->addItem(tr("Claro"), QStringLiteral("light"));
+    theme->addItem(tr("Escuro"), QStringLiteral("dark"));
+    static const QPalette systemPalette = qApp->palette();
+    QSettings appearanceSettings;
+    const auto savedTheme = appearanceSettings.value(QStringLiteral("appearance/theme"),
+                                                       QStringLiteral("system")).toString();
+    theme->setCurrentIndex(qMax(0, theme->findData(savedTheme)));
+    applyTheme(theme->currentData().toString(), systemPalette);
     auto *search = new QLineEdit;
     brand->setObjectName(QStringLiteral("brand"));
     search->setPlaceholderText(tr("Buscar configuração…"));
@@ -238,11 +285,18 @@ MainWindow::MainWindow(QWidget *parent, DbusClient *client)
     m_progress->setObjectName(QStringLiteral("transactionProgress"));
     m_progress->setVisible(false);
     sideLayout->addWidget(brand);
+    sideLayout->addWidget(theme);
     sideLayout->addWidget(search);
     sideLayout->addWidget(m_navigation, 1);
     sideLayout->addWidget(m_progressText);
     sideLayout->addWidget(m_progress);
     sideLayout->addWidget(m_backendStatus);
+
+    connect(theme, &QComboBox::currentIndexChanged, this, [theme] {
+        const auto value = theme->currentData().toString();
+        setPrivateSetting(QStringLiteral("appearance/theme"), value);
+        applyTheme(value, systemPalette);
+    });
 
     const RouteSpec routes[] = {
         {"dashboard", tr("Painel"), tr("Saúde do sistema, atualizações, backup, serviços e disco."), "System", "DiskUsage", {}},
@@ -387,6 +441,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         incremental->setChecked(assistantSettings.value(QStringLiteral("ai/streaming"), true).toBool());
         incremental->setAccessibleName(tr("Streaming incremental"));
         auto *conversation = new QTextEdit;
+        conversation->setObjectName(QStringLiteral("assistantConversation"));
         conversation->setReadOnly(true);
         conversation->setAcceptRichText(false);
         conversation->setAccessibleName(tr("Histórico da conversa"));
@@ -403,7 +458,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
         for (const auto &entry : *history) {
             const auto separator = entry.indexOf(QLatin1Char('\t'));
             if (separator > 0)
-                conversation->append(entry.left(separator) == QStringLiteral("user")
+                appendPlainText(conversation, entry.left(separator) == QStringLiteral("user")
                     ? tr("Você: %1").arg(entry.mid(separator + 1))
                     : tr("Assistente: %1").arg(entry.mid(separator + 1)));
         }
@@ -486,7 +541,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
             send->setEnabled(false);
             cancel->setEnabled(true);
             prompt->clear();
-            conversation->append(tr("Você: %1").arg(text));
+            appendPlainText(conversation, tr("Você: %1").arg(text));
             history->append(QStringLiteral("user\t") + text);
             while (history->size() > 100) history->removeFirst();
             setPrivateSetting(QStringLiteral("ai/history"), *history);
@@ -605,7 +660,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                                 .value(QStringLiteral("text")).toString();
                         if (delta.isEmpty()) continue;
                         if (!*streamStarted) {
-                            conversation->append(QObject::tr("Assistente: "));
+                            appendPlainText(conversation, QObject::tr("Assistente: "));
                             *streamStarted = true;
                         }
                         conversation->moveCursor(QTextCursor::End);
@@ -637,7 +692,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                             .value(QStringLiteral("content")).toObject().value(QStringLiteral("parts")).toArray())
                             .value(QStringLiteral("text")).toString();
                     if (!streamingEnabled || !*streamStarted)
-                        conversation->append(tr("Assistente: %1").arg(answer.isEmpty() ? tr("Resposta vazia.") : answer));
+                        appendPlainText(conversation, tr("Assistente: %1").arg(answer.isEmpty() ? tr("Resposta vazia.") : answer));
                     const auto tool = streamingEnabled ? AssistantToolRequest{} : parseToolRequest(providerId, json);
                     if (!tool.name.isEmpty()) {
                         QString interface = QStringLiteral("Software");
@@ -655,7 +710,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                             method = QStringLiteral("Install"); mutating = true;
                             const auto origin = tool.arguments.value(QStringLiteral("origin")).toString().toLower();
                             if (origin != QStringLiteral("official") && origin != QStringLiteral("flathub")) {
-                                conversation->append(tr("Tool recusada: o Assistente não pode instalar pela AUR."));
+                                appendPlainText(conversation, tr("Tool recusada: o Assistente não pode instalar pela AUR."));
                                 Audit::record(QStringLiteral("tool_rejected"), QStringLiteral("install-origin"));
                                 method.clear();
                             } else arguments = {origin, tool.arguments.value(QStringLiteral("id")).toString()};
@@ -672,7 +727,7 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                             if (QMessageBox::warning(panel, tr("Aprovar mutação proposta"), proposal,
                                                      QMessageBox::Cancel | QMessageBox::Ok,
                                                      QMessageBox::Cancel) != QMessageBox::Ok) {
-                                conversation->append(tr("Tool cancelada pelo usuário."));
+                                appendPlainText(conversation, tr("Tool cancelada pelo usuário."));
                                 Audit::record(QStringLiteral("tool_cancelled"), tool.name);
                                 method.clear();
                             }
@@ -685,13 +740,13 @@ void MainWindow::addRoute(const RouteSpec &spec) {
                                     [this, conversation, toolWatcher, tool] {
                                 const auto toolReply = toolWatcher->reply();
                                 if (toolReply.type() == QDBusMessage::ErrorMessage) {
-                                    conversation->append(tr("Resultado da tool %1: %2").arg(tool.name,
+                                    appendPlainText(conversation, tr("Resultado da tool %1: %2").arg(tool.name,
                                         DbusClient::userMessage(DbusClient::classify(toolReply.errorName()))));
                                 } else {
                                     int shown = 0;
                                     QStringList rendered;
                                     for (const auto &argument : toolReply.arguments()) rendered.append(renderVariant(argument, shown));
-                                    conversation->append(tr("[Dados externos não confiáveis — %1]\n%2\n[Fim dos dados externos]")
+                                    appendPlainText(conversation, tr("[Dados externos não confiáveis — %1]\n%2\n[Fim dos dados externos]")
                                         .arg(tool.name, rendered.join(QStringLiteral("\n"))));
                                     if (!toolReply.arguments().isEmpty() && toolReply.arguments().first().canConvert<quint32>())
                                         trackTransaction(toolReply.arguments().first().toUInt());
