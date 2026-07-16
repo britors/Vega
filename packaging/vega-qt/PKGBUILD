@@ -14,7 +14,8 @@ sha256sums=('SKIP')
 build() {
   local _srcroot="${VEGA_SOURCE_DIR:-$srcdir/Vega}"
   cmake -S "$_srcroot/vega-qt" -B build -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF \
+    -DVEGA_QT_VERSION="$pkgver"
   cmake --build build
 }
 

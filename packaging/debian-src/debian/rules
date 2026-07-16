@@ -17,7 +17,8 @@ DEB_VERSION_UPSTREAM := $(shell dpkg-parsechangelog -SVersion | sed 's/-[^-]*$$/
 override_dh_auto_build:
 	cd vega-gtk && cargo build --release --locked
 	cmake -S vega-qt -B build/vega-qt -G Ninja \
-		-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF
+		-DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF \
+		-DVEGA_QT_VERSION=$(DEB_VERSION_UPSTREAM)
 	cmake --build build/vega-qt
 	cd vegad && go build -trimpath -buildvcs=false \
 		-ldflags "-X github.com/lyraos/vegad/internal/version.Version=$(DEB_VERSION_UPSTREAM)" \

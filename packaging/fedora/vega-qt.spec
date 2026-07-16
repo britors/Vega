@@ -22,7 +22,7 @@ Interface Qt independente do Vega. Pode ser instalada junto da interface GTK.
 %setup -q -c -n vega-src
 
 %build
-%cmake -S vega-qt -G Ninja -DBUILD_TESTING=OFF
+%cmake -S vega-qt -G Ninja -DBUILD_TESTING=OFF -DVEGA_QT_VERSION=%{version}
 %cmake_build
 
 %install

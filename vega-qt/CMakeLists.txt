@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(lyra-vega-qt VERSION 0.1.0 LANGUAGES CXX)
+set(VEGA_QT_VERSION "${PROJECT_VERSION}" CACHE STRING "Versão exibida pela interface Qt")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,7 +51,7 @@ add_library(vegaqt_core STATIC
 target_link_libraries(vegaqt_core PUBLIC Qt6::Core Qt6::DBus Qt6::Network Qt6::Widgets)
 target_include_directories(vegaqt_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_definitions(vegaqt_core PUBLIC
-    VEGA_QT_VERSION="${PROJECT_VERSION}"
+    VEGA_QT_VERSION="${VEGA_QT_VERSION}"
     QT_NO_CAST_FROM_ASCII
 )
 target_compile_options(vegaqt_core PRIVATE -Wall -Wextra -Wpedantic)

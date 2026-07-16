@@ -26,7 +26,8 @@ Data: 2026-07-16. Objetivo ativo: concluir as issues #76–#89 sem substituir a 
 - seletores nativos Qt para VPN, restauração e transferência Bluetooth, usando
   integração de portal do desktop em sessões Wayland;
 - Sobre exibe versões Vega Qt/Qt, canal, licença e links, além de consultar
-  versão do vegad, distribuição e conectividade;
+  versão do vegad, distribuição e conectividade; a versão Qt é injetada por
+  `pkgver`, RPM ou changelog Debian em builds de release;
 - confirmação para toda mutação privilegiada e correlação de progresso por `transactionId`;
 - apenas métodos que realmente iniciam operações longas registram `transactionId`;
   IDs síncronos, como o de criação de snapshot, não deixam progresso órfão;

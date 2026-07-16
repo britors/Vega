@@ -56,6 +56,11 @@ fi
 grep -q 'cmake(Qt6Network)' "$repo_root/packaging/fedora/vega-qt.spec"
 grep -q 'cmake(Qt6Network)' "$repo_root/packaging/opensuse/vega-qt.spec"
 grep -q '%cmake -S ../vega-qt' "$repo_root/packaging/opensuse/vega-qt.spec"
+grep -q 'DVEGA_QT_VERSION.*pkgver' "$repo_root/packaging/vega-qt/PKGBUILD"
+grep -q 'DVEGA_QT_VERSION=%{version}' "$repo_root/packaging/fedora/vega-qt.spec"
+grep -q 'DVEGA_QT_VERSION=%{version}' "$repo_root/packaging/opensuse/vega-qt.spec"
+grep -q 'DVEGA_QT_VERSION=$(DEB_VERSION_UPSTREAM)' \
+  "$repo_root/packaging/debian-src/debian/rules"
 grep -q 'DEB_VERSION_UPSTREAM.*dpkg-parsechangelog' \
   "$repo_root/packaging/debian-src/debian/rules"
 for workflow in release-fedora.yml release-opensuse.yml release-debian.yml; do

@@ -35,6 +35,7 @@ Monitor permanece fora do escopo aprovado da milestone.
 | GTK: testes | 37 passaram, 4 integrações ignoradas sem daemon instalado |
 | vegad: testes | passou em todos os pacotes Go |
 | Qt: build Release e testes | passou |
+| Qt: versão de pacote injetada no binário | passou com versão sentinela 9.8.7 |
 | Qt: smoke offscreen/minimal | passou |
 | Qt: smoke com escala fracionária 1,25 | passou em offscreen |
 | Fedora: RPM Qt real | passou |
