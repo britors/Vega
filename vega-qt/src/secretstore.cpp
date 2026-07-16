@@ -2,6 +2,7 @@
 
 #include <QProcess>
 #include <QStandardPaths>
+#include <memory>
 
 SecretStore::SecretStore(QObject *parent) : QObject(parent) {}
 
@@ -31,9 +32,13 @@ void SecretStore::store(const QString &provider, const QString &secret, QObject 
     arguments.append(attributes(provider));
     process->setArguments(arguments);
     process->setProcessChannelMode(QProcess::SeparateChannels);
-    connect(process, &QProcess::started, process, [process, secret] {
-        process->write(secret.trimmed().toUtf8());
+    auto payload = std::make_shared<QByteArray>(secret.trimmed().toUtf8());
+    connect(process, &QProcess::started, process, [process, payload] {
+        process->write(*payload);
         process->closeWriteChannel();
+        payload->fill('\0');
+        payload->clear();
+        payload->squeeze();
     });
     connect(process, &QProcess::errorOccurred, process, [process, completion](QProcess::ProcessError) {
         completion(false, tr("Não foi possível acessar o Secret Service."));

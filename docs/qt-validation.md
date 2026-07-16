@@ -69,6 +69,7 @@ o daemon permanecem. Eles preservam todos os jobs GTK; não existe etapa de cuto
 - campos secretos são mascarados, apagados após o despacho e não permanecem
   capturados em callbacks de conclusão;
 - chaves do Assistente usam somente Secret Service e identidade Qt independente;
+- o buffer enviado ao `secret-tool` é sobrescrito imediatamente após a escrita;
 - histórico/configurações/auditoria recebem permissões `0600`;
 - AUR exige revisão por ID antes de instalar;
 - mutações de impacto usam confirmação com Cancelar como padrão;
