@@ -32,9 +32,21 @@ impl From<(String, String, bool)> for FirewallService {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("interface de firewall indisponível: {0}")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FirewallClientError(String);
+
+impl std::fmt::Display for FirewallClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            gettextrs::gettext("interface de firewall indisponível: {detail}")
+                .replace("{detail}", &self.0)
+        )
+    }
+}
+
+impl std::error::Error for FirewallClientError {}
 
 impl FirewallClientError {
     fn from_error(error: impl std::fmt::Display) -> Self {

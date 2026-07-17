@@ -1,8 +1,9 @@
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use super::{
     AssistantPage, BackupPage, BluetoothPage, DateTimePage, KernelPage, LogsPage, NetworkPage,
-    ServicesPage, SnapshotsPage, SoftwarePage, StoragePage, UsersPage,
+    ScreenPage, ServicesPage, SnapshotsPage, SoftwarePage, StoragePage, UsersPage,
 };
 
 #[derive(Clone)]
@@ -37,30 +38,31 @@ pub struct VegaShell {
     pub users: UsersPage,
     pub logs: LogsPage,
     pub assistant: AssistantPage,
+    pub screen: ScreenPage,
 }
 
 impl VegaShell {
     pub fn new() -> Self {
-        let backend_status = status_label("Conectando ao vegad…");
-        let dashboard_system = status_label("Carregando informações do sistema…");
-        let dashboard_updates = status_label("Carregando…");
-        let dashboard_backup = status_label("Carregando…");
-        let dashboard_snapshots = status_label("Carregando…");
-        let dashboard_services = status_label("Carregando…");
-        let dashboard_disk = status_label("Carregando…");
-        let hardware_cpu = value_label("Carregando…");
-        let hardware_gpu = value_label("Carregando…");
-        let hardware_ram = value_label("Carregando…");
-        let hardware_firmware = value_label("Carregando…");
+        let backend_status = status_label(&gettext("Conectando ao vegad…"));
+        let dashboard_system = status_label(&gettext("Carregando informações do sistema…"));
+        let dashboard_updates = status_label(&gettext("Carregando…"));
+        let dashboard_backup = status_label(&gettext("Carregando…"));
+        let dashboard_snapshots = status_label(&gettext("Carregando…"));
+        let dashboard_services = status_label(&gettext("Carregando…"));
+        let dashboard_disk = status_label(&gettext("Carregando…"));
+        let hardware_cpu = value_label(&gettext("Carregando…"));
+        let hardware_gpu = value_label(&gettext("Carregando…"));
+        let hardware_ram = value_label(&gettext("Carregando…"));
+        let hardware_firmware = value_label(&gettext("Carregando…"));
         let driver_dropdown =
             gtk::DropDown::from_strings(&["nvidia-open-dkms", "nvidia-580xx-dkms", "nouveau"]);
         let driver_apply = gtk::Button::builder()
-            .label("Aplicar")
+            .label(gettext("Aplicar"))
             .css_classes(["suggested-action"])
             .build();
-        let about_versions = status_label("Consultando versões…");
-        let about_channel = value_label("Carregando…");
-        let about_distro = value_label("Carregando…");
+        let about_versions = status_label(&gettext("Consultando versões…"));
+        let about_channel = value_label(&gettext("Carregando…"));
+        let about_distro = value_label(&gettext("Carregando…"));
         let about_logo = gtk::Image::builder().pixel_size(32).visible(false).build();
         let software = SoftwarePage::new();
         let backup = BackupPage::new();
@@ -77,6 +79,7 @@ impl VegaShell {
             &crate::assistant::load_settings(),
             crate::assistant::load_history(),
         );
+        let screen = ScreenPage::new();
 
         let stack = gtk::Stack::builder()
             .transition_type(gtk::StackTransitionType::Crossfade)
@@ -97,36 +100,68 @@ impl VegaShell {
                 },
             ),
             Some("dashboard"),
-            "Painel",
+            &gettext("Painel"),
         );
-        stack.add_titled(&storage.root, Some("storage"), "Armazenamento");
-        stack.add_titled(&network.root, Some("network"), "Rede e Firewall");
-        stack.add_titled(&bluetooth.root, Some("desktop"), "Bluetooth");
-        stack.add_titled(&services.root, Some("services"), "Serviços");
-        stack.add_titled(&users.root, Some("users"), "Usuários");
-        stack.add_titled(&logs.root, Some("logs"), "Log do Sistema");
-        stack.add_titled(&assistant.root, Some("assistant"), "Assistente de IA");
-        stack.add_titled(&kernel.root, Some("kernel"), "Kernel");
-        stack.add_titled(&datetime.root, Some("datetime"), "Data, Hora e Idioma");
-        stack.add_titled(&software.root, Some("software"), "Software");
-        stack.add_titled(&backup.root, Some("backup"), "Backup");
-        stack.add_titled(&snapshots.root, Some("snapshots"), "Pontos de Restauração");
+        stack.add_titled(&storage.root, Some("storage"), &gettext("Armazenamento"));
+        stack.add_titled(&network.root, Some("network"), &gettext("Rede e Firewall"));
+        stack.add_titled(&bluetooth.root, Some("desktop"), &gettext("Bluetooth"));
+        stack.add_titled(&services.root, Some("services"), &gettext("Serviços"));
+        stack.add_titled(&users.root, Some("users"), &gettext("Usuários"));
+        stack.add_titled(&logs.root, Some("logs"), &gettext("Log do Sistema"));
         stack.add_titled(
-            &hardware_page(
-                &hardware_cpu,
-                &hardware_gpu,
-                &hardware_ram,
-                &hardware_firmware,
-                &driver_dropdown,
-                &driver_apply,
+            &assistant.root,
+            Some("assistant"),
+            &gettext("Assistente de IA"),
+        );
+        stack.add_titled(
+            &datetime.root,
+            Some("datetime"),
+            &gettext("Data, Hora e Idioma"),
+        );
+        stack.add_titled(
+            &screen.root,
+            Some("screen"),
+            &gettext("Tela"),
+        );
+        stack.add_titled(&software.root, Some("software"), &gettext("Software"));
+        stack.add_titled(
+            &tabbed_page(
+                &gettext("Backup"),
+                &gettext("Backups e pontos de restauração protegidos pelo vegad"),
+                &[
+                    (gettext("Backups"), backup.root.clone()),
+                    (gettext("Pontos de Restauração"), snapshots.root.clone()),
+                ],
+            ),
+            Some("backup"),
+            &gettext("Backup"),
+        );
+        stack.add_titled(
+            &tabbed_page(
+                &gettext("Hardware"),
+                &gettext("Inventário e kernel detectados pelo vegad"),
+                &[
+                    (
+                        gettext("Hardware"),
+                        hardware_page(
+                            &hardware_cpu,
+                            &hardware_gpu,
+                            &hardware_ram,
+                            &hardware_firmware,
+                            &driver_dropdown,
+                            &driver_apply,
+                        ),
+                    ),
+                    (gettext("Kernel"), kernel.root.clone()),
+                ],
             ),
             Some("hardware"),
-            "Hardware",
+            &gettext("Hardware"),
         );
         stack.add_titled(
             &about_page(&about_versions, &about_channel, &about_distro, &about_logo),
             Some("about"),
-            "Sobre",
+            &gettext("Sobre"),
         );
 
         let brand = gtk::Box::new(gtk::Orientation::Horizontal, 10);
@@ -136,7 +171,7 @@ impl VegaShell {
         brand.append(&mark);
         brand.append(&gtk::Label::new(Some("Vega")));
         let sidebar_search = gtk::SearchEntry::builder()
-            .placeholder_text("Buscar configuração…")
+            .placeholder_text(gettext("Buscar configuração…"))
             .build();
         sidebar_search.add_css_class("sidebar-search");
 
@@ -145,17 +180,20 @@ impl VegaShell {
         let mut nav_group = None;
         add_nav_section(
             &nav,
-            "Principal",
+            &gettext("Principal"),
             &[
-                ("Painel", "dashboard", "view-grid-symbolic"),
-                ("Software", "software", "system-software-install-symbolic"),
-                ("Backup", "backup", "document-save-symbolic"),
+                (gettext("Painel"), "dashboard", "view-grid-symbolic"),
                 (
-                    "Pontos de Restauração",
-                    "snapshots",
-                    "document-revert-symbolic",
+                    gettext("Software"),
+                    "software",
+                    "system-software-install-symbolic",
                 ),
-                ("Assistente de IA", "assistant", "system-search-symbolic"),
+                (gettext("Backup"), "backup", "document-save-symbolic"),
+                (
+                    gettext("Assistente de IA"),
+                    "assistant",
+                    "system-search-symbolic",
+                ),
             ],
             &stack,
             &mut searchable,
@@ -163,21 +201,37 @@ impl VegaShell {
         );
         add_nav_section(
             &nav,
-            "Sistema",
+            &gettext("Sistema"),
             &[
-                ("Hardware", "hardware", "computer-symbolic"),
-                ("Kernel", "kernel", "preferences-system-symbolic"),
+                (gettext("Hardware"), "hardware", "computer-symbolic"),
                 (
-                    "Data, Hora e Idioma",
+                    gettext("Data, Hora e Idioma"),
                     "datetime",
                     "preferences-system-time-symbolic",
                 ),
-                ("Armazenamento", "storage", "drive-harddisk-symbolic"),
-                ("Rede e Firewall", "network", "network-wireless-symbolic"),
-                ("Bluetooth", "desktop", "bluetooth-symbolic"),
-                ("Serviços", "services", "system-run-symbolic"),
-                ("Usuários", "users", "system-users-symbolic"),
-                ("Log do Sistema", "logs", "text-x-generic-symbolic"),
+                (
+                    gettext("Tela"),
+                    "screen",
+                    "preferences-desktop-wallpaper-symbolic",
+                ),
+                (
+                    gettext("Armazenamento"),
+                    "storage",
+                    "drive-harddisk-symbolic",
+                ),
+                (
+                    gettext("Rede e Firewall"),
+                    "network",
+                    "network-wireless-symbolic",
+                ),
+                (gettext("Bluetooth"), "desktop", "bluetooth-symbolic"),
+                (gettext("Serviços"), "services", "system-run-symbolic"),
+                (gettext("Usuários"), "users", "system-users-symbolic"),
+                (
+                    gettext("Log do Sistema"),
+                    "logs",
+                    "text-x-generic-symbolic",
+                ),
             ],
             &stack,
             &mut searchable,
@@ -185,8 +239,8 @@ impl VegaShell {
         );
         add_nav_section(
             &nav,
-            "Outros",
-            &[("Sobre", "about", "help-about-symbolic")],
+            &gettext("Outros"),
+            &[(gettext("Sobre"), "about", "help-about-symbolic")],
             &stack,
             &mut searchable,
             &mut nav_group,
@@ -270,6 +324,7 @@ impl VegaShell {
             users,
             logs,
             assistant,
+            screen,
         }
     }
 }
@@ -285,7 +340,7 @@ struct DashboardWidgets<'a> {
 }
 
 fn dashboard_page(stack: &gtk::Stack, widgets: DashboardWidgets<'_>) -> gtk::Widget {
-    let content = page_box("Painel", "Visão geral do sistema");
+    let content = page_box(&gettext("Painel"), &gettext("Visão geral do sistema"));
     let grid = gtk::FlowBox::builder()
         .column_spacing(8)
         .row_spacing(8)
@@ -294,19 +349,30 @@ fn dashboard_page(stack: &gtk::Stack, widgets: DashboardWidgets<'_>) -> gtk::Wid
         .selection_mode(gtk::SelectionMode::None)
         .homogeneous(true)
         .build();
-    grid.insert(&dashboard_card("Backend", widgets.backend, None, stack), -1);
-    grid.insert(&dashboard_card("Sistema", widgets.system, None, stack), -1);
     grid.insert(
-        &dashboard_card("Atualizações", widgets.updates, Some("software"), stack),
+        &dashboard_card(&gettext("Backend"), widgets.backend, None, stack),
         -1,
     );
     grid.insert(
-        &dashboard_card("Backup", widgets.backup, Some("backup"), stack),
+        &dashboard_card(&gettext("Sistema"), widgets.system, None, stack),
         -1,
     );
     grid.insert(
         &dashboard_card(
-            "Pontos de Restauração",
+            &gettext("Atualizações"),
+            widgets.updates,
+            Some("software"),
+            stack,
+        ),
+        -1,
+    );
+    grid.insert(
+        &dashboard_card(&gettext("Backup"), widgets.backup, Some("backup"), stack),
+        -1,
+    );
+    grid.insert(
+        &dashboard_card(
+            &gettext("Pontos de Restauração"),
             widgets.snapshots,
             Some("snapshots"),
             stack,
@@ -314,11 +380,16 @@ fn dashboard_page(stack: &gtk::Stack, widgets: DashboardWidgets<'_>) -> gtk::Wid
         -1,
     );
     grid.insert(
-        &dashboard_card("Serviços", widgets.services, None, stack),
+        &dashboard_card(&gettext("Serviços"), widgets.services, None, stack),
         -1,
     );
     grid.insert(
-        &dashboard_card("Disco (/)", widgets.disk, Some("hardware"), stack),
+        &dashboard_card(
+            &gettext("Disco (/)"),
+            widgets.disk,
+            Some("hardware"),
+            stack,
+        ),
         -1,
     );
     content.append(&grid);
@@ -354,7 +425,7 @@ fn dashboard_card(
 fn add_nav_section(
     container: &gtk::Box,
     title: &str,
-    items: &[(&str, &'static str, &'static str)],
+    items: &[(String, &'static str, &'static str)],
     stack: &gtk::Stack,
     searchable: &mut Vec<(String, String, gtk::ToggleButton, gtk::Expander)>,
     group: &mut Option<gtk::ToggleButton>,
@@ -368,7 +439,7 @@ fn add_nav_section(
     section.add_css_class("sidebar-expander");
     container.append(&section);
     for (label, target, icon_name) in items {
-        let label = (*label).to_owned();
+        let label = label.clone();
         let target = (*target).to_owned();
         let row = gtk::Box::new(gtk::Orientation::Horizontal, 10);
         let icon = gtk::Image::builder()
@@ -414,25 +485,31 @@ fn hardware_page(
     driver_dropdown: &gtk::DropDown,
     driver_apply: &gtk::Button,
 ) -> gtk::Widget {
-    let content = page_box("Hardware", "Inventário detectado pelo vegad");
+    let content = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(18)
+        .build();
+    content.add_css_class("content-page");
     content.add_css_class("compact-page");
     driver_dropdown.set_size_request(260, -1);
     driver_dropdown.set_valign(gtk::Align::Center);
     driver_apply.set_valign(gtk::Align::Center);
     let group = adw::PreferencesGroup::builder()
-        .title("Componentes")
+        .title(gettext("Componentes"))
         .build();
-    group.add(&property_row("Processador", cpu));
-    group.add(&property_row("Vídeo", gpu));
-    group.add(&property_row("Memória", ram));
-    group.add(&property_row("Firmware", firmware));
+    group.add(&property_row(&gettext("Processador"), cpu));
+    group.add(&property_row(&gettext("Vídeo"), gpu));
+    group.add(&property_row(&gettext("Memória"), ram));
+    group.add(&property_row(&gettext("Firmware"), firmware));
     content.append(&group);
 
     let drivers = adw::PreferencesGroup::builder()
-        .title("Troca de driver NVIDIA")
-        .description("Um snapshot será criado antes da alteração")
+        .title(gettext("Troca de driver NVIDIA"))
+        .description(gettext("Um snapshot será criado antes da alteração"))
         .build();
-    let driver_row = adw::ActionRow::builder().title("Driver").build();
+    let driver_row = adw::ActionRow::builder()
+        .title(gettext("Driver"))
+        .build();
     driver_row.add_suffix(driver_dropdown);
     driver_row.add_suffix(driver_apply);
     drivers.add(&driver_row);
@@ -446,24 +523,84 @@ fn about_page(
     distro: &gtk::Label,
     logo: &gtk::Image,
 ) -> gtk::Widget {
-    let content = page_box("Sobre", "Vega para Linux");
-    content.append(&card("Versões", versions));
-    let system = adw::PreferencesGroup::builder().title("Sistema").build();
-    system.add(&property_row("Distribuição", distro));
-    let logo_row = adw::ActionRow::builder().title("Logo").build();
+    let content = page_box(&gettext("Sobre"), &gettext("Vega para Linux"));
+    content.append(&card(&gettext("Versões"), versions));
+    let system = adw::PreferencesGroup::builder()
+        .title(gettext("Sistema"))
+        .build();
+    system.add(&property_row(&gettext("Distribuição"), distro));
+    let logo_row = adw::ActionRow::builder().title(gettext("Logo")).build();
     logo_row.add_suffix(logo);
     system.add(&logo_row);
-    system.add(&property_row("Camada da comunidade", channel));
+    system.add(&property_row(&gettext("Camada da comunidade"), channel));
     content.append(&system);
-    let product = adw::PreferencesGroup::builder().title("Produto").build();
+    let product = adw::PreferencesGroup::builder()
+        .title(gettext("Produto"))
+        .build();
+    // Nome próprio, licença e aviso de copyright não são traduzidos — ficam
+    // iguais em qualquer idioma, como convenção de créditos/legal.
     let creator = value_label("Rodrigo Brito");
     let license = value_label("GNU General Public License v3.0");
     let copyright = value_label("Copyright © 2025–2026 Rodrigo Brito");
-    product.add(&property_row("Criador", &creator));
-    product.add(&property_row("Licença", &license));
-    product.add(&property_row("Direitos autorais", &copyright));
+    product.add(&property_row(&gettext("Criador"), &creator));
+    product.add(&property_row(&gettext("Licença"), &license));
+    product.add(&property_row(&gettext("Direitos autorais"), &copyright));
     content.append(&product);
     scrolled(content)
+}
+
+/// Combina páginas já existentes em abas dentro de uma única entrada de
+/// navegação (mesmo padrão do módulo Software) — o título/subtítulo fica só
+/// aqui, cada aba não repete o próprio cabeçalho de página.
+fn tabbed_page(title: &str, subtitle: &str, tabs: &[(String, gtk::Widget)]) -> gtk::Widget {
+    let tab_box = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+    tab_box.add_css_class("module-tabs");
+    let stack = gtk::Stack::builder()
+        .transition_type(gtk::StackTransitionType::Crossfade)
+        .vexpand(true)
+        .build();
+    let mut group: Option<gtk::ToggleButton> = None;
+    for (index, (label, widget)) in tabs.iter().enumerate() {
+        let name = format!("tab-{index}");
+        stack.add_named(widget, Some(&name));
+        let button = gtk::ToggleButton::builder()
+            .label(label)
+            .css_classes(["flat", "module-tab"])
+            .build();
+        if let Some(first) = &group {
+            button.set_group(Some(first));
+        } else {
+            button.set_active(true);
+            group = Some(button.clone());
+        }
+        let target_stack = stack.clone();
+        button.connect_clicked(move |button| {
+            if button.is_active() {
+                target_stack.set_visible_child_name(&name);
+            }
+        });
+        tab_box.append(&button);
+    }
+
+    let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
+    content.add_css_class("content-page");
+    content.append(
+        &gtk::Label::builder()
+            .label(title)
+            .xalign(0.0)
+            .css_classes(["title-1"])
+            .build(),
+    );
+    content.append(
+        &gtk::Label::builder()
+            .label(subtitle)
+            .xalign(0.0)
+            .css_classes(["dim-label"])
+            .build(),
+    );
+    content.append(&tab_box);
+    content.append(&stack);
+    content.upcast()
 }
 
 fn page_box(title: &str, description: &str) -> gtk::Box {

@@ -1,178 +1,94 @@
 # Vega
 
-Centro de controle nativo para Linux com interface oficial GTK4.
-O Vega reúne administração de software, hardware, kernel, rede, backups,
-usuários e serviços em uma interface integrada ao GNOME. Operações
-privilegiadas passam pelo daemon `vegad` (Go), via D-Bus e polkit.
+*[Leia em português](README.pt-br.md)*
 
-## Recursos
+Vega is a native control center for Linux: it brings together software,
+hardware, kernel, network, backup, user, and service administration in a
+single interface integrated with GNOME, instead of spreading these tasks
+across `nmcli`, `systemctl`, config file editors, and a handful of
+mismatched graphical tools. The goal isn't to replace GNOME Settings, but
+to cover the range of system administration it leaves out — packages,
+kernel, snapshots, firewall, users — with the same visual integration
+quality.
 
-- painel com saúde do sistema e atalhos;
-- software nativo, Flatpak e AUR, com atualizações e repositórios;
-- snapshots opcionais via Snapper ou Timeshift e backups via Restic;
-- hardware, drivers, kernel, bootloader, armazenamento, data e hora;
-- Wi-Fi, Bluetooth, firewall, VPN, proxy e IPv4;
-- usuários, serviços, logs e assistente com múltiplos provedores de IA.
+The project is split into two parts. The interface (`vega-gtk`, in Rust +
+GTK4/libadwaita) runs as your regular user, with no privileges. When an
+action actually needs to touch the system — switching a driver, installing
+a package, changing the network — it's `vegad`, a separate daemon (Go),
+that runs as root and asks for your password via polkit, the same
+authorization mechanism GNOME Settings uses. The interface never has
+direct root access; the two communicate through a well-defined D-Bus
+contract.
 
-Wallpapers, monitores e monitor de processos ficam fora do escopo: as
-ferramentas nativas do desktop já atendem melhor a esses casos.
+Licensed under GPL-3.0. Code at [github.com/britors/Vega](https://github.com/britors/Vega).
 
-## Instalação
+## Features
 
-### Arch
+- dashboard with system health and shortcuts;
+- native software, Flatpak, and AUR, with updates and repositories;
+- optional snapshots via Snapper or Timeshift, and backups via Restic;
+- hardware, drivers, kernel, bootloader, storage, date and time;
+- Wi-Fi, Bluetooth, firewall, VPN, proxy, and IPv4;
+- users, services, logs, and an assistant with multiple AI providers.
 
-Publicado no AUR:
+Wallpapers, monitors, and a process monitor are out of scope: the desktop's
+native tools already handle those cases better.
 
-```sh
-yay -S lyra-vega-gtk
-```
+## Installation
 
-### openSUSE Leap, Fedora e Ubuntu/Debian
-
-Nenhuma está nos repositórios oficiais ainda (nem OBS, nem Copr, nem PPA). O
-mesmo instalador de conveniência serve as três — ele detecta a distro via
-`/etc/os-release` e baixa o pacote certo (`.rpm` ou `.deb`) da release mais
-recente:
+Same convenience installer for Arch, openSUSE Leap, Fedora, and
+Ubuntu/Debian — it detects the distro automatically and downloads the
+right package from the latest release:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
 ```
 
-Em openSUSE isso baixa `vegad-*.rpm`/`lyra-vega-gtk-*.rpm` (gerados por
-[`.github/workflows/release-opensuse.yml`](.github/workflows/release-opensuse.yml)
-a partir de [`packaging/opensuse/`](packaging/opensuse/)) e instala via
-`zypper --allow-unsigned-rpm`. Em Fedora baixa
-`vegad-*.fcNN.*.rpm`/`lyra-vega-gtk-*.fcNN.*.rpm`
-(gerados por [`.github/workflows/release-fedora.yml`](.github/workflows/release-fedora.yml)
-a partir de [`packaging/fedora/`](packaging/fedora/)) e instala via
-`dnf install --nogpgcheck` (nenhum dos dois conjuntos de RPM é assinado ainda).
-Em Ubuntu/Debian baixa `lyra-vega-gtk_*.deb`/`vegad_*.deb` (gerados por
-[`.github/workflows/release-debian.yml`](.github/workflows/release-debian.yml)
-a partir de [`packaging/debian-src/`](packaging/debian-src/)) e instala via
-`apt-get install` (assim as dependências declaradas em `debian/control` são
-resolvidas normalmente, ao contrário de `dpkg -i`). Em Arch o script só aponta
-pro AUR — não há RPM/`.deb` equivalente lá.
+To pin a specific version: `VEGA_VERSION=v1.3.4 sudo -E bash install.sh`
+(download the script first if you use this variant).
 
-Para travar numa versão específica: `VEGA_VERSION=v1.3.4 sudo -E bash install.sh`
-(baixe o script primeiro se for usar essa variante).
+None of the four distributions are in an official repository yet (no AUR,
+OBS, Copr, or PPA), and packages aren't signed yet — privileged operations
+should be validated carefully before each release.
 
-Os pacotes ainda não estão assinados. A automação compila cada formato em sua
-distribuição de destino, mas operações privilegiadas devem ser validadas em VM
-antes de cada release. Para instalar a partir do checkout local, veja
-[`packaging/opensuse/install.sh`](packaging/opensuse/install.sh) (openSUSE,
-documentado também em [`CONTRIBUTING.md`](CONTRIBUTING.md) e
-[`dependencias.md`](dependencias.md)), `rpmbuild -bb packaging/fedora/*.spec`
-(Fedora, ver [`dependencias.md`](dependencias.md)) ou o comentário no topo de
-[`packaging/debian-src/debian/rules`](packaging/debian-src/debian/rules)
-(Ubuntu/Debian, precisa copiar `debian/` pra raiz do repo antes de rodar
-`dpkg-buildpackage`, exigência do próprio `dpkg`).
+## What already works
 
-## Layout do repositório
+The interface covers Dashboard, Software, Restore Points, Backup, Hardware,
+Kernel, Storage, Date and Time, Network/Firewall, Wi-Fi, Bluetooth, Users,
+Services, Logs, Assistant, and About. Features that depend on a tool that
+isn't installed (Snapper, firewalld, etc.) show up as unavailable instead of
+breaking the screen.
 
-```sh
-vega-gtk/    UI oficial (Rust + GTK4/libadwaita), roda como usuário comum
-vegad/       Daemon privilegiado (Go), roda como root, exposto via D-Bus
-dbus/        Definições de interface D-Bus (XML de introspecção) — contrato entre vega e vegad
-packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs (Arch), specs RPM (openSUSE, Fedora) e debian/rules (Ubuntu/Debian)
-```
+## Tested distributions
 
-A arquitetura da migração da interface para Rust + GTK4 está em
-[`docs/migration/rust-gtk-architecture.md`](docs/migration/rust-gtk-architecture.md),
-com a [matriz de paridade](docs/migration/rust-gtk-parity.md) e o
-[protocolo de baseline](docs/migration/rust-gtk-baseline.md) e o
-[roteiro de QA](docs/migration/rust-gtk-qa.md). O cutover para GTK4 foi feito;
-os pacotes finais não incluem Electron, Node ou npm.
+Besides the four with an automated installer (Arch, Fedora, openSUSE Leap,
+and Debian/Ubuntu, described in [Installation](#installation)), Vega has
+been manually tested on:
 
-## Status
+- Fedora Workstation 44, Fedora KDE 44
+- openSUSE Leap 16, openSUSE Tumbleweed
+- Debian 13, Ubuntu 26.04
+- MX Linux 25.2, Linux Mint 22.3, LMDE 7, Zorin OS 18.1, Pop!_OS 24.04,
+  deepin 25 (Debian/Ubuntu derivatives)
+- Rocky Linux 10, AlmaLinux 10 (RHEL derivatives)
+- Arch Linux, CachyOS, EndeavourOS (Arch derivatives)
 
-A UI GTK cobre Painel, Software, Pontos de Restauração, Backup, Hardware,
-Kernel, Armazenamento, Data e Hora, Rede/Firewall, Wi-Fi, Bluetooth, Usuários,
-Serviços, Logs, Assistente e Sobre. O backend seleciona implementações por
-distribuição e apresenta recursos opcionais como indisponíveis quando a
-ferramenta correspondente não está instalada.
+## Known limitations
 
-## Desenvolvimento
+- Software uses the distribution's package managers and Flatpak via
+  subprocess; progress is reported per step, not per byte transferred.
+- AUR (as an install origin inside the Software module) requires `yay` or
+  `paru`, runs builds under the isolated `vega-build` user, and always shows
+  the PKGBUILD before confirmation.
+- Snapper and Timeshift are optional. Without one of these tools, Restore
+  Points shows up as unavailable; advanced diff and retention features
+  remain Snapper-specific.
+- The NVIDIA driver on Fedora depends on RPM Fusion nonfree already being
+  configured; Vega doesn't enable third-party repositories automatically.
+- The Debian/Ubuntu backend doesn't manage PPAs via `add-apt-repository`
+  yet. The firewall uses UFW when firewalld isn't present.
 
-### lyra-vega-gtk (UI)
+## Contributing
 
-```sh
-cd vega-gtk
-cargo run
-```
-
-### vegad (daemon)
-
-Requer Go instalado:
-
-```sh
-cd vegad
-go mod tidy
-go build ./...
-```
-
-Os PKGBUILDs em `packaging/vega` e `packaging/vegad` empacotam este checkout
-local por padrão. Para gerar os dois pacotes em ordem (`vegad` e depois
-`lyra-vega-gtk`):
-
-```sh
-./scripts/build-local-packages.sh
-```
-
-Para copiar os `.pkg.tar.zst` gerados para o repositório local usado pelo
-perfil `lyra-iso`, informe o diretório como argumento ou via `LYRA_REPO_DIR`:
-
-```sh
-./scripts/build-local-packages.sh ~/.local/share/lyra-repo
-```
-
-Depois atualize o banco do repositório local no ambiente de build:
-
-```sh
-repo-add ~/.local/share/lyra-repo/lyra.db.tar.gz ~/.local/share/lyra-repo/*.pkg.tar.zst
-```
-
-Para publicar no AUR, siga o checklist em
-[`docs/release/aur-publish.md`](docs/release/aur-publish.md).
-
-## Validação
-
-O roteiro reproduzível de smoke test está em
-[`docs/validation/vega-end-to-end.md`](docs/validation/vega-end-to-end.md).
-Para rodar os checks automatizados deste checkout, use:
-
-```sh
-./scripts/qa-smoke.sh
-```
-
-Para coletar dez amostras de inicialização, PSS, CPU e tamanho do binário:
-
-```sh
-./scripts/benchmark-ui.sh 10
-```
-
-Os resultados e o checklist manual de Wayland, X11 e acessibilidade ficam em
-[`docs/migration/rust-gtk-qa.md`](docs/migration/rust-gtk-qa.md).
-
-## Nomes D-Bus e polkit
-
-- Bus name: `org.lyraos.Vega1` (system bus)
-- Contrato de interfaces (introspecção XML): `dbus/org.lyraos.Vega1.*.xml` — fonte de verdade, mantida em sincronia com `vegad/internal/dbusserver/*.go`
-- Actions polkit em `packaging/vegad/org.lyraos.vega.policy`, prefixo `org.lyraos.vega.*`
-- `vegad` roda em `/usr/lib/vega/vegad`, unit bus-activated em `packaging/vegad/vegad.service`
-
-## Limitações conhecidas
-
-- Software usa os gerenciadores da distribuição e Flatpak por subprocesso;
-  o progresso é por etapa, não por bytes transferidos.
-- AUR exige `yay` ou `paru`, executa builds com o usuário isolado `vega-build`
-  e sempre mostra o PKGBUILD antes da confirmação.
-- Snapper e Timeshift são opcionais. Sem uma dessas ferramentas, Pontos de
-  Restauração aparece como indisponível; recursos avançados de diff e retenção
-  continuam específicos do Snapper.
-- O driver NVIDIA no Fedora depende do RPM Fusion nonfree já configurado; o
-  Vega não habilita repositórios de terceiros automaticamente.
-- O backend Debian/Ubuntu ainda não administra PPAs por
-  `add-apt-repository`. O firewall usa UFW quando firewalld não está presente.
-- Os testes automatizados cobrem modelos, mocks D-Bus, daemon, lint e build.
-  Operações polkit, acessibilidade, X11 e os quatro pacotes ainda fazem parte
-  do roteiro manual de release.
+Want to run the project locally, understand the architecture, or open a
+PR? See [`CONTRIBUTING.md`](CONTRIBUTING.md).

@@ -90,9 +90,22 @@ impl From<(String, String, String, String)> for ProxyConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("interface de rede indisponível: {0}")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NetworkClientError(String);
+
+impl std::fmt::Display for NetworkClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            gettextrs::gettext("interface de rede indisponível: {detail}")
+                .replace("{detail}", &self.0)
+        )
+    }
+}
+
+impl std::error::Error for NetworkClientError {}
+
 impl NetworkClientError {
     fn from_error(e: impl std::fmt::Display) -> Self {
         Self(e.to_string())

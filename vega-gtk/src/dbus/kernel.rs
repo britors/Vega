@@ -19,9 +19,21 @@ impl From<(String, String, u32, String)> for BootStatus {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("interface de kernel indisponível: {0}")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KernelClientError(String);
+
+impl std::fmt::Display for KernelClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            gettextrs::gettext("interface de kernel indisponível: {detail}")
+                .replace("{detail}", &self.0)
+        )
+    }
+}
+
+impl std::error::Error for KernelClientError {}
 
 impl KernelClientError {
     fn from_error(error: impl std::fmt::Display) -> Self {

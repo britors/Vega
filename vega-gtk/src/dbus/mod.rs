@@ -7,6 +7,7 @@ mod hardware;
 mod kernel;
 mod logs;
 mod mock;
+mod monitor;
 mod network;
 mod services;
 mod snapshots;
@@ -32,6 +33,7 @@ pub use hardware::{HardwareClient, HardwareClientError, HardwareInventory, ZbusH
 pub use kernel::{BootStatus, KernelClient, KernelClientError, ZbusKernelClient};
 pub use logs::{LogsClient, LogsClientError, ZbusLogsClient};
 pub use mock::MockSystemClient;
+pub use monitor::{MonitorClient, MonitorClientError, ProcessInfo, SystemMetrics, ZbusMonitorClient};
 pub use network::{
     NetworkClient, NetworkClientError, NetworkInterface, ProxyConfig, WifiNetwork,
     ZbusNetworkClient,

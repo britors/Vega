@@ -4,6 +4,7 @@ use std::{
 };
 
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use crate::dbus::ManagedService;
 
@@ -32,14 +33,14 @@ pub struct ServicesPage {
 impl ServicesPage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Carregando serviços…")
+            .label(gettext("Carregando serviços…"))
             .xalign(0.0)
             .css_classes(["dim-label"])
             .build();
-        let curated = gtk::ToggleButton::with_label("Principais");
+        let curated = gtk::ToggleButton::with_label(&gettext("Principais"));
         curated.set_active(true);
         curated.add_css_class("module-tab");
-        let all = gtk::ToggleButton::with_label("Todos");
+        let all = gtk::ToggleButton::with_label(&gettext("Todos"));
         all.set_group(Some(&curated));
         all.add_css_class("module-tab");
         let tabs = gtk::Box::new(gtk::Orientation::Horizontal, 4);
@@ -50,22 +51,22 @@ impl ServicesPage {
             .selection_mode(gtk::SelectionMode::Single)
             .css_classes(["boxed-list", "services-list"])
             .build();
-        let enable = action("Habilitar");
-        let running = action("Iniciar");
-        let restart = action("Reiniciar");
+        let enable = action(&gettext("Habilitar"));
+        let running = action(&gettext("Iniciar"));
+        let restart = action(&gettext("Reiniciar"));
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         content.add_css_class("content-page");
         content.add_css_class("compact-page");
         content.append(
             &gtk::Label::builder()
-                .label("Serviços")
+                .label(gettext("Serviços"))
                 .xalign(0.0)
                 .css_classes(["title-1"])
                 .build(),
         );
         content.append(
             &gtk::Label::builder()
-                .label("Units do systemd gerenciadas pelo vegad")
+                .label(gettext("Units do systemd gerenciadas pelo vegad"))
                 .xalign(0.0)
                 .css_classes(["dim-label"])
                 .build(),
@@ -116,20 +117,28 @@ impl ServicesPage {
                 .build();
             row.add_suffix(&gtk::Label::new(Some(&format!(
                 "{} • {}",
-                if service.active { "Ativo" } else { "Parado" },
-                if service.enabled {
-                    "Habilitado"
+                if service.active {
+                    gettext("Ativo")
                 } else {
-                    "Desabilitado"
+                    gettext("Parado")
+                },
+                if service.enabled {
+                    gettext("Habilitado")
+                } else {
+                    gettext("Desabilitado")
                 }
             ))));
-            let enable_button = row_action(if service.enabled {
-                "Desabilitar"
+            let enable_button = row_action(&if service.enabled {
+                gettext("Desabilitar")
             } else {
-                "Habilitar"
+                gettext("Habilitar")
             });
-            let running_button = row_action(if service.active { "Parar" } else { "Iniciar" });
-            let restart_button = row_action("Reiniciar");
+            let running_button = row_action(&if service.active {
+                gettext("Parar")
+            } else {
+                gettext("Iniciar")
+            });
+            let restart_button = row_action(&gettext("Reiniciar"));
             enable_button.set_sensitive(service.available);
             running_button.set_sensitive(service.available);
             restart_button.set_sensitive(service.available && service.active);
@@ -147,8 +156,9 @@ impl ServicesPage {
                 service: service.clone(),
             });
         }
-        self.status
-            .set_label(&format!("{} serviço(s)", items.len()));
+        self.status.set_label(
+            &gettext("{count} serviço(s)").replace("{count}", &items.len().to_string()),
+        );
         *self.items.borrow_mut() = items;
         self.update_actions();
     }
@@ -188,13 +198,16 @@ impl ServicesPage {
         self.running.set_sensitive(service.available);
         self.restart
             .set_sensitive(service.available && service.active);
-        self.enable.set_label(if service.enabled {
-            "Desabilitar"
+        self.enable.set_label(&if service.enabled {
+            gettext("Desabilitar")
         } else {
-            "Habilitar"
+            gettext("Habilitar")
         });
-        self.running
-            .set_label(if service.active { "Parar" } else { "Iniciar" });
+        self.running.set_label(&if service.active {
+            gettext("Parar")
+        } else {
+            gettext("Iniciar")
+        });
     }
 }
 

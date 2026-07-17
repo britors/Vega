@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use crate::dbus::{BluetoothDevice, BluetoothStatus};
 
@@ -22,7 +23,7 @@ pub struct BluetoothPage {
 impl BluetoothPage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Detectando Bluetooth…")
+            .label(gettext("Detectando Bluetooth…"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
@@ -34,27 +35,27 @@ impl BluetoothPage {
             .build();
         devices.add_css_class("bluetooth-devices");
         let power = gtk::Button::builder()
-            .label("Ligar Bluetooth")
+            .label(gettext("Ligar Bluetooth"))
             .sensitive(false)
             .build();
         let scan = gtk::Button::builder()
-            .label("Buscar dispositivos")
+            .label(gettext("Buscar dispositivos"))
             .sensitive(false)
             .build();
         let adapter_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         adapter_actions.append(&power);
         adapter_actions.append(&scan);
         let device_action = gtk::Button::builder()
-            .label("Parear")
+            .label(gettext("Parear"))
             .halign(gtk::Align::Start)
             .sensitive(false)
             .build();
         let send_file = gtk::Button::builder()
-            .label("Enviar arquivo")
+            .label(gettext("Enviar arquivo"))
             .sensitive(false)
             .build();
         let receive_files = gtk::Button::builder()
-            .label("Receber arquivos")
+            .label(gettext("Receber arquivos"))
             .sensitive(false)
             .build();
         let device_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -66,22 +67,22 @@ impl BluetoothPage {
         content.add_css_class("compact-page");
         content.append(
             &gtk::Label::builder()
-                .label("Bluetooth")
+                .label(gettext("Bluetooth"))
                 .xalign(0.0)
                 .css_classes(["title-1"])
                 .build(),
         );
         content.append(
             &gtk::Label::builder()
-                .label("Adaptador, dispositivos e transferência de arquivos")
+                .label(gettext("Adaptador, dispositivos e transferência de arquivos"))
                 .xalign(0.0)
                 .css_classes(["dim-label"])
                 .build(),
         );
         content.append(&status);
-        content.append(&section("Adaptador", &adapter));
+        content.append(&section(&gettext("Adaptador"), &adapter));
         content.append(&adapter_actions);
-        content.append(&section("Dispositivos", &devices));
+        content.append(&section(&gettext("Dispositivos"), &devices));
         content.append(&device_actions);
         let root = gtk::ScrolledWindow::builder()
             .child(&content)
@@ -112,9 +113,9 @@ impl BluetoothPage {
         clear(&self.devices);
         if !status.available {
             self.status
-                .set_label("Bluetooth não está disponível nesta máquina.");
-            empty(&self.adapter, "bluetoothctl não detectado");
-            empty(&self.devices, "Nenhum dispositivo disponível");
+                .set_label(&gettext("Bluetooth não está disponível nesta máquina."));
+            empty(&self.adapter, &gettext("bluetoothctl não detectado"));
+            empty(&self.devices, &gettext("Nenhum dispositivo disponível"));
             self.power.set_sensitive(false);
             self.scan.set_sensitive(false);
             self.device_action.set_sensitive(false);
@@ -122,55 +123,56 @@ impl BluetoothPage {
             self.receive_files.set_sensitive(false);
             return;
         }
-        self.status.set_label(if status.powered {
-            "Bluetooth ligado"
+        self.status.set_label(&if status.powered {
+            gettext("Bluetooth ligado")
         } else {
-            "Bluetooth desligado"
+            gettext("Bluetooth desligado")
         });
         self.adapter.append(&row(
-            display_value(&status.controller_name, &status.controller),
+            &display_value(&status.controller_name, &status.controller),
             &format!(
                 "{} • {} • {}",
-                state("Descoberta", status.discoverable),
-                state("Pareamento", status.pairable),
+                state(&gettext("Descoberta"), status.discoverable),
+                state(&gettext("Pareamento"), status.pairable),
                 if status.scanning {
-                    "Buscando dispositivos"
+                    gettext("Buscando dispositivos")
                 } else {
-                    "Busca parada"
+                    gettext("Busca parada")
                 }
             ),
         ));
         self.adapter.append(&row(
-            "Transferência de arquivos",
-            if status.transfer_available {
+            &gettext("Transferência de arquivos"),
+            &if status.transfer_available {
                 if status.receiver_active {
-                    "Recebimento ativo"
+                    gettext("Recebimento ativo")
                 } else {
-                    "Disponível"
+                    gettext("Disponível")
                 }
             } else {
-                "bt-obex não instalado"
+                gettext("bt-obex não instalado")
             },
         ));
         for device in devices {
             let connection = if device.connected {
-                "Conectado"
+                gettext("Conectado")
             } else if device.paired {
-                "Pareado"
+                gettext("Pareado")
             } else {
-                "Disponível"
+                gettext("Disponível")
             };
-            let details = format!(
-                "{} • {} • {} • sinal {} dBm",
-                device.address,
-                connection,
-                if device.trusted {
-                    "Confiável"
-                } else {
-                    "Não confiável"
-                },
-                device.rssi
-            );
+            let details = gettext("{address} • {connection} • {trust} • sinal {rssi} dBm")
+                .replace("{address}", &device.address)
+                .replace("{connection}", &connection)
+                .replace(
+                    "{trust}",
+                    &if device.trusted {
+                        gettext("Confiável")
+                    } else {
+                        gettext("Não confiável")
+                    },
+                )
+                .replace("{rssi}", &device.rssi.to_string());
             let item = row(device.display_name(), &details);
             item.add_prefix(
                 &gtk::Image::builder()
@@ -181,28 +183,31 @@ impl BluetoothPage {
             self.devices.append(&item);
         }
         if devices.is_empty() {
-            empty(&self.devices, "Nenhum dispositivo conhecido ou encontrado");
+            empty(
+                &self.devices,
+                &gettext("Nenhum dispositivo conhecido ou encontrado"),
+            );
         }
         *self.current_status.borrow_mut() = Some(status.clone());
         *self.device_items.borrow_mut() = devices.to_vec();
         self.power.set_sensitive(true);
-        self.power.set_label(if status.powered {
-            "Desligar Bluetooth"
+        self.power.set_label(&if status.powered {
+            gettext("Desligar Bluetooth")
         } else {
-            "Ligar Bluetooth"
+            gettext("Ligar Bluetooth")
         });
         self.scan.set_sensitive(status.powered);
-        self.scan.set_label(if status.scanning {
-            "Parar busca"
+        self.scan.set_label(&if status.scanning {
+            gettext("Parar busca")
         } else {
-            "Buscar dispositivos"
+            gettext("Buscar dispositivos")
         });
         self.receive_files
             .set_sensitive(status.transfer_available && !status.receiver_active);
-        self.receive_files.set_label(if status.receiver_active {
-            "Recebimento ativo"
+        self.receive_files.set_label(&if status.receiver_active {
+            gettext("Recebimento ativo")
         } else {
-            "Receber arquivos"
+            gettext("Receber arquivos")
         });
         self.update_device_action();
     }
@@ -223,12 +228,12 @@ impl BluetoothPage {
             return;
         };
         self.device_action.set_sensitive(true);
-        self.device_action.set_label(if !device.paired {
-            "Parear"
+        self.device_action.set_label(&if !device.paired {
+            gettext("Parear")
         } else if device.connected {
-            "Desconectar"
+            gettext("Desconectar")
         } else {
-            "Conectar"
+            gettext("Conectar")
         });
         self.send_file.set_sensitive(
             device.paired
@@ -279,18 +284,25 @@ fn empty(list: &gtk::ListBox, message: &str) {
 }
 
 fn state(label: &str, enabled: bool) -> String {
-    format!("{label} {}", if enabled { "ativa" } else { "inativa" })
+    format!(
+        "{label} {}",
+        if enabled {
+            gettext("ativa")
+        } else {
+            gettext("inativa")
+        }
+    )
 }
 
-fn display_value<'a>(preferred: &'a str, fallback: &'a str) -> &'a str {
+fn display_value(preferred: &str, fallback: &str) -> String {
     if preferred.is_empty() {
         if fallback.is_empty() {
-            "Adaptador"
+            gettext("Adaptador")
         } else {
-            fallback
+            fallback.to_string()
         }
     } else {
-        preferred
+        preferred.to_string()
     }
 }
 

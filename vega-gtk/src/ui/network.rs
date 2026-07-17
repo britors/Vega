@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::dbus::{FirewallService, FirewallStatus, NetworkInterface, ProxyConfig, WifiNetwork};
 use adw::prelude::*;
+use gettextrs::gettext;
 
 type WifiActionHandler = Rc<dyn Fn(WifiNetwork)>;
 
@@ -30,7 +31,7 @@ pub struct NetworkPage {
 impl NetworkPage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Carregando rede…")
+            .label(gettext("Carregando rede…"))
             .xalign(0.0)
             .css_classes(["dim-label"])
             .build();
@@ -40,7 +41,7 @@ impl NetworkPage {
             .build();
         interfaces.add_css_class("network-interfaces");
         let interface_action = gtk::Button::builder()
-            .label("Configurar IPv4")
+            .label(gettext("Configurar IPv4"))
             .halign(gtk::Align::Start)
             .sensitive(false)
             .build();
@@ -50,31 +51,31 @@ impl NetworkPage {
             .build();
         wifi.add_css_class("wifi-networks");
         let proxy = gtk::Label::builder()
-            .label("Carregando configuração…")
+            .label(gettext("Carregando configuração…"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
             .build();
-        let proxy_http = proxy_entry("http://servidor:porta");
-        let proxy_https = proxy_entry("http://servidor:porta");
-        let proxy_socks = proxy_entry("socks://servidor:porta");
-        let proxy_exceptions = proxy_entry("localhost, 127.0.0.1, domínio.local");
+        let proxy_http = proxy_entry(&gettext("http://servidor:porta"));
+        let proxy_https = proxy_entry(&gettext("http://servidor:porta"));
+        let proxy_socks = proxy_entry(&gettext("socks://servidor:porta"));
+        let proxy_exceptions = proxy_entry(&gettext("localhost, 127.0.0.1, domínio.local"));
         let proxy_grid = gtk::Grid::builder()
             .column_spacing(10)
             .row_spacing(8)
             .hexpand(true)
             .build();
         for (row, (label, entry)) in [
-            ("HTTP", &proxy_http),
-            ("HTTPS", &proxy_https),
-            ("SOCKS", &proxy_socks),
-            ("Exceções", &proxy_exceptions),
+            ("HTTP".to_string(), &proxy_http),
+            ("HTTPS".to_string(), &proxy_https),
+            ("SOCKS".to_string(), &proxy_socks),
+            (gettext("Exceções"), &proxy_exceptions),
         ]
         .into_iter()
         .enumerate()
         {
             proxy_grid.attach(
-                &gtk::Label::builder().label(label).xalign(0.0).build(),
+                &gtk::Label::builder().label(&label).xalign(0.0).build(),
                 0,
                 row as i32,
                 1,
@@ -83,21 +84,23 @@ impl NetworkPage {
             proxy_grid.attach(entry, 1, row as i32, 1, 1);
         }
         let proxy_apply = gtk::Button::builder()
-            .label("Aplicar proxy")
+            .label(gettext("Aplicar proxy"))
             .halign(gtk::Align::Start)
             .build();
         let vpn_status = gtk::Label::builder()
-            .label("Importe um perfil OpenVPN fornecido pelo seu serviço de VPN.")
+            .label(gettext(
+                "Importe um perfil OpenVPN fornecido pelo seu serviço de VPN.",
+            ))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
             .build();
         let vpn_import = gtk::Button::builder()
-            .label("Importar perfil .ovpn")
+            .label(gettext("Importar perfil .ovpn"))
             .halign(gtk::Align::Start)
             .build();
         let firewall_status = gtk::Label::builder()
-            .label("Detectando firewall…")
+            .label(gettext("Detectando firewall…"))
             .xalign(0.0)
             .css_classes(["dim-label"])
             .build();
@@ -107,7 +110,7 @@ impl NetworkPage {
             .build();
         firewall_services.add_css_class("firewall-services");
         let firewall_action = gtk::Button::builder()
-            .label("Permitir serviço")
+            .label(gettext("Permitir serviço"))
             .halign(gtk::Align::Start)
             .sensitive(false)
             .build();
@@ -116,25 +119,25 @@ impl NetworkPage {
         content.add_css_class("compact-page");
         content.append(
             &gtk::Label::builder()
-                .label("Rede e Firewall")
+                .label(gettext("Rede e Firewall"))
                 .xalign(0.0)
                 .css_classes(["title-1"])
                 .build(),
         );
         content.append(
             &gtk::Label::builder()
-                .label("Interfaces, Wi‑Fi, proxy e proteção da rede")
+                .label(gettext("Interfaces, Wi‑Fi, proxy e proteção da rede"))
                 .xalign(0.0)
                 .css_classes(["dim-label"])
                 .build(),
         );
         content.append(&status);
-        content.append(&section("Interfaces", &interfaces));
+        content.append(&section(&gettext("Interfaces"), &interfaces));
         content.append(&interface_action);
-        content.append(&section("Redes Wi‑Fi", &wifi));
+        content.append(&section(&gettext("Redes Wi‑Fi"), &wifi));
         content.append(
             &gtk::Label::builder()
-                .label("Proxy")
+                .label(gettext("Proxy"))
                 .xalign(0.0)
                 .css_classes(["title-2"])
                 .build(),
@@ -153,7 +156,7 @@ impl NetworkPage {
         content.append(&vpn_import);
         content.append(
             &gtk::Label::builder()
-                .label("Firewall")
+                .label(gettext("Firewall"))
                 .xalign(0.0)
                 .css_classes(["title-2"])
                 .build(),
@@ -215,7 +218,7 @@ impl NetworkPage {
             );
         }
         if items.is_empty() {
-            empty(&self.interfaces, "Nenhuma interface detectada");
+            empty(&self.interfaces, &gettext("Nenhuma interface detectada"));
         }
         *self.interface_items.borrow_mut() = items.to_vec();
         self.update_interface_action();
@@ -223,17 +226,26 @@ impl NetworkPage {
     pub fn show_wifi(&self, items: &[WifiNetwork]) {
         clear(&self.wifi);
         for i in items {
-            let sub = format!(
-                "{} • sinal {}% • {}",
-                dash(&i.security),
-                i.signal,
-                if i.active { "Conectada" } else { "Disponível" }
-            );
+            let sub = gettext("{security} • sinal {signal}% • {state}")
+                .replace("{security}", dash(&i.security))
+                .replace("{signal}", &i.signal.to_string())
+                .replace(
+                    "{state}",
+                    &if i.active {
+                        gettext("Conectada")
+                    } else {
+                        gettext("Disponível")
+                    },
+                );
             let row = adw::ActionRow::builder()
                 .title(gtk::glib::markup_escape_text(&i.ssid))
                 .subtitle(gtk::glib::markup_escape_text(&sub))
                 .build();
-            let button = gtk::Button::with_label(if i.active { "Desconectar" } else { "Conectar" });
+            let button = gtk::Button::with_label(&if i.active {
+                gettext("Desconectar")
+            } else {
+                gettext("Conectar")
+            });
             button.add_css_class("wifi-row-action");
             button.set_valign(gtk::Align::Center);
             if !i.active {
@@ -250,7 +262,7 @@ impl NetworkPage {
             self.wifi.append(&row);
         }
         if items.is_empty() {
-            empty(&self.wifi, "Nenhuma rede Wi‑Fi detectada");
+            empty(&self.wifi, &gettext("Nenhuma rede Wi‑Fi detectada"));
         }
     }
     pub fn show_proxy(&self, p: &ProxyConfig) {
@@ -259,14 +271,14 @@ impl NetworkPage {
         self.proxy_socks.set_text(&p.socks);
         self.proxy_exceptions.set_text(&p.no_proxy);
         self.proxy.set_label(
-            if p.http.is_empty()
+            &if p.http.is_empty()
                 && p.https.is_empty()
                 && p.socks.is_empty()
                 && p.no_proxy.is_empty()
             {
-                "Proxy não configurado"
+                gettext("Proxy não configurado")
             } else {
-                "Configuração carregada de /etc/environment"
+                gettext("Configuração carregada de /etc/environment")
             },
         );
     }
@@ -281,11 +293,18 @@ impl NetworkPage {
     }
 
     pub fn show_firewall(&self, status: &FirewallStatus, services: &[FirewallService]) {
-        self.firewall_status.set_label(&format!(
-            "{} • zona/perfil: {}",
-            if status.enabled { "Ativo" } else { "Inativo" },
-            dash(&status.active_zone)
-        ));
+        self.firewall_status.set_label(
+            &gettext("{state} • zona/perfil: {zone}")
+                .replace(
+                    "{state}",
+                    &if status.enabled {
+                        gettext("Ativo")
+                    } else {
+                        gettext("Inativo")
+                    },
+                )
+                .replace("{zone}", dash(&status.active_zone)),
+        );
         clear(&self.firewall_services);
         for service in services {
             let row = adw::ActionRow::builder()
@@ -298,9 +317,9 @@ impl NetworkPage {
             row.add_suffix(
                 &gtk::Label::builder()
                     .label(if service.enabled {
-                        "Permitido"
+                        gettext("Permitido")
                     } else {
-                        "Bloqueado"
+                        gettext("Bloqueado")
                     })
                     .valign(gtk::Align::Center)
                     .css_classes(if service.enabled {
@@ -313,7 +332,7 @@ impl NetworkPage {
             self.firewall_services.append(&row);
         }
         if services.is_empty() {
-            empty(&self.firewall_services, "Nenhum serviço publicado");
+            empty(&self.firewall_services, &gettext("Nenhum serviço publicado"));
         }
         *self.firewall_items.borrow_mut() = services.to_vec();
         self.update_firewall_action();
@@ -346,10 +365,10 @@ impl NetworkPage {
             return;
         };
         self.firewall_action.set_sensitive(true);
-        self.firewall_action.set_label(if service.enabled {
-            "Bloquear serviço"
+        self.firewall_action.set_label(&if service.enabled {
+            gettext("Bloquear serviço")
         } else {
-            "Permitir serviço"
+            gettext("Permitir serviço")
         });
         if service.enabled {
             self.firewall_action.remove_css_class("suggested-action");

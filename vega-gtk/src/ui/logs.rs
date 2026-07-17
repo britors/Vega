@@ -1,4 +1,5 @@
 use adw::prelude::*;
+use gettextrs::gettext;
 
 const PRIORITIES: &[&str] = &["", "err", "warning", "info", "debug"];
 const SINCE_VALUES: &[&str] = &["-15min", "-1hour", "-24hour", "-7day", ""];
@@ -20,40 +21,40 @@ pub struct LogsPage {
 impl LogsPage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Carregando unidades do journal…")
+            .label(gettext("Carregando unidades do journal…"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
             .build();
-        let unit = gtk::DropDown::from_strings(&["Todas as unidades"]);
+        let unit = gtk::DropDown::from_strings(&[&gettext("Todas as unidades")]);
         let priority = gtk::DropDown::from_strings(&[
-            "Todas as prioridades",
-            "Erro ou mais grave",
-            "Aviso ou mais grave",
-            "Informação ou mais grave",
-            "Tudo, incluindo debug",
+            &gettext("Todas as prioridades"),
+            &gettext("Erro ou mais grave"),
+            &gettext("Aviso ou mais grave"),
+            &gettext("Informação ou mais grave"),
+            &gettext("Tudo, incluindo debug"),
         ]);
         let since = gtk::DropDown::from_strings(&[
-            "Últimos 15 min",
-            "Última hora",
-            "Últimas 24h",
-            "Últimos 7 dias",
-            "Sem limite de período",
+            &gettext("Últimos 15 min"),
+            &gettext("Última hora"),
+            &gettext("Últimas 24h"),
+            &gettext("Últimos 7 dias"),
+            &gettext("Sem limite de período"),
         ]);
         since.set_selected(1);
         let search = gtk::SearchEntry::builder()
-            .placeholder_text("Buscar texto no log…")
+            .placeholder_text(gettext("Buscar texto no log…"))
             .hexpand(true)
             .build();
         let limit = gtk::DropDown::from_strings(&[
-            "100 linhas",
-            "250 linhas",
-            "500 linhas",
-            "1.000 linhas",
+            &gettext("100 linhas"),
+            &gettext("250 linhas"),
+            &gettext("500 linhas"),
+            &gettext("1.000 linhas"),
         ]);
         limit.set_selected(2);
         let query = gtk::Button::builder()
-            .label("Buscar")
+            .label(gettext("Buscar"))
             .css_classes(["suggested-action"])
             .build();
         let filters = gtk::FlowBox::builder()
@@ -94,14 +95,14 @@ impl LogsPage {
         content.add_css_class("content-page");
         content.append(
             &gtk::Label::builder()
-                .label("Log do Sistema")
+                .label(gettext("Log do Sistema"))
                 .xalign(0.0)
                 .css_classes(["title-1"])
                 .build(),
         );
         content.append(
             &gtk::Label::builder()
-                .label("Consulta somente leitura do journal pelo vegad")
+                .label(gettext("Consulta somente leitura do journal pelo vegad"))
                 .xalign(0.0)
                 .css_classes(["dim-label"])
                 .build(),
@@ -128,9 +129,10 @@ impl LogsPage {
     }
 
     pub fn show_units(&self, units: &[String]) {
-        let mut labels = vec!["Todas as unidades"];
-        labels.extend(units.iter().map(String::as_str));
-        self.unit.set_model(Some(&gtk::StringList::new(&labels)));
+        let mut labels = vec![gettext("Todas as unidades")];
+        labels.extend(units.iter().cloned());
+        let refs = labels.iter().map(String::as_str).collect::<Vec<_>>();
+        self.unit.set_model(Some(&gtk::StringList::new(&refs)));
     }
 
     pub fn selected_unit(&self) -> String {
@@ -164,18 +166,23 @@ impl LogsPage {
 
     pub fn show_lines(&self, lines: &[String]) {
         let text = if lines.is_empty() {
-            "Nenhuma entrada encontrada para os filtros selecionados.".to_owned()
+            gettext("Nenhuma entrada encontrada para os filtros selecionados.")
         } else {
             lines.join("\n")
         };
         self.output.buffer().set_text(&text);
-        self.status.set_label(&format!("{} linha(s)", lines.len()));
+        self.status.set_label(
+            &gettext("{count} linha(s)").replace("{count}", &lines.len().to_string()),
+        );
     }
 
     pub fn set_busy(&self, busy: bool) {
         self.query.set_sensitive(!busy);
-        self.query
-            .set_label(if busy { "Buscando…" } else { "Buscar" });
+        self.query.set_label(&if busy {
+            gettext("Buscando…")
+        } else {
+            gettext("Buscar")
+        });
     }
 
     fn selected_text(&self, dropdown: &gtk::DropDown) -> String {

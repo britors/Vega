@@ -1,5 +1,6 @@
 use crate::assistant::{Message, Provider, Settings};
 use adw::prelude::*;
+use gettextrs::gettext;
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Clone)]
@@ -26,7 +27,7 @@ pub struct AssistantPage {
 impl AssistantPage {
     pub fn new(settings: &Settings, history: Vec<Message>) -> Self {
         let status = gtk::Label::builder()
-            .label("Pronto")
+            .label(gettext("Pronto"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
@@ -49,14 +50,14 @@ impl AssistantPage {
             .build();
         transcript_scroll.add_css_class("card");
         let prompt = gtk::Entry::builder()
-            .placeholder_text("Pergunte sobre seu sistema…")
+            .placeholder_text(gettext("Pergunte sobre seu sistema…"))
             .hexpand(true)
             .build();
         let send = gtk::Button::builder()
-            .label("Enviar")
+            .label(gettext("Enviar"))
             .css_classes(["suggested-action"])
             .build();
-        let clear_history = gtk::Button::with_label("Limpar conversa");
+        let clear_history = gtk::Button::with_label(&gettext("Limpar conversa"));
         let composer = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         composer.append(&prompt);
         composer.append(&send);
@@ -67,7 +68,7 @@ impl AssistantPage {
         model.set_hexpand(true);
         let refresh_models = gtk::Button::builder()
             .icon_name("view-refresh-symbolic")
-            .tooltip_text("Atualizar lista de modelos")
+            .tooltip_text(gettext("Atualizar lista de modelos"))
             .build();
         let model_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
         model_box.append(&model);
@@ -77,48 +78,103 @@ impl AssistantPage {
         let max_rounds = gtk::SpinButton::with_range(1.0, 20.0, 1.0);
         max_rounds.set_value(f64::from(settings.max_rounds_per_message));
         let api_key = gtk::PasswordEntry::builder()
-            .placeholder_text("Chave armazenada somente no keyring")
+            .placeholder_text(gettext("Chave armazenada somente no keyring"))
             .show_peek_icon(true)
             .hexpand(true)
             .build();
         let save_settings = gtk::Button::builder()
-            .label("Salvar configurações")
+            .label(gettext("Salvar configurações"))
             .css_classes(["suggested-action"])
             .build();
-        let save_key = gtk::Button::with_label("Salvar chave");
+        let save_key = gtk::Button::with_label(&gettext("Salvar chave"));
         let remove_key = gtk::Button::builder()
-            .label("Remover chave")
+            .label(gettext("Remover chave"))
             .css_classes(["destructive-action"])
             .build();
         let settings_group = adw::PreferencesGroup::builder()
-            .title("Configurações e credenciais")
-            .description("As chaves ficam no Secret Service e nunca em arquivos do Vega")
+            .title(gettext("Configurações e credenciais"))
+            .description(gettext(
+                "As chaves ficam no Secret Service e nunca em arquivos do Vega",
+            ))
             .build();
-        settings_group.add(&row("Provedor", &provider));
-        settings_group.add(&row("Modelo", &model_box));
-        settings_group.add(&row("Limite diário", &daily_limit));
-        settings_group.add(&row("Máximo de etapas", &max_rounds));
-        settings_group.add(&row("Chave de API", &api_key));
+        settings_group.add(&row(&gettext("Provedor"), &provider));
+        settings_group.add(&row(&gettext("Modelo"), &model_box));
+        settings_group.add(&row(&gettext("Limite diário"), &daily_limit));
+        settings_group.add(&row(&gettext("Máximo de etapas"), &max_rounds));
+        settings_group.add(&row(&gettext("Chave de API"), &api_key));
         let settings_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         settings_actions.set_halign(gtk::Align::End);
         settings_actions.append(&save_settings);
         settings_actions.append(&save_key);
         settings_actions.append(&remove_key);
+        let chat_tab = gtk::ToggleButton::builder()
+            .label(gettext("Chat"))
+            .css_classes(["flat", "module-tab"])
+            .build();
+        chat_tab.set_active(true);
+        let settings_tab = gtk::ToggleButton::builder()
+            .label(gettext("Configurações e Credenciais"))
+            .css_classes(["flat", "module-tab"])
+            .build();
+        settings_tab.set_group(Some(&chat_tab));
+        let tabs = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        tabs.add_css_class("module-tabs");
+        tabs.append(&chat_tab);
+        tabs.append(&settings_tab);
+
+        let chat_content = gtk::Box::new(gtk::Orientation::Vertical, 14);
+        chat_content.append(&transcript_scroll);
+        chat_content.append(&composer);
+
+        let settings_content = gtk::Box::new(gtk::Orientation::Vertical, 14);
+        settings_content.append(&settings_group);
+        settings_content.append(&settings_actions);
+
+        let tab_stack = gtk::Stack::builder()
+            .transition_type(gtk::StackTransitionType::Crossfade)
+            .vexpand(true)
+            .build();
+        tab_stack.add_named(&chat_content, Some("chat"));
+        tab_stack.add_named(&settings_content, Some("settings"));
+
+        let chat_stack = tab_stack.clone();
+        chat_tab.connect_clicked(move |button| {
+            if button.is_active() {
+                chat_stack.set_visible_child_name("chat");
+            }
+        });
+        let settings_stack = tab_stack.clone();
+        settings_tab.connect_clicked(move |button| {
+            if button.is_active() {
+                settings_stack.set_visible_child_name("settings");
+            }
+        });
+
         let content = gtk::Box::new(gtk::Orientation::Vertical, 14);
         content.add_css_class("content-page");
         content.append(
             &gtk::Label::builder()
-                .label("Assistente de IA")
+                .label(gettext("Assistente de IA"))
                 .xalign(0.0)
                 .css_classes(["title-1"])
                 .build(),
         );
-        content.append(&gtk::Label::builder().label("Orientação contextual com privacidade, limites e aprovação explícita para alterações").xalign(0.0).wrap(true).css_classes(["dim-label"]).build());
+        content.append(
+            &gtk::Label::builder()
+                .label(gettext(
+                    "Orientação contextual com privacidade, limites e aprovação explícita para alterações",
+                ))
+                .xalign(0.0)
+                .wrap(true)
+                .css_classes(["dim-label"])
+                .build(),
+        );
+        // Compartilhado entre as duas abas (fica acima do seletor de abas):
+        // salvar configurações, salvar chave e remover chave mostram o
+        // resultado aqui mesmo se o usuário estiver na aba Chat.
         content.append(&status);
-        content.append(&transcript_scroll);
-        content.append(&composer);
-        content.append(&settings_group);
-        content.append(&settings_actions);
+        content.append(&tabs);
+        content.append(&tab_stack);
         let root = gtk::ScrolledWindow::builder()
             .child(&content)
             .hscrollbar_policy(gtk::PolicyType::Never)
@@ -214,13 +270,18 @@ impl AssistantPage {
     pub fn set_busy(&self, busy: bool) {
         self.prompt.set_sensitive(!busy);
         self.send.set_sensitive(!busy);
-        self.send
-            .set_label(if busy { "Pensando…" } else { "Enviar" });
+        self.send.set_label(&if busy {
+            gettext("Pensando…")
+        } else {
+            gettext("Enviar")
+        });
     }
     pub fn render_history(&self) {
         let history = self.history.borrow();
         let text = if history.is_empty() {
-            "Olá! Posso explicar o estado do sistema e ajudar com tarefas no Vega. Configure um provedor e sua chave abaixo para começar.".into()
+            gettext(
+                "Olá! Posso explicar o estado do sistema e ajudar com tarefas no Vega. Configure um provedor e sua chave abaixo para começar.",
+            )
         } else {
             history
                 .iter()
@@ -228,9 +289,9 @@ impl AssistantPage {
                     format!(
                         "{}\n{}",
                         if message.role == "user" {
-                            "Você"
+                            gettext("Você")
                         } else {
-                            "Vega"
+                            "Vega".to_string()
                         },
                         message.content
                     )

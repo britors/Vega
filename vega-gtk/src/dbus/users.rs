@@ -15,9 +15,21 @@ impl From<(String, bool)> for UserInfo {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("interface de usuários indisponível: {0}")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UsersClientError(String);
+
+impl std::fmt::Display for UsersClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            gettextrs::gettext("interface de usuários indisponível: {detail}")
+                .replace("{detail}", &self.0)
+        )
+    }
+}
+
+impl std::error::Error for UsersClientError {}
 
 impl UsersClientError {
     fn from_error(error: impl std::fmt::Display) -> Self {

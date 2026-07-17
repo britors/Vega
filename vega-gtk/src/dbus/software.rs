@@ -117,11 +117,25 @@ pub enum SoftwareEvent {
     UpdatesAvailable(u32),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SoftwareClientError {
-    #[error("interface de software indisponível: {0}")]
     Unavailable(String),
 }
+
+impl std::fmt::Display for SoftwareClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unavailable(detail) => write!(
+                f,
+                "{}",
+                gettextrs::gettext("interface de software indisponível: {detail}")
+                    .replace("{detail}", detail)
+            ),
+        }
+    }
+}
+
+impl std::error::Error for SoftwareClientError {}
 
 #[async_trait]
 pub trait SoftwareClient: Send + Sync {

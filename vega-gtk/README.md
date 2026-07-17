@@ -34,3 +34,30 @@ testes sem daemon ou privilégios. Os testes de contrato leem os XMLs em
 Software e Backup expõem `SoftwareEventStream` e `BackupEventStream`. Cada
 chamada a `next()` aguarda todos os sinais da interface sem polling e devolve
 um evento de domínio tipado; descartar o stream remove as subscriptions D-Bus.
+
+## Internacionalização
+
+Português (pt_BR) é o idioma fonte: as strings de UI ainda estão fixas no
+código (a extração via gettext está sendo feita aos poucos, ver issues
+`i18n` no repositório). O idioma da interface é lido automaticamente do SO
+(`LANG`/`LC_ALL`, como qualquer app GTK) em `src/i18n.rs` — não há seletor
+manual.
+
+`build.rs` compila cada `po/<lang>.po` para `po/locale/<lang>/LC_MESSAGES/
+vega-gtk.mo` automaticamente a cada `cargo build` (usa `msgfmt`; se não
+estiver instalado, o build segue normalmente e a UI cai no texto original em
+português). Para testar um catálogo localmente sem instalar o pacote:
+
+```bash
+LANG=en_US.UTF-8 cargo run --manifest-path vega-gtk/Cargo.toml
+```
+
+Atualizar o template depois de mexer nas strings (requer o extrator `xtr`,
+que entende sintaxe Rust — `xgettext --language=C` quebra em lifetimes e
+char literals):
+
+```bash
+cargo install xtr
+xtr src/main.rs -o po/vega-gtk.pot
+msgmerge --update po/en.po po/vega-gtk.pot
+```

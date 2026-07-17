@@ -23,9 +23,21 @@ impl From<(String, String, String, bool, bool, bool)> for ManagedService {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("interface de serviços indisponível: {0}")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServicesClientError(String);
+
+impl std::fmt::Display for ServicesClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            gettextrs::gettext("interface de serviços indisponível: {detail}")
+                .replace("{detail}", &self.0)
+        )
+    }
+}
+
+impl std::error::Error for ServicesClientError {}
 
 impl ServicesClientError {
     fn from_error(error: impl std::fmt::Display) -> Self {

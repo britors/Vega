@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use crate::dbus::Snapshot;
 
@@ -22,7 +23,7 @@ pub struct SnapshotsPage {
 impl SnapshotsPage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Verificando suporte a snapshots…")
+            .label(gettext("Verificando suporte a snapshots…"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
@@ -33,13 +34,13 @@ impl SnapshotsPage {
             .build();
         list.add_css_class("snapshot-selection");
         let create = gtk::Button::builder()
-            .label("Criar ponto")
+            .label(gettext("Criar ponto"))
             .css_classes(["suggested-action"])
             .build();
-        let compare = gtk::Button::with_label("Comparar pacotes");
-        let rollback = gtk::Button::with_label("Aplicar");
+        let compare = gtk::Button::with_label(&gettext("Comparar pacotes"));
+        let rollback = gtk::Button::with_label(&gettext("Aplicar"));
         rollback.add_css_class("suggested-action");
-        let delete = gtk::Button::with_label("Excluir");
+        let delete = gtk::Button::with_label(&gettext("Excluir"));
         delete.add_css_class("destructive-action");
         for button in [&compare, &rollback, &delete] {
             button.set_sensitive(false);
@@ -50,7 +51,9 @@ impl SnapshotsPage {
         actions.append(&rollback);
         actions.append(&delete);
         let comparison = gtk::Label::builder()
-            .label("Selecione um ponto para comparar os pacotes com o estado atual.")
+            .label(gettext(
+                "Selecione um ponto para comparar os pacotes com o estado atual.",
+            ))
             .xalign(0.0)
             .wrap(true)
             .selectable(true)
@@ -58,12 +61,12 @@ impl SnapshotsPage {
             .build();
         let retention = gtk::SpinButton::with_range(1.0, 100.0, 1.0);
         retention.set_value(10.0);
-        let apply_retention = gtk::Button::with_label("Aplicar retenção");
+        let apply_retention = gtk::Button::with_label(&gettext("Aplicar retenção"));
         let retention_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         retention_row.add_css_class("card");
         retention_row.append(
             &gtk::Label::builder()
-                .label("Manter os snapshots mais recentes")
+                .label(gettext("Manter os snapshots mais recentes"))
                 .xalign(0.0)
                 .hexpand(true)
                 .build(),
@@ -73,20 +76,6 @@ impl SnapshotsPage {
 
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         content.add_css_class("content-page");
-        content.append(
-            &gtk::Label::builder()
-                .label("Pontos de Restauração")
-                .xalign(0.0)
-                .css_classes(["title-1"])
-                .build(),
-        );
-        content.append(
-            &gtk::Label::builder()
-                .label("Snapshots do sistema gerenciados pelo vegad")
-                .xalign(0.0)
-                .css_classes(["dim-label"])
-                .build(),
-        );
         content.append(&status);
         content.append(&actions);
         content.append(&list);
@@ -126,7 +115,7 @@ impl SnapshotsPage {
         self.create.set_sensitive(available);
         if !available {
             self.status
-                .set_label("Snapshots não são suportados neste sistema.");
+                .set_label(&gettext("Snapshots não são suportados neste sistema."));
         }
     }
 
@@ -134,15 +123,15 @@ impl SnapshotsPage {
         while let Some(child) = self.list.first_child() {
             self.list.remove(&child);
         }
-        self.status.set_label(if snapshots.is_empty() {
-            "Nenhum ponto de restauração encontrado"
+        self.status.set_label(&if snapshots.is_empty() {
+            gettext("Nenhum ponto de restauração encontrado")
         } else {
-            "Selecione um ponto para comparar, aplicar ou excluir"
+            gettext("Selecione um ponto para comparar, aplicar ou excluir")
         });
         for snapshot in &snapshots {
             let date = format_timestamp(snapshot.timestamp);
             let title = if snapshot.description.is_empty() {
-                format!("Snapshot #{}", snapshot.id)
+                gettext("Snapshot #{id}").replace("{id}", &snapshot.id.to_string())
             } else {
                 snapshot.description.clone()
             };
@@ -165,7 +154,7 @@ impl SnapshotsPage {
 
     pub fn show_comparison(&self, changes: &[String]) {
         let text = if changes.is_empty() {
-            "Nenhuma diferença de pacotes em relação ao estado atual.".into()
+            gettext("Nenhuma diferença de pacotes em relação ao estado atual.")
         } else {
             changes.join("\n")
         };

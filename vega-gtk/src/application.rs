@@ -1,11 +1,17 @@
 use adw::prelude::*;
+use gettextrs::gettext;
 use gtk::{gio, glib};
-use std::time::Instant;
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    time::Instant,
+};
 
 use crate::dbus::{
     BackupClient, BackupConfig, BackupEvent, BluetoothClient, DateTimeClient, FirewallClient,
-    HardwareClient, KernelClient, LogsClient, NetworkClient, ServicesClient, SnapshotsClient,
-    SoftwareClient, SoftwareEvent, StorageClient, SystemClient, UsersClient, VegaDbus,
+    HardwareClient, KernelClient, LogsClient, MonitorClient, NetworkClient, ServicesClient,
+    SnapshotsClient, SoftwareClient, SoftwareEvent, StorageClient, SystemClient, UsersClient,
+    VegaDbus,
 };
 use crate::model::AppIdentity;
 use crate::ui::VegaShell;
@@ -69,13 +75,15 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
 
         match dbus.system().status().await {
             Ok(status) => {
-                shell.backend_status.set_label(&format!(
-                    "vegad {} conectado • {}",
-                    status.version, status.distro
-                ));
-                shell
-                    .dashboard_system
-                    .set_label(&format!("{} • interface nativa ativa", status.distro));
+                shell.backend_status.set_label(
+                    &gettext("vegad {version} conectado • {distro}")
+                        .replace("{version}", &status.version)
+                        .replace("{distro}", &status.distro),
+                );
+                shell.dashboard_system.set_label(
+                    &gettext("{distro} • interface nativa ativa")
+                        .replace("{distro}", &status.distro),
+                );
                 shell.about_versions.set_label(&format!(
                     "Vega GTK {} • vegad {}",
                     ui_version, status.version
@@ -109,40 +117,47 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
         }
 
         match dbus.software().community_layer_name().await {
-            Ok(channel) if channel.is_empty() => shell.about_channel.set_label("Nenhuma"),
+            Ok(channel) if channel.is_empty() => {
+                shell.about_channel.set_label(&gettext("Nenhuma"))
+            }
             Ok(channel) => shell.about_channel.set_label(&channel),
             Err(error) => shell.about_channel.set_label(&error.to_string()),
         }
 
         match dbus.software().list_updates().await {
-            Ok(updates) if updates.is_empty() => shell.dashboard_updates.set_label("Tudo em dia"),
-            Ok(updates) => shell
+            Ok(updates) if updates.is_empty() => shell
                 .dashboard_updates
-                .set_label(&format!("{} pacote(s) pendente(s)", updates.len())),
+                .set_label(&gettext("Tudo em dia")),
+            Ok(updates) => shell.dashboard_updates.set_label(
+                &gettext("{count} pacote(s) pendente(s)")
+                    .replace("{count}", &updates.len().to_string()),
+            ),
             Err(error) => shell.dashboard_updates.set_label(&error.to_string()),
         }
 
         match dbus.backup().list_configs().await {
-            Ok(configs) if configs.is_empty() => {
-                shell.dashboard_backup.set_label("Não configurado")
-            }
-            Ok(configs) => shell
+            Ok(configs) if configs.is_empty() => shell
                 .dashboard_backup
-                .set_label(&format!("{} destino(s) configurado(s)", configs.len())),
+                .set_label(&gettext("Não configurado")),
+            Ok(configs) => shell.dashboard_backup.set_label(
+                &gettext("{count} destino(s) configurado(s)")
+                    .replace("{count}", &configs.len().to_string()),
+            ),
             Err(error) => shell.dashboard_backup.set_label(&error.to_string()),
         }
 
         match dbus.snapshots().available().await {
             Ok(false) => shell
                 .dashboard_snapshots
-                .set_label("Não suportado neste sistema"),
+                .set_label(&gettext("Não suportado neste sistema")),
             Ok(true) => match dbus.snapshots().list().await {
-                Ok(snapshots) if snapshots.is_empty() => {
-                    shell.dashboard_snapshots.set_label("Nenhum snapshot")
-                }
-                Ok(snapshots) => shell
+                Ok(snapshots) if snapshots.is_empty() => shell
                     .dashboard_snapshots
-                    .set_label(&format!("{} snapshot(s)", snapshots.len())),
+                    .set_label(&gettext("Nenhum snapshot")),
+                Ok(snapshots) => shell.dashboard_snapshots.set_label(
+                    &gettext("{count} snapshot(s)")
+                        .replace("{count}", &snapshots.len().to_string()),
+                ),
                 Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
             },
             Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
@@ -154,24 +169,23 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
                     .iter()
                     .filter(|service| service.available && service.enabled && !service.active)
                     .count();
-                shell.dashboard_services.set_label(if struggling == 0 {
-                    "Nenhum serviço com problema"
+                shell.dashboard_services.set_label(&if struggling == 0 {
+                    gettext("Nenhum serviço com problema")
                 } else {
-                    "Serviço(s) habilitado(s), mas parado(s)"
+                    gettext("{count} serviço(s) habilitado(s), mas parado(s)")
+                        .replace("{count}", &struggling.to_string())
                 });
-                if struggling > 0 {
-                    shell.dashboard_services.set_label(&format!(
-                        "{struggling} serviço(s) habilitado(s), mas parado(s)"
-                    ));
-                }
             }
             Err(error) => shell.dashboard_services.set_label(&error.to_string()),
         }
 
         match dbus.system().disk_usage().await {
-            Ok((used, total, percent)) => shell
-                .dashboard_disk
-                .set_label(&format!("{}% • {} de {} usados", percent, used, total)),
+            Ok((used, total, percent)) => shell.dashboard_disk.set_label(
+                &gettext("{percent}% • {used} de {total} usados")
+                    .replace("{percent}", &percent.to_string())
+                    .replace("{used}", &used)
+                    .replace("{total}", &total),
+            ),
             Err(error) => shell.dashboard_disk.set_label(&error.to_string()),
         }
 
@@ -180,6 +194,7 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
         configure_snapshots(&shell, dbus.clone());
         configure_kernel(&shell, dbus.clone());
         configure_datetime(&shell, dbus.clone());
+        configure_screen(&shell, dbus.clone());
         configure_storage(&shell, dbus.clone());
         configure_network(&shell, &window, dbus.clone());
         configure_bluetooth(&shell, &window, dbus.clone());
@@ -193,12 +208,11 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
 
 fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
     let page = shell.assistant.clone();
-    page.status
-        .set_label(if crate::assistant::keyring_available() {
-            "Pronto • credenciais protegidas pelo Secret Service"
-        } else {
-            "Secret Service indisponível: não será possível armazenar chaves"
-        });
+    page.status.set_label(&if crate::assistant::keyring_available() {
+        gettext("Pronto • credenciais protegidas pelo Secret Service")
+    } else {
+        gettext("Secret Service indisponível: não será possível armazenar chaves")
+    });
 
     let provider_page = page.clone();
     page.provider.connect_selected_notify(move |_| {
@@ -220,7 +234,9 @@ fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
     let settings_page = page.clone();
     page.save_settings.connect_clicked(move |_| {
         match crate::assistant::save_settings(&settings_page.settings()) {
-            Ok(()) => settings_page.status.set_label("Configurações salvas"),
+            Ok(()) => settings_page
+                .status
+                .set_label(&gettext("Configurações salvas")),
             Err(error) => settings_page.status.set_label(&error.to_string()),
         }
     });
@@ -231,18 +247,21 @@ fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
         let key = key_page.api_key.text().to_string();
         let page = key_page.clone();
         glib::MainContext::default().spawn_local(async move {
-            page.status.set_label("Salvando chave no keyring…");
+            page.status
+                .set_label(&gettext("Salvando chave no keyring…"));
             let result =
                 gio::spawn_blocking(move || crate::assistant::save_key(provider, &key)).await;
             match result {
                 Ok(Ok(())) => {
                     page.api_key.set_text("");
                     page.status
-                        .set_label("Chave salva com segurança no keyring");
+                        .set_label(&gettext("Chave salva com segurança no keyring"));
                     refresh_assistant_models(&page).await;
                 }
                 Ok(Err(error)) => page.status.set_label(&error.to_string()),
-                Err(_) => page.status.set_label("Falha interna ao acessar o keyring"),
+                Err(_) => page
+                    .status
+                    .set_label(&gettext("Falha interna ao acessar o keyring")),
             }
         });
     });
@@ -259,13 +278,16 @@ fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
     page.remove_key.connect_clicked(move |_| {
         let provider = crate::assistant::Provider::from_index(remove_page.provider.selected());
         let dialog = adw::AlertDialog::new(
-            Some("Remover chave de API?"),
-            Some(&format!(
-                "A chave de {} será apagada do keyring.",
-                provider.label()
-            )),
+            Some(&gettext("Remover chave de API?")),
+            Some(
+                &gettext("A chave de {provider} será apagada do keyring.")
+                    .replace("{provider}", provider.label()),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("remove", "Remover")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("remove", &gettext("Remover")),
+        ]);
         dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -276,9 +298,13 @@ fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
             }
             let result = gio::spawn_blocking(move || crate::assistant::clear_key(provider)).await;
             match result {
-                Ok(Ok(())) => page.status.set_label("Chave removida do keyring"),
+                Ok(Ok(())) => page
+                    .status
+                    .set_label(&gettext("Chave removida do keyring")),
                 Ok(Err(error)) => page.status.set_label(&error.to_string()),
-                Err(_) => page.status.set_label("Falha interna ao acessar o keyring"),
+                Err(_) => page
+                    .status
+                    .set_label(&gettext("Falha interna ao acessar o keyring")),
             }
         });
     });
@@ -287,7 +313,7 @@ fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
     page.clear_history.connect_clicked(move |_| {
         clear_page.clear();
         match crate::assistant::clear_history() {
-            Ok(()) => clear_page.status.set_label("Conversa limpa"),
+            Ok(()) => clear_page.status.set_label(&gettext("Conversa limpa")),
             Err(error) => clear_page.status.set_label(&error.to_string()),
         }
     });
@@ -306,21 +332,29 @@ async fn refresh_assistant_models(page: &crate::ui::AssistantPage) {
     let provider = crate::assistant::Provider::from_index(page.provider.selected());
     let selected = page.selected_model();
     page.refresh_models.set_sensitive(false);
-    page.status
-        .set_label(&format!("Consultando modelos da {}…", provider.label()));
+    page.status.set_label(
+        &gettext("Consultando modelos da {provider}…").replace("{provider}", provider.label()),
+    );
     let result = gio::spawn_blocking(move || crate::assistant::list_models(provider)).await;
     match result {
         Ok(Ok(models)) => {
             page.show_models(models, &selected);
-            page.status.set_label(&format!(
-                "{} modelo(s) compatível(is) disponível(is)",
-                page.model.model().map(|model| model.n_items()).unwrap_or(0)
-            ));
+            page.status.set_label(
+                &gettext("{count} modelo(s) compatível(is) disponível(is)").replace(
+                    "{count}",
+                    &page
+                        .model
+                        .model()
+                        .map(|model| model.n_items())
+                        .unwrap_or(0)
+                        .to_string(),
+                ),
+            );
         }
         Ok(Err(error)) => page.status.set_label(&error.to_string()),
         Err(_) => page
             .status
-            .set_label("Falha interna ao consultar os modelos"),
+            .set_label(&gettext("Falha interna ao consultar os modelos")),
     }
     page.refresh_models.set_sensitive(true);
 }
@@ -347,7 +381,9 @@ fn connect_assistant_send(button: &gtk::Button, page: &crate::ui::AssistantPage,
         let request_dbus = dbus.clone();
         glib::MainContext::default().spawn_local(async move {
             request_page.set_busy(true);
-            request_page.status.set_label("Consultando o provedor…");
+            request_page
+                .status
+                .set_label(&gettext("Consultando o provedor…"));
             let mut history = history;
             let mut input_tokens = 0;
             let mut output_tokens = 0;
@@ -355,9 +391,11 @@ fn connect_assistant_send(button: &gtk::Button, page: &crate::ui::AssistantPage,
             let mut has_cost = false;
             let max_rounds = settings.max_rounds_per_message.clamp(1, 20);
             for round in 0..max_rounds {
-                request_page
-                    .status
-                    .set_label(&format!("Pensando… etapa {} de {max_rounds}", round + 1));
+                request_page.status.set_label(
+                    &gettext("Pensando… etapa {step} de {total}")
+                        .replace("{step}", &(round + 1).to_string())
+                        .replace("{total}", &max_rounds.to_string()),
+                );
                 let round_settings = settings.clone();
                 let round_history = history.clone();
                 let result = gio::spawn_blocking(move || {
@@ -377,7 +415,7 @@ fn connect_assistant_send(button: &gtk::Button, page: &crate::ui::AssistantPage,
                     Err(_) => {
                         request_page
                             .status
-                            .set_label("Falha interna ao consultar o provedor");
+                            .set_label(&gettext("Falha interna ao consultar o provedor"));
                         break;
                     }
                 };
@@ -398,13 +436,17 @@ fn connect_assistant_send(button: &gtk::Button, page: &crate::ui::AssistantPage,
                 history = request_page.history();
                 let _ = crate::assistant::save_history(&history);
                 let cost = if has_cost {
-                    format!(" • estimativa US$ {estimated_cost:.6}")
+                    gettext(" • estimativa US$ {value}")
+                        .replace("{value}", &format!("{estimated_cost:.6}"))
                 } else {
                     String::new()
                 };
-                request_page.status.set_label(&format!(
-                    "{input_tokens} tokens de entrada • {output_tokens} de saída{cost}"
-                ));
+                request_page.status.set_label(
+                    &gettext("{input} tokens de entrada • {output} de saída{cost}")
+                        .replace("{input}", &input_tokens.to_string())
+                        .replace("{output}", &output_tokens.to_string())
+                        .replace("{cost}", &cost),
+                );
                 if !has_tools {
                     break;
                 }
@@ -422,27 +464,46 @@ async fn handle_assistant_tool(
     let result = match call.name.as_str() {
         "search_packages" => {
             let query = tool_string(&call.input, "query");
-            dbus.software().search(&query).await.map(|packages| {
+            dbus.software()
+                .search(&query)
+                .await
+                .map(|packages| {
+                    packages
+                        .into_iter()
+                        .take(20)
+                        .map(|package| {
+                            format!(
+                                "{} • {} • {}",
+                                package.id, package.origin, package.description
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                })
+                .map_err(|error| error.to_string())
+        }
+        "list_available_updates" => dbus
+            .software()
+            .list_updates()
+            .await
+            .map(|packages| {
                 packages
                     .into_iter()
-                    .take(20)
-                    .map(|package| {
-                        format!(
-                            "{} • {} • {}",
-                            package.id, package.origin, package.description
-                        )
-                    })
+                    .map(|package| format!("{} • {}", package.id, package.origin))
                     .collect::<Vec<_>>()
                     .join("\n")
             })
+            .map_err(|error| error.to_string()),
+        "get_recent_logs" => {
+            let unit = tool_string(&call.input, "unit");
+            let priority = tool_string(&call.input, "priority");
+            let max_lines = tool_u32(&call.input, "max_lines", 50).clamp(1, 200);
+            dbus.logs()
+                .query(&unit, &priority, "", "", max_lines)
+                .await
+                .map(|lines| crate::assistant::redact(&lines.join("\n")))
+                .map_err(|error| error.to_string())
         }
-        "list_available_updates" => dbus.software().list_updates().await.map(|packages| {
-            packages
-                .into_iter()
-                .map(|package| format!("{} • {}", package.id, package.origin))
-                .collect::<Vec<_>>()
-                .join("\n")
-        }),
         "get_system_status" => {
             let status = dbus
                 .system()
@@ -458,10 +519,12 @@ async fn handle_assistant_tool(
                 (Ok(status), Ok((used, total, percent))) => {
                     page.append(
                         "assistant",
-                        format!(
-                            "Sistema: {} • vegad {}\nDisco: {used} de {total} ({percent}%)",
-                            status.distro, status.version
-                        ),
+                        gettext("Sistema: {distro} • vegad {version}\nDisco: {used} de {total} ({percent}%)")
+                            .replace("{distro}", &status.distro)
+                            .replace("{version}", &status.version)
+                            .replace("{used}", &used)
+                            .replace("{total}", &total)
+                            .replace("{percent}", &percent.to_string()),
                     );
                     let _ = crate::assistant::audit("read", "get_system_status concluída");
                     return;
@@ -477,8 +540,10 @@ async fn handle_assistant_tool(
             return;
         }
         _ => {
-            page.status
-                .set_label(&format!("Ferramenta desconhecida recusada: {}", call.name));
+            page.status.set_label(
+                &gettext("Ferramenta desconhecida recusada: {name}")
+                    .replace("{name}", &call.name),
+            );
             let _ = crate::assistant::audit("tool_rejected", &call.name);
             return;
         }
@@ -486,14 +551,18 @@ async fn handle_assistant_tool(
     match result {
         Ok(output) => {
             let output = if output.is_empty() {
-                "Nenhum resultado.".into()
+                gettext("Nenhum resultado.")
             } else {
                 output
             };
-            page.append("user", format!(
-                "<dado_nao_confiavel origem=\"tool:{}\">\n{output}\n</dado_nao_confiavel>\nContinue a resposta usando este resultado.",
-                call.name
-            ));
+            let instruction = gettext("Continue a resposta usando este resultado.");
+            page.append(
+                "user",
+                format!(
+                    "<dado_nao_confiavel origem=\"tool:{}\">\n{output}\n</dado_nao_confiavel>\n{instruction}",
+                    call.name
+                ),
+            );
             let _ = crate::assistant::audit("read", &format!("{} concluída", call.name));
         }
         Err(error) => {
@@ -512,38 +581,42 @@ async fn handle_assistant_mutation(
     let id = tool_string(&call.input, "id");
     if call.name != "clear_package_cache" && id.is_empty() {
         page.status
-            .set_label("Proposta recusada: pacote sem identificador");
+            .set_label(&gettext("Proposta recusada: pacote sem identificador"));
         return;
     }
     if call.name == "install_package" && !crate::assistant::install_origin_allowed(&origin) {
-        page.status.set_label(
+        page.status.set_label(&gettext(
             "Esta origem não pode ser instalada pelo Assistente; use a tela Software para revisão",
-        );
+        ));
         return;
     }
     let (title, description, confirm, destructive) = match call.name.as_str() {
         "install_package" => (
-            "Instalar pacote?",
-            format!("Instalar {id} da origem {origin}."),
-            "Instalar",
+            gettext("Instalar pacote?"),
+            gettext("Instalar {id} da origem {origin}.")
+                .replace("{id}", &id)
+                .replace("{origin}", &origin),
+            gettext("Instalar"),
             false,
         ),
         "remove_package" => (
-            "Remover pacote?",
-            format!("Remover {id} da origem {origin}."),
-            "Remover",
+            gettext("Remover pacote?"),
+            gettext("Remover {id} da origem {origin}.")
+                .replace("{id}", &id)
+                .replace("{origin}", &origin),
+            gettext("Remover"),
             true,
         ),
         _ => (
-            "Limpar cache?",
-            "Remover os pacotes baixados do cache.".into(),
-            "Limpar",
+            gettext("Limpar cache?"),
+            gettext("Remover os pacotes baixados do cache."),
+            gettext("Limpar"),
             true,
         ),
     };
     let _ = crate::assistant::audit("mutation_proposed", &description);
-    let dialog = adw::AlertDialog::new(Some(title), Some(&description));
-    dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", confirm)]);
+    let dialog = adw::AlertDialog::new(Some(&title), Some(&description));
+    dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", &confirm)]);
     dialog.set_response_appearance(
         "confirm",
         if destructive {
@@ -557,7 +630,7 @@ async fn handle_assistant_mutation(
     if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
         page.append(
             "assistant",
-            "A proposta foi rejeitada. Nenhuma alteração foi realizada.".into(),
+            gettext("A proposta foi rejeitada. Nenhuma alteração foi realizada."),
         );
         let _ = crate::assistant::audit("mutation_rejected", &description);
         return;
@@ -571,7 +644,8 @@ async fn handle_assistant_mutation(
         Ok(transaction) => {
             page.append(
                 "assistant",
-                format!("Ação aprovada e enviada ao vegad (transação #{transaction})."),
+                gettext("Ação aprovada e enviada ao vegad (transação #{transaction}).")
+                    .replace("{transaction}", &transaction.to_string()),
             );
             let _ = crate::assistant::audit("mutation_approved", &description);
         }
@@ -589,6 +663,14 @@ fn tool_string(value: &serde_json::Value, key: &str) -> String {
         .unwrap_or_default()
         .trim()
         .to_owned()
+}
+
+fn tool_u32(value: &serde_json::Value, key: &str, default: u32) -> u32 {
+    value
+        .get(key)
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .unwrap_or(default)
 }
 
 fn configure_logs(shell: &VegaShell, dbus: VegaDbus) {
@@ -625,7 +707,7 @@ fn configure_logs(shell: &VegaShell, dbus: VegaDbus) {
 
 async fn refresh_logs_page(page: &crate::ui::LogsPage, dbus: &VegaDbus) {
     page.set_busy(true);
-    page.status.set_label("Consultando o journal…");
+    page.status.set_label(&gettext("Consultando o journal…"));
     let result = dbus
         .logs()
         .query(
@@ -657,15 +739,22 @@ fn configure_users(shell: &VegaShell, dbus: VegaDbus) {
         let username = create_page.username.text().trim().to_owned();
         let is_admin = create_page.admin.is_active();
         let role = if is_admin {
-            "administrador"
+            gettext("administrador")
         } else {
-            "usuário comum"
+            gettext("usuário comum")
         };
         let dialog = adw::AlertDialog::new(
-            Some("Criar usuário?"),
-            Some(&format!("A conta {username} será criada como {role}.")),
+            Some(&gettext("Criar usuário?")),
+            Some(
+                &gettext("A conta {username} será criada como {role}.")
+                    .replace("{username}", &username)
+                    .replace("{role}", &role),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", "Criar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("confirm", &gettext("Criar")),
+        ]);
         dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -676,7 +765,8 @@ fn configure_users(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.set_busy(true);
-            page.status.set_label(&format!("Criando {username}…"));
+            page.status
+                .set_label(&gettext("Criando {username}…").replace("{username}", &username));
             match dbus.users().create(&username, is_admin).await {
                 Ok(()) => {
                     page.username.set_text("");
@@ -712,26 +802,25 @@ fn connect_user_action(
         };
         let (title, message, confirm) = match action {
             UserAction::Admin if user.is_admin => (
-                "Remover privilégios administrativos?",
-                format!("{} deixará de administrar o sistema.", user.username),
-                "Remover admin",
+                gettext("Remover privilégios administrativos?"),
+                gettext("{user} deixará de administrar o sistema.")
+                    .replace("{user}", &user.username),
+                gettext("Remover admin"),
             ),
             UserAction::Admin => (
-                "Conceder privilégios administrativos?",
-                format!("{} poderá administrar o sistema.", user.username),
-                "Tornar admin",
+                gettext("Conceder privilégios administrativos?"),
+                gettext("{user} poderá administrar o sistema.").replace("{user}", &user.username),
+                gettext("Tornar admin"),
             ),
             UserAction::Remove => (
-                "Remover usuário?",
-                format!(
-                    "A conta {} e seu diretório pessoal serão removidos.",
-                    user.username
-                ),
-                "Remover",
+                gettext("Remover usuário?"),
+                gettext("A conta {user} e seu diretório pessoal serão removidos.")
+                    .replace("{user}", &user.username),
+                gettext("Remover"),
             ),
         };
-        let dialog = adw::AlertDialog::new(Some(title), Some(&message));
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", confirm)]);
+        let dialog = adw::AlertDialog::new(Some(&title), Some(&message));
+        dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", &confirm)]);
         dialog.set_response_appearance(
             "confirm",
             if matches!(action, UserAction::Remove) {
@@ -749,8 +838,9 @@ fn connect_user_action(
                 return;
             }
             page.set_busy(true);
-            page.status
-                .set_label(&format!("Processando {}…", user.username));
+            page.status.set_label(
+                &gettext("Processando {user}…").replace("{user}", &user.username),
+            );
             let result = match action {
                 UserAction::Admin => dbus.users().set_admin(&user.username, !user.is_admin).await,
                 UserAction::Remove => dbus.users().remove(&user.username).await,
@@ -765,7 +855,7 @@ fn connect_user_action(
 }
 
 async fn refresh_users_page(page: &crate::ui::UsersPage, dbus: &VegaDbus) {
-    page.status.set_label("Carregando usuários…");
+    page.status.set_label(&gettext("Carregando usuários…"));
     match dbus.users().list().await {
         Ok(users) => page.show(users),
         Err(error) => page.status.set_label(&error.to_string()),
@@ -829,24 +919,33 @@ fn connect_service_action(
         };
         let (verb, detail) = match action {
             ServiceAction::Enable if service.enabled => (
-                "Desabilitar",
-                "deixará de iniciar automaticamente e será parado",
+                gettext("Desabilitar"),
+                gettext("deixará de iniciar automaticamente e será parado"),
             ),
             ServiceAction::Enable => (
-                "Habilitar",
-                "iniciará agora e automaticamente com o sistema",
+                gettext("Habilitar"),
+                gettext("iniciará agora e automaticamente com o sistema"),
             ),
-            ServiceAction::Running if service.active => {
-                ("Parar", "será interrompido até uma nova inicialização")
-            }
-            ServiceAction::Running => ("Iniciar", "será iniciado nesta sessão"),
-            ServiceAction::Restart => ("Reiniciar", "será interrompido e iniciado novamente"),
+            ServiceAction::Running if service.active => (
+                gettext("Parar"),
+                gettext("será interrompido até uma nova inicialização"),
+            ),
+            ServiceAction::Running => (gettext("Iniciar"), gettext("será iniciado nesta sessão")),
+            ServiceAction::Restart => (
+                gettext("Reiniciar"),
+                gettext("será interrompido e iniciado novamente"),
+            ),
         };
         let dialog = adw::AlertDialog::new(
-            Some(&format!("{verb} serviço?")),
-            Some(&format!("{} ({}) {detail}.", service.label, service.name)),
+            Some(&gettext("{verb} serviço?").replace("{verb}", &verb)),
+            Some(
+                &gettext("{label} ({name}) {detail}.")
+                    .replace("{label}", &service.label)
+                    .replace("{name}", &service.name)
+                    .replace("{detail}", &detail),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", verb)]);
+        dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", &verb)]);
         if matches!(action, ServiceAction::Restart)
             || matches!(action, ServiceAction::Enable) && !service.enabled
             || matches!(action, ServiceAction::Running) && !service.active
@@ -862,7 +961,11 @@ fn connect_service_action(
                 return;
             }
             page.set_busy(true);
-            page.status.set_label(&format!("{verb} {}…", service.label));
+            page.status.set_label(
+                &gettext("{verb} {label}…")
+                    .replace("{verb}", &verb)
+                    .replace("{label}", &service.label),
+            );
             let result = match action {
                 ServiceAction::Enable => {
                     dbus.services()
@@ -888,7 +991,7 @@ fn connect_service_action(
 }
 
 async fn refresh_services_page(page: &crate::ui::ServicesPage, dbus: &VegaDbus, all: bool) {
-    page.status.set_label("Carregando serviços…");
+    page.status.set_label(&gettext("Carregando serviços…"));
     let result = if all {
         dbus.services().list_all().await
     } else {
@@ -916,16 +1019,20 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
             return;
         };
         let enable = !status.powered;
-        let verb = if enable { "Ligar" } else { "Desligar" };
+        let verb = if enable {
+            gettext("Ligar")
+        } else {
+            gettext("Desligar")
+        };
         let dialog = adw::AlertDialog::new(
-            Some(&format!("{verb} Bluetooth?")),
-            Some(if enable {
-                "O adaptador Bluetooth será ligado."
+            Some(&gettext("{verb} Bluetooth?").replace("{verb}", &verb)),
+            Some(&if enable {
+                gettext("O adaptador Bluetooth será ligado.")
             } else {
-                "Dispositivos Bluetooth conectados serão desconectados."
+                gettext("Dispositivos Bluetooth conectados serão desconectados.")
             }),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", verb)]);
+        dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", &verb)]);
         dialog.set_response_appearance(
             "confirm",
             if enable {
@@ -962,10 +1069,10 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
         let dbus = scan_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
             page.scan.set_sensitive(false);
-            page.status.set_label(if scanning {
-                "Iniciando busca Bluetooth…"
+            page.status.set_label(&if scanning {
+                gettext("Iniciando busca Bluetooth…")
             } else {
-                "Parando busca Bluetooth…"
+                gettext("Parando busca Bluetooth…")
             });
             match dbus.bluetooth().set_scanning(scanning).await {
                 Ok(()) => refresh_bluetooth_page(&page, &dbus).await,
@@ -982,17 +1089,17 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
             return;
         };
         let action = if !device.paired {
-            "Parear"
+            gettext("Parear")
         } else if device.connected {
-            "Desconectar"
+            gettext("Desconectar")
         } else {
-            "Conectar"
+            gettext("Conectar")
         };
         let dialog = adw::AlertDialog::new(
-            Some(&format!("{action} dispositivo?")),
+            Some(&gettext("{action} dispositivo?").replace("{action}", &action)),
             Some(&format!("{} • {}", device.display_name(), device.address)),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", action)]);
+        dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", &action)]);
         dialog.set_response_appearance(
             "confirm",
             if device.connected {
@@ -1010,7 +1117,9 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
                 return;
             }
             page.device_action.set_sensitive(false);
-            page.status.set_label(&format!("{action} dispositivo…"));
+            page.status.set_label(
+                &gettext("{action} dispositivo…").replace("{action}", &action),
+            );
             let result = if !device.paired {
                 dbus.bluetooth().pair(&device.address).await
             } else if device.connected {
@@ -1034,11 +1143,11 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
             return;
         };
         let chooser = gtk::FileChooserNative::new(
-            Some("Enviar arquivo por Bluetooth"),
+            Some(&gettext("Enviar arquivo por Bluetooth")),
             Some(&send_window),
             gtk::FileChooserAction::Open,
-            Some("Selecionar"),
-            Some("Cancelar"),
+            Some(&gettext("Selecionar")),
+            Some(&gettext("Cancelar")),
         );
         let page = send_page.clone();
         let dbus = send_dbus.clone();
@@ -1048,19 +1157,23 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
                 return;
             }
             let Some(path) = chooser.file().and_then(|file| file.path()) else {
-                page.status.set_label("Selecione um arquivo local.");
+                page.status.set_label(&gettext("Selecione um arquivo local."));
                 return;
             };
             let display_path = path.display().to_string();
             let dialog = adw::AlertDialog::new(
-                Some("Enviar arquivo por Bluetooth?"),
-                Some(&format!(
-                    "Enviar {display_path} para {} ({})?",
-                    device.display_name(),
-                    device.address
-                )),
+                Some(&gettext("Enviar arquivo por Bluetooth?")),
+                Some(
+                    &gettext("Enviar {path} para {device} ({address})?")
+                        .replace("{path}", &display_path)
+                        .replace("{device}", device.display_name())
+                        .replace("{address}", &device.address),
+                ),
             );
-            dialog.add_responses(&[("cancel", "Cancelar"), ("send", "Enviar")]);
+            dialog.add_responses(&[
+                ("cancel", &gettext("Cancelar")),
+                ("send", &gettext("Enviar")),
+            ]);
             dialog.set_response_appearance("send", adw::ResponseAppearance::Suggested);
             dialog.set_default_response(Some("cancel"));
             dialog.set_close_response("cancel");
@@ -1072,9 +1185,12 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
                     return;
                 }
                 page.send_file.set_sensitive(false);
-                page.status.set_label("Enviando arquivo por Bluetooth…");
+                page.status
+                    .set_label(&gettext("Enviando arquivo por Bluetooth…"));
                 match dbus.bluetooth().send_file(&address, &display_path).await {
-                    Ok(()) => page.status.set_label("Arquivo enviado com sucesso."),
+                    Ok(()) => page
+                        .status
+                        .set_label(&gettext("Arquivo enviado com sucesso.")),
                     Err(error) => page.status.set_label(&error.to_string()),
                 }
                 page.send_file.set_sensitive(true);
@@ -1089,11 +1205,11 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
     let receive_button = page.receive_files.clone();
     receive_button.connect_clicked(move |_| {
         let chooser = gtk::FileChooserNative::new(
-            Some("Pasta para arquivos recebidos"),
+            Some(&gettext("Pasta para arquivos recebidos")),
             Some(&receive_window),
             gtk::FileChooserAction::SelectFolder,
-            Some("Selecionar"),
-            Some("Cancelar"),
+            Some(&gettext("Selecionar")),
+            Some(&gettext("Cancelar")),
         );
         let page = receive_page.clone();
         let dbus = receive_dbus.clone();
@@ -1103,17 +1219,23 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
                 return;
             }
             let Some(path) = chooser.file().and_then(|file| file.path()) else {
-                page.status.set_label("Selecione uma pasta local.");
+                page.status.set_label(&gettext("Selecione uma pasta local."));
                 return;
             };
             let directory = path.display().to_string();
             let dialog = adw::AlertDialog::new(
-                Some("Ativar recebimento Bluetooth?"),
-                Some(&format!(
-                    "Arquivos recebidos serão gravados em {directory}. Aceite somente transferências esperadas."
-                )),
+                Some(&gettext("Ativar recebimento Bluetooth?")),
+                Some(
+                    &gettext(
+                        "Arquivos recebidos serão gravados em {directory}. Aceite somente transferências esperadas.",
+                    )
+                    .replace("{directory}", &directory),
+                ),
             );
-            dialog.add_responses(&[("cancel", "Cancelar"), ("start", "Ativar")]);
+            dialog.add_responses(&[
+                ("cancel", &gettext("Cancelar")),
+                ("start", &gettext("Ativar")),
+            ]);
             dialog.set_response_appearance("start", adw::ResponseAppearance::Suggested);
             dialog.set_default_response(Some("cancel"));
             dialog.set_close_response("cancel");
@@ -1124,7 +1246,8 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
                     return;
                 }
                 page.receive_files.set_sensitive(false);
-                page.status.set_label("Ativando recebimento Bluetooth…");
+                page.status
+                    .set_label(&gettext("Ativando recebimento Bluetooth…"));
                 match dbus.bluetooth().start_receiver(&directory).await {
                     Ok(()) => refresh_bluetooth_page(&page, &dbus).await,
                     Err(error) => page.status.set_label(&error.to_string()),
@@ -1165,7 +1288,9 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
             Err(error) => load_page.proxy.set_label(&error.to_string()),
         }
         refresh_firewall_page(&load_page, &load_dbus).await;
-        load_page.status.set_label("Informações de rede carregadas");
+        load_page
+            .status
+            .set_label(&gettext("Informações de rede carregadas"));
     });
 
     let interface_page = page.clone();
@@ -1196,16 +1321,16 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
             .row_spacing(8)
             .build();
         for (row, (label, field)) in [
-            ("Conexão", connection.clone()),
-            ("Endereço/CIDR", address.clone()),
-            ("Gateway", gateway.clone()),
-            ("DNS", dns.clone()),
+            (gettext("Conexão"), connection.clone()),
+            (gettext("Endereço/CIDR"), address.clone()),
+            ("Gateway".to_string(), gateway.clone()),
+            ("DNS".to_string(), dns.clone()),
         ]
         .into_iter()
         .enumerate()
         {
             form.attach(
-                &gtk::Label::builder().label(label).xalign(0.0).build(),
+                &gtk::Label::builder().label(&label).xalign(0.0).build(),
                 0,
                 row as i32,
                 1,
@@ -1215,11 +1340,16 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
             form.attach(&field, 1, row as i32, 1, 1);
         }
         let dialog = adw::AlertDialog::new(
-            Some("Configurar IPv4 estático?"),
-            Some("O NetworkManager substituirá a configuração automática e reconectará esta conexão."),
+            Some(&gettext("Configurar IPv4 estático?")),
+            Some(&gettext(
+                "O NetworkManager substituirá a configuração automática e reconectará esta conexão.",
+            )),
         );
         dialog.set_extra_child(Some(&form));
-        dialog.add_responses(&[("cancel", "Cancelar"), ("apply", "Aplicar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("apply", &gettext("Aplicar")),
+        ]);
         dialog.set_response_appearance("apply", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -1234,16 +1364,18 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
             let gateway = gateway.text().trim().to_owned();
             let dns = dns.text().trim().to_owned();
             if connection.is_empty() || !valid_ipv4_cidr(&address) {
-                page.status
-                    .set_label("Informe uma conexão e um endereço IPv4 com CIDR válido.");
+                page.status.set_label(&gettext(
+                    "Informe uma conexão e um endereço IPv4 com CIDR válido.",
+                ));
                 return;
             }
             if !gateway.is_empty() && gateway.parse::<std::net::Ipv4Addr>().is_err() {
-                page.status.set_label("O gateway IPv4 informado é inválido.");
+                page.status
+                    .set_label(&gettext("O gateway IPv4 informado é inválido."));
                 return;
             }
             page.interface_action.set_sensitive(false);
-            page.status.set_label("Aplicando IPv4 estático…");
+            page.status.set_label(&gettext("Aplicando IPv4 estático…"));
             match dbus
                 .network()
                 .set_static_ipv4(&connection, &address, &gateway, &dns)
@@ -1260,37 +1392,36 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
     page.connect_wifi_action(move |network| {
         let disconnect = network.active;
         let password = gtk::PasswordEntry::builder()
-            .placeholder_text("Senha da rede")
+            .placeholder_text(gettext("Senha da rede"))
             .show_peek_icon(true)
             .build();
         let dialog = adw::AlertDialog::new(
-            Some(if disconnect {
-                "Desconectar do Wi‑Fi?"
+            Some(&if disconnect {
+                gettext("Desconectar do Wi‑Fi?")
             } else {
-                "Conectar ao Wi‑Fi?"
+                gettext("Conectar ao Wi‑Fi?")
             }),
-            Some(&format!(
-                "{}{}",
-                network.ssid,
-                if disconnect {
-                    " será desconectada deste dispositivo."
+            Some(
+                &if disconnect {
+                    gettext("{ssid} será desconectada deste dispositivo.")
                 } else {
-                    " será conectada pelo NetworkManager."
+                    gettext("{ssid} será conectada pelo NetworkManager.")
                 }
-            )),
+                .replace("{ssid}", &network.ssid),
+            ),
         );
         let needs_password = !disconnect && wifi_requires_password(&network.security);
         if needs_password {
             dialog.set_extra_child(Some(&password));
         }
         dialog.add_responses(&[
-            ("cancel", "Cancelar"),
+            ("cancel", &gettext("Cancelar")),
             (
                 "confirm",
-                if disconnect {
-                    "Desconectar"
+                &if disconnect {
+                    gettext("Desconectar")
                 } else {
-                    "Conectar"
+                    gettext("Conectar")
                 },
             ),
         ]);
@@ -1312,13 +1443,14 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
             }
             let secret = password.text().to_string();
             if needs_password && secret.is_empty() {
-                page.status.set_label("Informe a senha da rede Wi‑Fi.");
+                page.status
+                    .set_label(&gettext("Informe a senha da rede Wi‑Fi."));
                 return;
             }
-            page.status.set_label(if disconnect {
-                "Desconectando Wi‑Fi…"
+            page.status.set_label(&if disconnect {
+                gettext("Desconectando Wi‑Fi…")
             } else {
-                "Conectando ao Wi‑Fi…"
+                gettext("Conectando ao Wi‑Fi…")
             });
             let result = if disconnect {
                 dbus.network().disconnect(&network.device).await
@@ -1342,20 +1474,27 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
             && config.socks.is_empty()
             && config.no_proxy.is_empty();
         let dialog = adw::AlertDialog::new(
-            Some(if clearing {
-                "Remover configuração de proxy?"
+            Some(&if clearing {
+                gettext("Remover configuração de proxy?")
             } else {
-                "Aplicar proxy global?"
+                gettext("Aplicar proxy global?")
             }),
-            Some(if clearing {
-                "As variáveis de proxy gerenciadas pelo Vega serão removidas de /etc/environment."
+            Some(&if clearing {
+                gettext("As variáveis de proxy gerenciadas pelo Vega serão removidas de /etc/environment.")
             } else {
-                "A configuração será gravada em /etc/environment e poderá exigir uma nova sessão para alcançar todos os aplicativos."
+                gettext("A configuração será gravada em /etc/environment e poderá exigir uma nova sessão para alcançar todos os aplicativos.")
             }),
         );
         dialog.add_responses(&[
-            ("cancel", "Cancelar"),
-            ("apply", if clearing { "Remover" } else { "Aplicar" }),
+            ("cancel", &gettext("Cancelar")),
+            (
+                "apply",
+                &if clearing {
+                    gettext("Remover")
+                } else {
+                    gettext("Aplicar")
+                },
+            ),
         ]);
         dialog.set_response_appearance(
             "apply",
@@ -1374,7 +1513,8 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
                 return;
             }
             page.proxy_apply.set_sensitive(false);
-            page.proxy.set_label("Aplicando configuração global…");
+            page.proxy
+                .set_label(&gettext("Aplicando configuração global…"));
             match dbus.network().set_proxy(&config).await {
                 Ok(()) => match dbus.network().proxy().await {
                     Ok(config) => page.show_proxy(&config),
@@ -1392,14 +1532,14 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
     let vpn_import = page.vpn_import.clone();
     vpn_import.connect_clicked(move |_| {
         let chooser = gtk::FileChooserNative::new(
-            Some("Importar perfil OpenVPN"),
+            Some(&gettext("Importar perfil OpenVPN")),
             Some(&vpn_window),
             gtk::FileChooserAction::Open,
-            Some("Selecionar"),
-            Some("Cancelar"),
+            Some(&gettext("Selecionar")),
+            Some(&gettext("Cancelar")),
         );
         let filter = gtk::FileFilter::new();
-        filter.set_name(Some("Perfis OpenVPN (*.ovpn)"));
+        filter.set_name(Some(&gettext("Perfis OpenVPN (*.ovpn)")));
         filter.add_pattern("*.ovpn");
         filter.add_pattern("*.OVPN");
         chooser.add_filter(&filter);
@@ -1411,8 +1551,9 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
                 return;
             }
             let Some(path) = chooser.file().and_then(|file| file.path()) else {
-                page.vpn_status
-                    .set_label("Selecione um arquivo local de perfil OpenVPN.");
+                page.vpn_status.set_label(&gettext(
+                    "Selecione um arquivo local de perfil OpenVPN.",
+                ));
                 return;
             };
             if !path
@@ -1420,17 +1561,23 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
                 .is_some_and(|extension| extension.eq_ignore_ascii_case("ovpn"))
             {
                 page.vpn_status
-                    .set_label("O perfil deve possuir a extensão .ovpn.");
+                    .set_label(&gettext("O perfil deve possuir a extensão .ovpn."));
                 return;
             }
             let display_path = path.display().to_string();
             let dialog = adw::AlertDialog::new(
-                Some("Importar perfil OpenVPN?"),
-                Some(&format!(
-                    "O NetworkManager importará o perfil:\n{display_path}\n\nRevise a origem e o conteúdo do arquivo antes de continuar."
-                )),
+                Some(&gettext("Importar perfil OpenVPN?")),
+                Some(
+                    &gettext(
+                        "O NetworkManager importará o perfil:\n{path}\n\nRevise a origem e o conteúdo do arquivo antes de continuar.",
+                    )
+                    .replace("{path}", &display_path),
+                ),
             );
-            dialog.add_responses(&[("cancel", "Cancelar"), ("import", "Importar")]);
+            dialog.add_responses(&[
+                ("cancel", &gettext("Cancelar")),
+                ("import", &gettext("Importar")),
+            ]);
             dialog.set_response_appearance("import", adw::ResponseAppearance::Suggested);
             dialog.set_default_response(Some("cancel"));
             dialog.set_close_response("cancel");
@@ -1441,11 +1588,12 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
                     return;
                 }
                 page.vpn_import.set_sensitive(false);
-                page.vpn_status.set_label("Importando perfil OpenVPN…");
+                page.vpn_status
+                    .set_label(&gettext("Importando perfil OpenVPN…"));
                 match dbus.network().import_vpn(&display_path).await {
                     Ok(()) => page
                         .vpn_status
-                        .set_label("Perfil importado no NetworkManager."),
+                        .set_label(&gettext("Perfil importado no NetworkManager.")),
                     Err(error) => page.vpn_status.set_label(&error.to_string()),
                 }
                 page.vpn_import.set_sensitive(true);
@@ -1460,17 +1608,26 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
             return;
         };
         let enable = !service.enabled;
-        let verb = if enable { "Permitir" } else { "Bloquear" };
+        let verb = if enable {
+            gettext("Permitir")
+        } else {
+            gettext("Bloquear")
+        };
+        let state_word = if enable {
+            gettext("permitido")
+        } else {
+            gettext("bloqueado")
+        };
         let dialog = adw::AlertDialog::new(
-            Some(&format!("{verb} serviço no firewall?")),
-            Some(&format!(
-                "{} ({}) será {} nas conexões de entrada.",
-                service.label,
-                service.name,
-                if enable { "permitido" } else { "bloqueado" }
-            )),
+            Some(&gettext("{verb} serviço no firewall?").replace("{verb}", &verb)),
+            Some(
+                &gettext("{label} ({name}) será {state} nas conexões de entrada.")
+                    .replace("{label}", &service.label)
+                    .replace("{name}", &service.name)
+                    .replace("{state}", &state_word),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", verb)]);
+        dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", &verb)]);
         dialog.set_response_appearance(
             "confirm",
             if enable {
@@ -1488,9 +1645,11 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
                 return;
             }
             action_page.firewall_action.set_sensitive(false);
-            action_page
-                .firewall_status
-                .set_label(&format!("{verb} {}…", service.label));
+            action_page.firewall_status.set_label(
+                &gettext("{verb} {label}…")
+                    .replace("{verb}", &verb)
+                    .replace("{label}", &service.label),
+            );
             match action_dbus
                 .firewall()
                 .set_service(&service.name, enable)
@@ -1507,7 +1666,7 @@ async fn refresh_wifi_page(page: &crate::ui::NetworkPage, dbus: &VegaDbus) {
     match dbus.network().wifi().await {
         Ok(items) => {
             page.show_wifi(&items);
-            page.status.set_label("Redes Wi‑Fi atualizadas");
+            page.status.set_label(&gettext("Redes Wi‑Fi atualizadas"));
         }
         Err(error) => page.status.set_label(&error.to_string()),
     }
@@ -1517,7 +1676,8 @@ async fn refresh_interfaces_page(page: &crate::ui::NetworkPage, dbus: &VegaDbus)
     match dbus.network().interfaces().await {
         Ok(items) => {
             page.show_interfaces(&items);
-            page.status.set_label("Interfaces de rede atualizadas");
+            page.status
+                .set_label(&gettext("Interfaces de rede atualizadas"));
         }
         Err(error) => page.status.set_label(&error.to_string()),
     }
@@ -1564,20 +1724,24 @@ fn configure_storage(shell: &VegaShell, dbus: VegaDbus) {
             return;
         };
         let unmount = volume.can_unmount;
-        let verb = if unmount { "Desmontar" } else { "Montar" };
+        let verb = if unmount {
+            gettext("Desmontar")
+        } else {
+            gettext("Montar")
+        };
         let dialog = adw::AlertDialog::new(
-            Some(&format!("{verb} volume?")),
+            Some(&gettext("{verb} volume?").replace("{verb}", &verb)),
             Some(&format!(
                 "{} ({})",
                 volume.path,
                 if volume.mountpoint.is_empty() {
-                    "não montado"
+                    gettext("não montado")
                 } else {
-                    &volume.mountpoint
+                    volume.mountpoint.clone()
                 }
             )),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", verb)]);
+        dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", &verb)]);
         dialog.set_response_appearance(
             "confirm",
             if unmount {
@@ -1595,7 +1759,11 @@ fn configure_storage(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.action.set_sensitive(false);
-            page.status.set_label(&format!("{verb} {}…", volume.path));
+            page.status.set_label(
+                &gettext("{verb} {path}…")
+                    .replace("{verb}", &verb)
+                    .replace("{path}", &volume.path),
+            );
             let result = if unmount {
                 dbus.storage().unmount(&volume.path).await
             } else {
@@ -1616,6 +1784,193 @@ async fn refresh_storage_page(page: &crate::ui::StoragePage, dbus: &VegaDbus) {
     }
 }
 
+fn configure_screen(shell: &VegaShell, dbus: VegaDbus) {
+    configure_wallpaper_tab(&shell.screen.wallpaper);
+    configure_screensaver_tab(&shell.screen.screensaver);
+    configure_monitor_tab(&shell.screen.monitor, dbus);
+}
+
+fn configure_wallpaper_tab(page: &crate::ui::WallpaperPage) {
+    let load_page = page.clone();
+    glib::MainContext::default().spawn_local(async move {
+        refresh_wallpaper_page(&load_page).await;
+    });
+
+    let apply_page = page.clone();
+    page.connect_apply(move |entry| match crate::wallpaper::apply(&entry) {
+        Ok(()) => {
+            apply_page
+                .status
+                .set_label(&gettext("{name} aplicado.").replace("{name}", &entry.name));
+            let page = apply_page.clone();
+            glib::MainContext::default().spawn_local(async move {
+                refresh_wallpaper_page(&page).await;
+            });
+        }
+        Err(error) => apply_page.status.set_label(&error.to_string()),
+    });
+}
+
+async fn refresh_wallpaper_page(page: &crate::ui::WallpaperPage) {
+    let result = gio::spawn_blocking(|| {
+        let wallpapers = crate::wallpaper::list_wallpapers();
+        let thumbnails = crate::wallpaper::load_thumbnails(&wallpapers);
+        (wallpapers, thumbnails)
+    })
+    .await;
+    match result {
+        Ok((wallpapers, thumbnails)) => {
+            let current = crate::wallpaper::current_light_path();
+            page.show(&wallpapers, &thumbnails, current.as_deref());
+        }
+        Err(_) => page
+            .status
+            .set_label(&gettext("Falha interna ao carregar os papéis de parede.")),
+    }
+}
+
+fn configure_screensaver_tab(page: &crate::ui::ScreensaverPage) {
+    match crate::screensaver::current() {
+        Some(settings) => page.show(&settings),
+        None => page.status.set_label(&gettext(
+            "Bloqueio de tela não está disponível neste sistema.",
+        )),
+    }
+
+    let apply_page = page.clone();
+    page.apply.connect_clicked(move |_| {
+        let settings = apply_page.selected();
+        match crate::screensaver::apply(&settings) {
+            Ok(()) => apply_page
+                .status
+                .set_label(&gettext("Configuração aplicada.")),
+            Err(error) => apply_page.status.set_label(&error.to_string()),
+        }
+    });
+}
+
+fn configure_monitor_tab(page: &crate::ui::MonitorPage, dbus: VegaDbus) {
+    let last_metrics: Rc<RefCell<Option<(crate::dbus::SystemMetrics, std::time::Instant)>>> =
+        Rc::new(RefCell::new(None));
+    let timer_id: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
+
+    // O timer só roda enquanto a aba está visível (map/unmap do próprio
+    // widget) — atende ao requisito original da issue de monitor de não
+    // gastar CPU sondando processos com a página fora de vista.
+    let map_page = page.clone();
+    let map_dbus = dbus.clone();
+    let map_last = last_metrics.clone();
+    let map_timer = timer_id.clone();
+    page.root.connect_map(move |_| {
+        if map_timer.borrow().is_some() {
+            return;
+        }
+        let tick_page = map_page.clone();
+        let tick_dbus = map_dbus.clone();
+        let tick_last = map_last.clone();
+        glib::MainContext::default().spawn_local({
+            let page = tick_page.clone();
+            let dbus = tick_dbus.clone();
+            let last = tick_last.clone();
+            async move {
+                refresh_monitor_page(&page, &dbus, &last).await;
+            }
+        });
+        let id = glib::timeout_add_seconds_local(2, move || {
+            let page = tick_page.clone();
+            let dbus = tick_dbus.clone();
+            let last = tick_last.clone();
+            glib::MainContext::default().spawn_local(async move {
+                refresh_monitor_page(&page, &dbus, &last).await;
+            });
+            glib::ControlFlow::Continue
+        });
+        *map_timer.borrow_mut() = Some(id);
+    });
+
+    let unmap_timer = timer_id.clone();
+    page.root.connect_unmap(move |_| {
+        if let Some(id) = unmap_timer.borrow_mut().take() {
+            id.remove();
+        }
+    });
+
+    let kill_page = page.clone();
+    page.kill.connect_clicked(move |_| {
+        let Some(process) = kill_page.selected() else {
+            return;
+        };
+        let dialog = adw::AlertDialog::new(
+            Some(&gettext("Encerrar processo?")),
+            Some(
+                &gettext("{name} (PID {pid}) será encerrado com SIGTERM.")
+                    .replace("{name}", &process.name)
+                    .replace("{pid}", &process.pid.to_string()),
+            ),
+        );
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("confirm", &gettext("Encerrar")),
+        ]);
+        dialog.set_response_appearance("confirm", adw::ResponseAppearance::Destructive);
+        dialog.set_default_response(Some("cancel"));
+        dialog.set_close_response("cancel");
+        let page = kill_page.clone();
+        let dbus = dbus.clone();
+        glib::MainContext::default().spawn_local(async move {
+            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+                return;
+            }
+            match dbus.monitor().kill_process(process.pid).await {
+                Ok(()) => page.status.set_label(&gettext("Sinal enviado ao processo.")),
+                Err(error) => page.status.set_label(&error.to_string()),
+            }
+        });
+    });
+}
+
+async fn refresh_monitor_page(
+    page: &crate::ui::MonitorPage,
+    dbus: &VegaDbus,
+    last: &Rc<RefCell<Option<(crate::dbus::SystemMetrics, std::time::Instant)>>>,
+) {
+    let client = dbus.monitor();
+    match client.metrics().await {
+        Ok(metrics) => {
+            let now = std::time::Instant::now();
+            let rates = last.borrow().as_ref().map(|(previous, previous_time)| {
+                let elapsed = now.duration_since(*previous_time).as_secs_f64().max(0.001);
+                crate::ui::Rates {
+                    disk_read_per_sec: rate_per_sec(
+                        previous.disk_read_bytes,
+                        metrics.disk_read_bytes,
+                        elapsed,
+                    ),
+                    disk_write_per_sec: rate_per_sec(
+                        previous.disk_write_bytes,
+                        metrics.disk_write_bytes,
+                        elapsed,
+                    ),
+                    net_rx_per_sec: rate_per_sec(previous.net_rx_bytes, metrics.net_rx_bytes, elapsed),
+                    net_tx_per_sec: rate_per_sec(previous.net_tx_bytes, metrics.net_tx_bytes, elapsed),
+                }
+            });
+            page.show_metrics(&metrics, rates);
+            *last.borrow_mut() = Some((metrics, now));
+        }
+        Err(error) => page.status.set_label(&error.to_string()),
+    }
+    match client.list_processes().await {
+        Ok(processes) => page.show_processes(processes),
+        Err(error) => page.status.set_label(&error.to_string()),
+    }
+}
+
+fn rate_per_sec(previous: u64, current: u64, elapsed_secs: f64) -> u64 {
+    let delta = current.saturating_sub(previous);
+    (delta as f64 / elapsed_secs) as u64
+}
+
 fn configure_datetime(shell: &VegaShell, dbus: VegaDbus) {
     let page = shell.datetime.clone();
     let load_page = page.clone();
@@ -1631,14 +1986,27 @@ fn configure_datetime(shell: &VegaShell, dbus: VegaDbus) {
         let locale = crate::ui::DateTimePage::selected(&apply_page.locale);
         let keymap = crate::ui::DateTimePage::selected(&apply_page.keymap);
         let ntp = apply_page.ntp.is_active();
+        let ntp_word = if ntp {
+            gettext("ativado")
+        } else {
+            gettext("desativado")
+        };
         let dialog = adw::AlertDialog::new(
-            Some("Alterar data, hora e idioma?"),
-            Some(&format!(
-                "Aplicar timezone {timezone}, locale {locale}, teclado {keymap} e NTP {} para todo o sistema?",
-                if ntp { "ativado" } else { "desativado" }
-            )),
+            Some(&gettext("Alterar data, hora e idioma?")),
+            Some(
+                &gettext(
+                    "Aplicar timezone {timezone}, locale {locale}, teclado {keymap} e NTP {ntp} para todo o sistema?",
+                )
+                .replace("{timezone}", &timezone)
+                .replace("{locale}", &locale)
+                .replace("{keymap}", &keymap)
+                .replace("{ntp}", &ntp_word),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("apply", "Aplicar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("apply", &gettext("Aplicar")),
+        ]);
         dialog.set_response_appearance("apply", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -1649,7 +2017,8 @@ fn configure_datetime(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.apply.set_sensitive(false);
-            page.status.set_label("Aplicando configuração global…");
+            page.status
+                .set_label(&gettext("Aplicando configuração global…"));
             match dbus
                 .datetime()
                 .apply(&timezone, ntp, &locale, &keymap)
@@ -1694,12 +2063,18 @@ fn configure_kernel(shell: &VegaShell, dbus: VegaDbus) {
             return;
         };
         let dialog = adw::AlertDialog::new(
-            Some("Instalar kernel?"),
-            Some(&format!(
-                "Instalar {kernel}? O vegad criará um snapshot quando possível e reconstruirá os artefatos de boot."
-            )),
+            Some(&gettext("Instalar kernel?")),
+            Some(
+                &gettext(
+                    "Instalar {kernel}? O vegad criará um snapshot quando possível e reconstruirá os artefatos de boot.",
+                )
+                .replace("{kernel}", &kernel),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("install", "Instalar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("install", &gettext("Instalar")),
+        ]);
         dialog.set_response_appearance("install", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -1710,12 +2085,16 @@ fn configure_kernel(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.install.set_sensitive(false);
-            page.status.set_label("Solicitando instalação do kernel…");
+            page.status
+                .set_label(&gettext("Solicitando instalação do kernel…"));
             match dbus.kernel().install(&kernel).await {
                 Ok(transaction_id) => {
-                    page.status.set_label(&format!(
-                        "Instalação iniciada (transação #{transaction_id}). Atualizando a lista…"
-                    ));
+                    page.status.set_label(
+                        &gettext(
+                            "Instalação iniciada (transação #{id}). Atualizando a lista…",
+                        )
+                        .replace("{id}", &transaction_id.to_string()),
+                    );
                     glib::timeout_future_seconds(3).await;
                     refresh_kernel_page(&page, &dbus).await;
                 }
@@ -1732,12 +2111,18 @@ fn configure_kernel(shell: &VegaShell, dbus: VegaDbus) {
             return;
         };
         let dialog = adw::AlertDialog::new(
-            Some("Remover kernel?"),
-            Some(&format!(
-                "Remover {kernel}? O daemon recusará o kernel em execução ou o último kernel instalado."
-            )),
+            Some(&gettext("Remover kernel?")),
+            Some(
+                &gettext(
+                    "Remover {kernel}? O daemon recusará o kernel em execução ou o último kernel instalado.",
+                )
+                .replace("{kernel}", &kernel),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("remove", "Remover")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("remove", &gettext("Remover")),
+        ]);
         dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -1748,7 +2133,7 @@ fn configure_kernel(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.remove.set_sensitive(false);
-            page.status.set_label("Removendo kernel…");
+            page.status.set_label(&gettext("Removendo kernel…"));
             match dbus.kernel().remove(&kernel).await {
                 Ok(()) => refresh_kernel_page(&page, &dbus).await,
                 Err(error) => page.status.set_label(&error.to_string()),
@@ -1762,15 +2147,25 @@ fn configure_kernel(shell: &VegaShell, dbus: VegaDbus) {
         let default_entry = boot_page.selected_boot_entry();
         let timeout = boot_page.boot_timeout_input.value_as_int().max(0) as u32;
         let cmdline = boot_page.boot_cmdline_input.text().trim().to_owned();
+        let entry_label = if default_entry.is_empty() {
+            gettext("padrão atual")
+        } else {
+            default_entry.clone()
+        };
         let dialog = adw::AlertDialog::new(
-            Some("Alterar configuração de boot?"),
-            Some(&format!(
-                "Aplicar entrada padrão '{}', timeout de {} segundo(s) e os parâmetros informados? Um snapshot será criado quando possível.",
-                if default_entry.is_empty() { "padrão atual" } else { &default_entry },
-                timeout
-            )),
+            Some(&gettext("Alterar configuração de boot?")),
+            Some(
+                &gettext(
+                    "Aplicar entrada padrão '{entry}', timeout de {timeout} segundo(s) e os parâmetros informados? Um snapshot será criado quando possível.",
+                )
+                .replace("{entry}", &entry_label)
+                .replace("{timeout}", &timeout.to_string()),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("apply", "Aplicar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("apply", &gettext("Aplicar")),
+        ]);
         dialog.set_response_appearance("apply", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -1781,7 +2176,8 @@ fn configure_kernel(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.apply_boot.set_sensitive(false);
-            page.status.set_label("Aplicando configuração de boot…");
+            page.status
+                .set_label(&gettext("Aplicando configuração de boot…"));
             match dbus
                 .kernel()
                 .apply_boot_config(&default_entry, timeout, &cmdline)
@@ -1815,7 +2211,8 @@ async fn refresh_kernel_page(page: &crate::ui::KernelPage, dbus: &VegaDbus) {
     match (boot, entries) {
         (Ok(boot), Ok(entries)) => {
             page.show_boot(&boot, &entries);
-            page.status.set_label("Informações carregadas pelo vegad");
+            page.status
+                .set_label(&gettext("Informações carregadas pelo vegad"));
         }
         (Err(error), _) | (_, Err(error)) => page.status.set_label(&error.to_string()),
     }
@@ -1845,7 +2242,9 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
         let Some(snapshot) = compare_page.selected_snapshot() else {
             return;
         };
-        compare_page.comparison.set_label("Comparando pacotes…");
+        compare_page
+            .comparison
+            .set_label(&gettext("Comparando pacotes…"));
         let page = compare_page.clone();
         let client = compare_dbus.snapshots();
         glib::MainContext::default().spawn_local(async move {
@@ -1860,14 +2259,19 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
     let create_dbus = dbus.clone();
     shell.snapshots.create.connect_clicked(move |_| {
         let description = gtk::Entry::builder()
-            .placeholder_text("Descrição do ponto de restauração")
+            .placeholder_text(gettext("Descrição do ponto de restauração"))
             .build();
         let dialog = adw::AlertDialog::new(
-            Some("Criar ponto de restauração?"),
-            Some("O snapshot será criado pelo backend disponível no sistema."),
+            Some(&gettext("Criar ponto de restauração?")),
+            Some(&gettext(
+                "O snapshot será criado pelo backend disponível no sistema.",
+            )),
         );
         dialog.set_extra_child(Some(&description));
-        dialog.add_responses(&[("cancel", "Cancelar"), ("create", "Criar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("create", &gettext("Criar")),
+        ]);
         dialog.set_response_appearance("create", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -1880,11 +2284,12 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
             let description = description.text().trim().to_owned();
             if description.is_empty() {
                 page.status
-                    .set_label("Informe uma descrição para o snapshot.");
+                    .set_label(&gettext("Informe uma descrição para o snapshot."));
                 return;
             }
             page.create.set_sensitive(false);
-            page.status.set_label("Criando ponto de restauração…");
+            page.status
+                .set_label(&gettext("Criando ponto de restauração…"));
             match client.create(&description).await {
                 Ok(_) => match client.list().await {
                     Ok(snapshots) => page.show_snapshots(snapshots),
@@ -1903,13 +2308,16 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
             return;
         };
         let dialog = adw::AlertDialog::new(
-            Some("Excluir ponto de restauração?"),
-            Some(&format!(
-                "O snapshot #{} será excluído permanentemente.",
-                snapshot.id
-            )),
+            Some(&gettext("Excluir ponto de restauração?")),
+            Some(
+                &gettext("O snapshot #{id} será excluído permanentemente.")
+                    .replace("{id}", &snapshot.id.to_string()),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("delete", "Excluir")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("delete", &gettext("Excluir")),
+        ]);
         dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -1920,7 +2328,8 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.delete.set_sensitive(false);
-            page.status.set_label("Excluindo ponto de restauração…");
+            page.status
+                .set_label(&gettext("Excluindo ponto de restauração…"));
             match client.delete(snapshot.id).await {
                 Ok(()) => match client.list().await {
                     Ok(snapshots) => page.show_snapshots(snapshots),
@@ -1940,7 +2349,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
         rollback_page.rollback.set_sensitive(false);
         rollback_page
             .comparison
-            .set_label("Carregando revisão obrigatória do rollback…");
+            .set_label(&gettext("Carregando revisão obrigatória do rollback…"));
         let page = rollback_page.clone();
         let client = rollback_dbus.snapshots();
         glib::MainContext::default().spawn_local(async move {
@@ -1960,8 +2369,9 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
                 .wrap_mode(gtk::WrapMode::WordChar)
                 .build();
             let preview_text = if changes.is_empty() {
-                "Nenhuma diferença de pacotes foi detectada. Arquivos do sistema ainda podem ser alterados."
-                    .into()
+                gettext(
+                    "Nenhuma diferença de pacotes foi detectada. Arquivos do sistema ainda podem ser alterados.",
+                )
             } else {
                 changes.join("\n")
             };
@@ -1973,11 +2383,18 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
                 .max_content_height(400)
                 .build();
             let dialog = adw::AlertDialog::new(
-                Some(&format!("Aplicar snapshot #{}?", snapshot.id)),
-                Some("Revise as diferenças. O sistema poderá precisar ser reiniciado após o rollback."),
+                Some(
+                    &gettext("Aplicar snapshot #{id}?").replace("{id}", &snapshot.id.to_string()),
+                ),
+                Some(&gettext(
+                    "Revise as diferenças. O sistema poderá precisar ser reiniciado após o rollback.",
+                )),
             );
             dialog.set_extra_child(Some(&scroll));
-            dialog.add_responses(&[("cancel", "Cancelar"), ("rollback", "Aplicar rollback")]);
+            dialog.add_responses(&[
+                ("cancel", &gettext("Cancelar")),
+                ("rollback", &gettext("Aplicar rollback")),
+            ]);
             dialog.set_response_appearance("rollback", adw::ResponseAppearance::Destructive);
             dialog.set_default_response(Some("cancel"));
             dialog.set_close_response("cancel");
@@ -1985,11 +2402,12 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
                 page.rollback.set_sensitive(true);
                 return;
             }
-            page.status.set_label("Aplicando ponto de restauração…");
+            page.status
+                .set_label(&gettext("Aplicando ponto de restauração…"));
             match client.rollback(snapshot.id).await {
-                Ok(()) => page.status.set_label(
+                Ok(()) => page.status.set_label(&gettext(
                     "Rollback aplicado. Reinicie o sistema se o backend solicitar.",
-                ),
+                )),
                 Err(error) => page.status.set_label(&error.to_string()),
             }
             page.rollback.set_sensitive(true);
@@ -2001,12 +2419,18 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
     shell.snapshots.apply_retention.connect_clicked(move |_| {
         let keep = retention_page.retention.value_as_int().max(1) as u32;
         let dialog = adw::AlertDialog::new(
-            Some("Alterar política de retenção?"),
-            Some(&format!(
-                "O sistema manterá os {keep} snapshots mais recentes. Os excedentes poderão ser removidos pelo backend."
-            )),
+            Some(&gettext("Alterar política de retenção?")),
+            Some(
+                &gettext(
+                    "O sistema manterá os {keep} snapshots mais recentes. Os excedentes poderão ser removidos pelo backend.",
+                )
+                .replace("{keep}", &keep.to_string()),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("apply", "Aplicar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("apply", &gettext("Aplicar")),
+        ]);
         dialog.set_response_appearance("apply", adw::ResponseAppearance::Destructive);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -2018,7 +2442,9 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
             }
             page.apply_retention.set_sensitive(false);
             match client.set_retention(keep).await {
-                Ok(()) => page.status.set_label("Política de retenção atualizada."),
+                Ok(()) => page
+                    .status
+                    .set_label(&gettext("Política de retenção atualizada.")),
                 Err(error) => page.status.set_label(&error.to_string()),
             }
             page.apply_retention.set_sensitive(true);
@@ -2048,7 +2474,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
         };
         snapshots_page
             .snapshot_status
-            .set_label("Carregando snapshots…");
+            .set_label(&gettext("Carregando snapshots…"));
         let page = snapshots_page.clone();
         let client = snapshots_dbus.backup();
         glib::MainContext::default().spawn_local(async move {
@@ -2070,7 +2496,9 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
         else {
             return;
         };
-        paths_page.snapshot_paths.set_label("Carregando caminhos…");
+        paths_page
+            .snapshot_paths
+            .set_label(&gettext("Carregando caminhos…"));
         let page = paths_page.clone();
         let client = paths_dbus.backup();
         glib::MainContext::default().spawn_local(async move {
@@ -2085,30 +2513,34 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
     let create_dbus = dbus.clone();
     page.new_config.connect_clicked(move |_| {
         let id = gtk::Entry::builder()
-            .placeholder_text("Identificador, por exemplo documentos")
+            .placeholder_text(gettext("Identificador, por exemplo documentos"))
             .build();
         let paths = gtk::Entry::builder()
-            .placeholder_text("Caminhos separados por vírgula")
+            .placeholder_text(gettext("Caminhos separados por vírgula"))
             .build();
         let destination = gtk::Entry::builder()
-            .placeholder_text("Diretório ou repositório de destino")
+            .placeholder_text(gettext("Diretório ou repositório de destino"))
             .build();
         let destination_uuid = gtk::Entry::builder()
-            .placeholder_text("UUID do volume (opcional)")
+            .placeholder_text(gettext("UUID do volume (opcional)"))
             .build();
-        let frequency = gtk::DropDown::from_strings(&["Manual", "Diário", "Semanal"]);
+        let frequency = gtk::DropDown::from_strings(&[
+            &gettext("Manual"),
+            &gettext("Diário"),
+            &gettext("Semanal"),
+        ]);
         let form = gtk::Box::new(gtk::Orientation::Vertical, 8);
         form.add_css_class("backup-config-form");
         for (label, field) in [
-            ("Identificador", id.clone().upcast::<gtk::Widget>()),
-            ("Caminhos", paths.clone().upcast()),
-            ("Destino", destination.clone().upcast()),
-            ("UUID do destino", destination_uuid.clone().upcast()),
-            ("Frequência", frequency.clone().upcast()),
+            (gettext("Identificador"), id.clone().upcast::<gtk::Widget>()),
+            (gettext("Caminhos"), paths.clone().upcast()),
+            (gettext("Destino"), destination.clone().upcast()),
+            (gettext("UUID do destino"), destination_uuid.clone().upcast()),
+            (gettext("Frequência"), frequency.clone().upcast()),
         ] {
             form.append(
                 &gtk::Label::builder()
-                    .label(label)
+                    .label(&label)
                     .xalign(0.0)
                     .css_classes(["dim-label"])
                     .build(),
@@ -2116,11 +2548,16 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
             form.append(&field);
         }
         let dialog = adw::AlertDialog::new(
-            Some("Nova configuração de backup"),
-            Some("Os caminhos serão validados pelo vegad antes de serem salvos."),
+            Some(&gettext("Nova configuração de backup")),
+            Some(&gettext(
+                "Os caminhos serão validados pelo vegad antes de serem salvos.",
+            )),
         );
         dialog.set_extra_child(Some(&form));
-        dialog.add_responses(&[("cancel", "Cancelar"), ("create", "Criar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("create", &gettext("Criar")),
+        ]);
         dialog.set_response_appearance("create", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -2140,8 +2577,9 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
             let id = id.text().trim().to_owned();
             let destination = destination.text().trim().to_owned();
             if id.is_empty() || destination.is_empty() || parsed_paths.is_empty() {
-                page.status
-                    .set_label("Identificador, ao menos um caminho e destino são obrigatórios.");
+                page.status.set_label(&gettext(
+                    "Identificador, ao menos um caminho e destino são obrigatórios.",
+                ));
                 return;
             }
             let frequency = match frequency.selected() {
@@ -2150,7 +2588,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
                 _ => "manual",
             };
             page.new_config.set_sensitive(false);
-            page.status.set_label("Criando configuração…");
+            page.status.set_label(&gettext("Criando configuração…"));
             let config = BackupConfig {
                 id,
                 paths: parsed_paths,
@@ -2176,13 +2614,18 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
             return;
         };
         let dialog = adw::AlertDialog::new(
-            Some("Excluir configuração de backup?"),
-            Some(&format!(
-                "A configuração {} será removida. Os dados já armazenados no destino não serão apagados automaticamente.",
-                config.id
-            )),
+            Some(&gettext("Excluir configuração de backup?")),
+            Some(
+                &gettext(
+                    "A configuração {id} será removida. Os dados já armazenados no destino não serão apagados automaticamente.",
+                )
+                .replace("{id}", &config.id),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("delete", "Excluir")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("delete", &gettext("Excluir")),
+        ]);
         dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -2193,7 +2636,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.delete_config.set_sensitive(false);
-            page.status.set_label("Excluindo configuração…");
+            page.status.set_label(&gettext("Excluindo configuração…"));
             match client.delete_config(&config.id).await {
                 Ok(()) => match client.list_configs().await {
                     Ok(configs) => page.show_configs(configs),
@@ -2215,37 +2658,40 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
         if target.is_empty() {
             restore_page
                 .snapshot_paths
-                .set_label("Informe a pasta de destino antes de restaurar.");
+                .set_label(&gettext("Informe a pasta de destino antes de restaurar."));
             return;
         }
         if paths.is_empty() {
-            restore_page
-                .snapshot_paths
-                .set_label("Selecione ao menos um caminho para restaurar.");
+            restore_page.snapshot_paths.set_label(&gettext(
+                "Selecione ao menos um caminho para restaurar.",
+            ));
             return;
         }
         let mode = restore_page.restore_mode_value();
         let replacing = mode == "replace";
         let body = if replacing {
-            format!(
-                "{} item(ns) poderão substituir arquivos existentes em {}. Esta ação pode causar perda de dados.",
-                paths.len(), target
+            gettext(
+                "{count} item(ns) poderão substituir arquivos existentes em {target}. Esta ação pode causar perda de dados.",
             )
         } else {
-            format!(
-                "{} item(ns) serão restaurados em uma pasta separada dentro de {}.",
-                paths.len(), target
+            gettext(
+                "{count} item(ns) serão restaurados em uma pasta separada dentro de {target}.",
             )
-        };
+        }
+        .replace("{count}", &paths.len().to_string())
+        .replace("{target}", &target);
         let dialog = adw::AlertDialog::new(
-            Some(if replacing {
-                "Substituir arquivos existentes?"
+            Some(&if replacing {
+                gettext("Substituir arquivos existentes?")
             } else {
-                "Restaurar em pasta separada?"
+                gettext("Restaurar em pasta separada?")
             }),
             Some(&body),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", "Restaurar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("confirm", &gettext("Restaurar")),
+        ]);
         dialog.set_response_appearance(
             "confirm",
             if replacing {
@@ -2263,7 +2709,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.restore_selected.set_sensitive(false);
-            page.begin("Preparando restauração parcial…");
+            page.begin(&gettext("Preparando restauração parcial…"));
             let mut events = match client.subscribe().await {
                 Ok(events) => events,
                 Err(error) => {
@@ -2290,14 +2736,17 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
             return;
         };
         let dialog = adw::AlertDialog::new(
-            Some("Executar backup agora?"),
-            Some(&format!(
-                "Configuração {} para {} caminho(s).",
-                config.id,
-                config.paths.len()
-            )),
+            Some(&gettext("Executar backup agora?")),
+            Some(
+                &gettext("Configuração {id} para {count} caminho(s).")
+                    .replace("{id}", &config.id)
+                    .replace("{count}", &config.paths.len().to_string()),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", "Executar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("confirm", &gettext("Executar")),
+        ]);
         dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -2308,7 +2757,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
                 return;
             }
             page.run_now.set_sensitive(false);
-            page.begin(&format!("Iniciando backup {}…", config.id));
+            page.begin(&gettext("Iniciando backup {id}…").replace("{id}", &config.id));
             let mut events = match client.subscribe().await {
                 Ok(events) => events,
                 Err(error) => {
@@ -2344,10 +2793,12 @@ async fn monitor_restore_transaction(
                 page.finish(finished.success, &finished.message);
                 break;
             }
-            Ok(BackupEvent::Alert(alert)) => page.status.set_label(&format!(
-                "Alerta em {} após {} falha(s): {}",
-                alert.config_id, alert.consecutive_failures, alert.message
-            )),
+            Ok(BackupEvent::Alert(alert)) => page.status.set_label(
+                &gettext("Alerta em {config} após {count} falha(s): {message}")
+                    .replace("{config}", &alert.config_id)
+                    .replace("{count}", &alert.consecutive_failures.to_string())
+                    .replace("{message}", &alert.message),
+            ),
             Ok(_) => {}
             Err(error) => {
                 page.finish(false, &error.to_string());
@@ -2375,10 +2826,12 @@ async fn monitor_backup_transaction(
                 page.finish(finished.success, &finished.message);
                 break;
             }
-            Ok(BackupEvent::Alert(alert)) => page.status.set_label(&format!(
-                "Alerta em {} após {} falha(s): {}",
-                alert.config_id, alert.consecutive_failures, alert.message
-            )),
+            Ok(BackupEvent::Alert(alert)) => page.status.set_label(
+                &gettext("Alerta em {config} após {count} falha(s): {message}")
+                    .replace("{config}", &alert.config_id)
+                    .replace("{count}", &alert.consecutive_failures.to_string())
+                    .replace("{message}", &alert.message),
+            ),
             Ok(_) => {}
             Err(error) => {
                 page.finish(false, &error.to_string());
@@ -2465,12 +2918,15 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
     let mirrors_dbus = dbus.clone();
     page.optimize_mirrors.connect_clicked(move |_| {
         let dialog = adw::AlertDialog::new(
-            Some("Otimizar mirrors?"),
-            Some(
+            Some(&gettext("Otimizar mirrors?")),
+            Some(&gettext(
                 "O gerenciador de pacotes testará e reorganizará os mirrors quando a distribuição oferecer esse recurso.",
-            ),
+            )),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", "Otimizar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("confirm", &gettext("Otimizar")),
+        ]);
         dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -2481,7 +2937,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                 return;
             }
             page.optimize_mirrors.set_sensitive(false);
-            page.begin_transaction("Otimizando mirrors…");
+            page.begin_transaction(&gettext("Otimizando mirrors…"));
             let mut events = match client.subscribe().await {
                 Ok(events) => events,
                 Err(error) => {
@@ -2504,21 +2960,21 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         let update_all = global_page.updates_tab.is_active();
         let (heading, body, confirm, starting) = if update_all {
             (
-                "Atualizar tudo?",
-                "Executar a atualização completa do sistema e dos Flatpaks agora?",
-                "Atualizar",
-                "Iniciando atualização completa…",
+                gettext("Atualizar tudo?"),
+                gettext("Executar a atualização completa do sistema e dos Flatpaks agora?"),
+                gettext("Atualizar"),
+                gettext("Iniciando atualização completa…"),
             )
         } else {
             (
-                "Limpar cache?",
-                "Remover o cache de pacotes e runtimes Flatpak órfãos agora?",
-                "Limpar",
-                "Iniciando limpeza de cache…",
+                gettext("Limpar cache?"),
+                gettext("Remover o cache de pacotes e runtimes Flatpak órfãos agora?"),
+                gettext("Limpar"),
+                gettext("Iniciando limpeza de cache…"),
             )
         };
-        let dialog = adw::AlertDialog::new(Some(heading), Some(body));
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", confirm)]);
+        let dialog = adw::AlertDialog::new(Some(&heading), Some(&body));
+        dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", &confirm)]);
         dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -2530,7 +2986,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                 return;
             }
             page.global_action.set_sensitive(false);
-            page.begin_transaction(starting);
+            page.begin_transaction(&starting);
             let mut events = match client.subscribe().await {
                 Ok(events) => events,
                 Err(error) => {
@@ -2557,16 +3013,17 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
     page.search.connect_clicked(move |_| {
         let query = page_for_click.query.text().trim().to_owned();
         if query.chars().count() < 2 {
-            page_for_click
-                .status
-                .set_label("Digite ao menos dois caracteres para buscar");
+            page_for_click.status.set_label(&gettext(
+                "Digite ao menos dois caracteres para buscar",
+            ));
             return;
         }
 
         let page = page_for_click.clone();
         let client = search_dbus.software();
         page.set_busy(true);
-        page.status.set_label("Consultando as origens disponíveis…");
+        page.status
+            .set_label(&gettext("Consultando as origens disponíveis…"));
         glib::MainContext::default().spawn_local(async move {
             match client.search(&query).await {
                 Ok(packages) => page.show_results(packages),
@@ -2585,9 +3042,10 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         };
         let page = page_for_selection.clone();
         let client = details_dbus.software();
-        page.detail_title.set_label("Carregando detalhes…");
+        page.detail_title
+            .set_label(&gettext("Carregando detalhes…"));
         page.detail_body
-            .set_label("Consultando a origem selecionada…");
+            .set_label(&gettext("Consultando a origem selecionada…"));
         page.action.set_sensitive(false);
         page.present_details(&details_window);
         glib::MainContext::default().spawn_local(async move {
@@ -2608,19 +3066,20 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         let client = action_dbus.software();
         glib::MainContext::default().spawn_local(async move {
             let verb = if package.installed {
-                "Remover"
+                gettext("Remover")
             } else {
-                "Instalar"
+                gettext("Instalar")
             };
             page.action.set_sensitive(false);
             let pkgbuild = if requires_pkgbuild_review(&package.origin, package.installed) {
-                page.action.set_label("Carregando PKGBUILD…");
+                page.action.set_label(&gettext("Carregando PKGBUILD…"));
                 match client.aur_pkgbuild(&package.id).await {
                     Ok(pkgbuild) => Some(pkgbuild),
                     Err(error) => {
-                        page.show_detail_error(&format!(
-                            "Não foi possível revisar o PKGBUILD: {error}"
-                        ));
+                        page.show_detail_error(
+                            &gettext("Não foi possível revisar o PKGBUILD: {error}")
+                                .replace("{error}", &error.to_string()),
+                        );
                         return;
                     }
                 }
@@ -2630,15 +3089,19 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
             let confirmed = if let Some(pkgbuild) = pkgbuild {
                 confirm_aur_install(&package.name, &pkgbuild).await
             } else {
-                confirm_package_action(&package.name, verb, package.installed).await
+                confirm_package_action(&package.name, &verb, package.installed).await
             };
             if !confirmed {
-                page.action.set_label(verb);
+                page.action.set_label(&verb);
                 page.action.set_sensitive(true);
                 return;
             }
-            page.action.set_label("Iniciando…");
-            page.begin_transaction(&format!("{verb} {}", package.name));
+            page.action.set_label(&gettext("Iniciando…"));
+            page.begin_transaction(
+                &gettext("{verb} {name}")
+                    .replace("{verb}", &verb)
+                    .replace("{name}", &package.name),
+            );
             let mut events = match client.subscribe().await {
                 Ok(events) => events,
                 Err(error) => {
@@ -2671,10 +3134,10 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                     {
                         page.detail_body.set_label(&finished.message);
                         page.finish_transaction(finished.success, &finished.message);
-                        page.action.set_label(if finished.success {
-                            "Concluído"
+                        page.action.set_label(&if finished.success {
+                            gettext("Concluído")
                         } else {
-                            "Falhou"
+                            gettext("Falhou")
                         });
                         page.action.set_sensitive(!finished.success);
                         if finished.success {
@@ -2698,12 +3161,16 @@ fn connect_repository_toggle(page: &crate::ui::SoftwarePage, dbus: &VegaDbus) {
     let dbus = dbus.clone();
     page.clone().connect_repository_toggle(move |repository| {
         let enabled = !repository.enabled;
-        let verb = if enabled { "Ativar" } else { "Desativar" };
+        let verb = if enabled {
+            gettext("Ativar")
+        } else {
+            gettext("Desativar")
+        };
         let dialog = adw::AlertDialog::new(
-            Some(&format!("{verb} repositório?")),
+            Some(&gettext("{verb} repositório?").replace("{verb}", &verb)),
             Some(&repository.name),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", verb)]);
+        dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", &verb)]);
         dialog.set_response_appearance(
             "confirm",
             if enabled {
@@ -2721,10 +3188,14 @@ fn connect_repository_toggle(page: &crate::ui::SoftwarePage, dbus: &VegaDbus) {
                 return;
             }
             page.repository_list.set_sensitive(false);
-            page.begin_transaction(&format!("{verb} {}…", repository.name));
+            page.begin_transaction(
+                &gettext("{verb} {name}…")
+                    .replace("{verb}", &verb)
+                    .replace("{name}", &repository.name),
+            );
             match client.set_repo_enabled(&repository.name, enabled).await {
                 Ok(()) => {
-                    page.finish_transaction(true, "Repositório alterado com sucesso");
+                    page.finish_transaction(true, &gettext("Repositório alterado com sucesso"));
                     match client.list_repos().await {
                         Ok(repositories) => page.show_repositories(&repositories),
                         Err(error) => page.finish_transaction(false, &error.to_string()),
@@ -2739,10 +3210,12 @@ fn connect_repository_toggle(page: &crate::ui::SoftwarePage, dbus: &VegaDbus) {
 
 async fn confirm_package_action(name: &str, verb: &str, destructive: bool) -> bool {
     let dialog = adw::AlertDialog::new(
-        Some(&format!("{verb} {name}?")),
-        Some("A operação será autorizada pelo polkit e acompanhada até a conclusão."),
+        Some(&gettext("{verb} {name}?").replace("{verb}", verb).replace("{name}", name)),
+        Some(&gettext(
+            "A operação será autorizada pelo polkit e acompanhada até a conclusão.",
+        )),
     );
-    dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", verb)]);
+    dialog.add_responses(&[("cancel", &gettext("Cancelar")), ("confirm", verb)]);
     dialog.set_response_appearance(
         "confirm",
         if destructive {
@@ -2780,13 +3253,16 @@ async fn confirm_aur_install(name: &str, pkgbuild: &str) -> bool {
     scroll.add_css_class("pkgbuild-review");
 
     let dialog = adw::AlertDialog::new(
-        Some(&format!("Revisar PKGBUILD de {name}")),
-        Some(
+        Some(&gettext("Revisar PKGBUILD de {name}").replace("{name}", name)),
+        Some(&gettext(
             "Pacotes da comunidade executam instruções de compilação. Revise o conteúdo antes de continuar.",
-        ),
+        )),
     );
     dialog.set_extra_child(Some(&scroll));
-    dialog.add_responses(&[("cancel", "Cancelar"), ("confirm", "Revisei e instalar")]);
+    dialog.add_responses(&[
+        ("cancel", &gettext("Cancelar")),
+        ("confirm", &gettext("Revisei e instalar")),
+    ]);
     dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
     dialog.set_default_response(Some("cancel"));
     dialog.set_close_response("cancel");
@@ -2866,12 +3342,16 @@ fn configure_driver_action(shell: &VegaShell, window: &adw::ApplicationWindow, d
         };
         let driver = item.string().to_string();
         let dialog = adw::AlertDialog::new(
-            Some("Trocar driver NVIDIA?"),
-            Some(&format!(
-                "Aplicar {driver}? O sistema criará um snapshot antes da troca."
-            )),
+            Some(&gettext("Trocar driver NVIDIA?")),
+            Some(
+                &gettext("Aplicar {driver}? O sistema criará um snapshot antes da troca.")
+                    .replace("{driver}", &driver),
+            ),
         );
-        dialog.add_responses(&[("cancel", "Cancelar"), ("apply", "Aplicar")]);
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("apply", &gettext("Aplicar")),
+        ]);
         dialog.set_response_appearance("apply", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
@@ -2884,17 +3364,23 @@ fn configure_driver_action(shell: &VegaShell, window: &adw::ApplicationWindow, d
                 return;
             }
             button.set_sensitive(false);
-            button.set_label("Aplicando…");
+            button.set_label(&gettext("Aplicando…"));
             let result = client.switch_nvidia_driver(&driver).await;
             button.set_sensitive(true);
-            button.set_label(if result.is_ok() { "Aplicado" } else { "Falhou" });
+            button.set_label(&if result.is_ok() {
+                gettext("Aplicado")
+            } else {
+                gettext("Falhou")
+            });
         });
     });
 }
 
 fn set_unavailable(shell: &VegaShell, message: &str) {
     shell.backend_status.set_label(message);
-    shell.dashboard_system.set_label("Backend indisponível");
+    shell
+        .dashboard_system
+        .set_label(&gettext("Backend indisponível"));
     shell.dashboard_updates.set_label(message);
     shell.dashboard_backup.set_label(message);
     shell.dashboard_snapshots.set_label(message);

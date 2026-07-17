@@ -87,11 +87,25 @@ pub enum BackupEvent {
     Alert(BackupAlertEvent),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BackupClientError {
-    #[error("interface de backup indisponível: {0}")]
     Unavailable(String),
 }
+
+impl std::fmt::Display for BackupClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unavailable(detail) => write!(
+                f,
+                "{}",
+                gettextrs::gettext("interface de backup indisponível: {detail}")
+                    .replace("{detail}", detail)
+            ),
+        }
+    }
+}
+
+impl std::error::Error for BackupClientError {}
 
 #[async_trait]
 pub trait BackupClient: Send + Sync {

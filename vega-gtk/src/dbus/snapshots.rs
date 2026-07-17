@@ -19,9 +19,21 @@ impl From<(u32, i64, String, String)> for Snapshot {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("interface de snapshots indisponível: {0}")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SnapshotsClientError(String);
+
+impl std::fmt::Display for SnapshotsClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            gettextrs::gettext("interface de snapshots indisponível: {detail}")
+                .replace("{detail}", &self.0)
+        )
+    }
+}
+
+impl std::error::Error for SnapshotsClientError {}
 
 impl SnapshotsClientError {
     fn from_error(error: impl std::fmt::Display) -> Self {

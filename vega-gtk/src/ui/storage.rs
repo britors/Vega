@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use crate::dbus::StorageVolume;
 
@@ -16,7 +17,7 @@ pub struct StoragePage {
 impl StoragePage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Carregando volumes…")
+            .label(gettext("Carregando volumes…"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
@@ -27,7 +28,7 @@ impl StoragePage {
             .build();
         volumes.add_css_class("storage-volumes");
         let action = gtk::Button::builder()
-            .label("Montar")
+            .label(gettext("Montar"))
             .halign(gtk::Align::Start)
             .sensitive(false)
             .build();
@@ -36,14 +37,14 @@ impl StoragePage {
         content.add_css_class("compact-page");
         content.append(
             &gtk::Label::builder()
-                .label("Armazenamento")
+                .label(gettext("Armazenamento"))
                 .xalign(0.0)
                 .css_classes(["title-1"])
                 .build(),
         );
         content.append(
             &gtk::Label::builder()
-                .label("Volumes e pontos de montagem detectados pelo vegad")
+                .label(gettext("Volumes e pontos de montagem detectados pelo vegad"))
                 .xalign(0.0)
                 .css_classes(["dim-label"])
                 .build(),
@@ -73,10 +74,10 @@ impl StoragePage {
         while let Some(child) = self.volumes.first_child() {
             self.volumes.remove(&child);
         }
-        self.status.set_label(if volumes.is_empty() {
-            "Nenhum volume detectado"
+        self.status.set_label(&if volumes.is_empty() {
+            gettext("Nenhum volume detectado")
         } else {
-            "Selecione um volume para montar ou desmontar"
+            gettext("Selecione um volume para montar ou desmontar")
         });
         for volume in &volumes {
             let title = if volume.model.is_empty() {
@@ -85,17 +86,17 @@ impl StoragePage {
                 format!("{} • {}", volume.model, volume.path)
             };
             let mount = if volume.mountpoint.is_empty() {
-                "Não montado".into()
+                gettext("Não montado")
             } else {
-                format!("Montado em {}", volume.mountpoint)
+                gettext("Montado em {mountpoint}").replace("{mountpoint}", &volume.mountpoint)
             };
             let usage = if volume.used.is_empty() {
                 volume.size.clone()
             } else {
-                format!(
-                    "{} usados de {} • {}%",
-                    volume.used, volume.size, volume.use_percent
-                )
+                gettext("{used} usados de {size} • {percent}%")
+                    .replace("{used}", &volume.used)
+                    .replace("{size}", &volume.size)
+                    .replace("{percent}", &volume.use_percent.to_string())
             };
             let subtitle = format!(
                 "{} • {} • {} • {}",
@@ -110,7 +111,7 @@ impl StoragePage {
                 .activatable(true)
                 .build();
             if volume.removable {
-                row.add_suffix(&gtk::Label::new(Some("Removível")));
+                row.add_suffix(&gtk::Label::new(Some(&gettext("Removível"))));
             }
             self.volumes.append(&row);
         }
@@ -128,20 +129,20 @@ impl StoragePage {
             self.action.set_sensitive(false);
             return;
         };
-        self.action.set_label(if volume.can_unmount {
-            "Desmontar"
+        self.action.set_label(&if volume.can_unmount {
+            gettext("Desmontar")
         } else {
-            "Montar"
+            gettext("Montar")
         });
         self.action
             .set_sensitive(volume.can_mount || volume.can_unmount);
     }
 }
 
-fn value(text: &str) -> &str {
+fn value(text: &str) -> String {
     if text.is_empty() {
-        "sem filesystem"
+        gettext("sem filesystem")
     } else {
-        text
+        text.to_string()
     }
 }

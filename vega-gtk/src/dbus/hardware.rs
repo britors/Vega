@@ -17,11 +17,25 @@ impl From<(String, String, String)> for HardwareInventory {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HardwareClientError {
-    #[error("interface de hardware indisponível: {0}")]
     Unavailable(String),
 }
+
+impl std::fmt::Display for HardwareClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unavailable(detail) => write!(
+                f,
+                "{}",
+                gettextrs::gettext("interface de hardware indisponível: {detail}")
+                    .replace("{detail}", detail)
+            ),
+        }
+    }
+}
+
+impl std::error::Error for HardwareClientError {}
 
 #[async_trait]
 pub trait HardwareClient: Send + Sync {

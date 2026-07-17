@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use crate::dbus::BootStatus;
 
@@ -28,7 +29,7 @@ pub struct KernelPage {
 impl KernelPage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Carregando informações do kernel…")
+            .label(gettext("Carregando informações do kernel…"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
@@ -38,27 +39,27 @@ impl KernelPage {
         installed.add_css_class("kernel-list");
         available.add_css_class("kernel-list");
         let install = gtk::Button::builder()
-            .label("Instalar selecionado")
+            .label(gettext("Instalar selecionado"))
             .sensitive(false)
             .css_classes(["suggested-action"])
             .build();
         let remove = gtk::Button::builder()
-            .label("Remover selecionado")
+            .label(gettext("Remover selecionado"))
             .sensitive(false)
             .css_classes(["destructive-action"])
             .build();
         let installed_items = Rc::new(RefCell::new(Vec::<String>::new()));
         let available_items = Rc::new(RefCell::new(Vec::<String>::new()));
-        let boot_loader = value("Carregando…");
-        let boot_default = value("Carregando…");
-        let boot_timeout = value("Carregando…");
-        let boot_cmdline = value("Carregando…");
-        let boot_entries = value("Carregando…");
+        let boot_loader = value(&gettext("Carregando…"));
+        let boot_default = value(&gettext("Carregando…"));
+        let boot_timeout = value(&gettext("Carregando…"));
+        let boot_cmdline = value(&gettext("Carregando…"));
+        let boot_entries = value(&gettext("Carregando…"));
         let boot_entry = gtk::DropDown::from_strings(&[]);
         let boot_timeout_input = gtk::SpinButton::with_range(0.0, 120.0, 1.0);
         let boot_cmdline_input = gtk::Entry::builder().hexpand(true).build();
         let apply_boot = gtk::Button::builder()
-            .label("Aplicar bootloader")
+            .label(gettext("Aplicar bootloader"))
             .halign(gtk::Align::End)
             .css_classes(["suggested-action"])
             .build();
@@ -66,28 +67,14 @@ impl KernelPage {
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         content.add_css_class("content-page");
         content.add_css_class("compact-page");
-        content.append(
-            &gtk::Label::builder()
-                .label("Kernel")
-                .xalign(0.0)
-                .css_classes(["title-1"])
-                .build(),
-        );
-        content.append(
-            &gtk::Label::builder()
-                .label("Kernels e bootloader detectados pelo vegad")
-                .xalign(0.0)
-                .css_classes(["dim-label"])
-                .build(),
-        );
         content.append(&status);
         let installed_column = gtk::Box::new(gtk::Orientation::Vertical, 8);
         installed_column.set_hexpand(true);
-        installed_column.append(&section("Kernels instalados", &installed));
+        installed_column.append(&section(&gettext("Kernels instalados"), &installed));
         installed_column.append(&remove);
         let available_column = gtk::Box::new(gtk::Orientation::Vertical, 8);
         available_column.set_hexpand(true);
-        available_column.append(&section("Kernels disponíveis", &available));
+        available_column.append(&section(&gettext("Kernels disponíveis"), &available));
         available_column.append(&install);
         let kernel_columns = gtk::Box::new(gtk::Orientation::Horizontal, 12);
         kernel_columns.set_homogeneous(true);
@@ -95,18 +82,23 @@ impl KernelPage {
         kernel_columns.append(&available_column);
         content.append(&kernel_columns);
 
-        let boot = adw::PreferencesGroup::builder().title("Bootloader").build();
-        boot.add(&property("Detectado", &boot_loader));
-        boot.add(&property("Entrada padrão", &boot_default));
-        boot.add(&property("Timeout", &boot_timeout));
-        boot.add(&property("Parâmetros", &boot_cmdline));
-        boot.add(&property("Entradas", &boot_entries));
+        let boot = adw::PreferencesGroup::builder()
+            .title(gettext("Bootloader"))
+            .build();
+        boot.add(&property(&gettext("Detectado"), &boot_loader));
+        boot.add(&property(&gettext("Entrada padrão"), &boot_default));
+        boot.add(&property(&gettext("Timeout"), &boot_timeout));
+        boot.add(&property(&gettext("Parâmetros"), &boot_cmdline));
+        boot.add(&property(&gettext("Entradas"), &boot_entries));
         content.append(&boot);
         let boot_editor = gtk::Box::new(gtk::Orientation::Vertical, 8);
         boot_editor.add_css_class("card");
-        boot_editor.append(&field("Entrada padrão", &boot_entry));
-        boot_editor.append(&field("Timeout em segundos", &boot_timeout_input));
-        boot_editor.append(&field("Parâmetros do kernel", &boot_cmdline_input));
+        boot_editor.append(&field(&gettext("Entrada padrão"), &boot_entry));
+        boot_editor.append(&field(&gettext("Timeout em segundos"), &boot_timeout_input));
+        boot_editor.append(&field(
+            &gettext("Parâmetros do kernel"),
+            &boot_cmdline_input,
+        ));
         boot_editor.append(&apply_boot);
         content.append(&boot_editor);
 
@@ -150,7 +142,7 @@ impl KernelPage {
 
     pub fn show_installed(&self, kernels: &[String]) {
         *self.installed_items.borrow_mut() = kernels.to_vec();
-        fill_list(&self.installed, kernels, "Nenhum kernel listado");
+        fill_list(&self.installed, kernels, &gettext("Nenhum kernel listado"));
         self.remove.set_sensitive(kernel_removal_allowed(
             kernels.len(),
             self.installed.selected_row().is_some(),
@@ -162,7 +154,7 @@ impl KernelPage {
         fill_list(
             &self.available,
             &kernels,
-            "Todos os kernels disponíveis já estão instalados",
+            &gettext("Todos os kernels disponíveis já estão instalados"),
         );
         *self.available_items.borrow_mut() = kernels;
     }
@@ -170,20 +162,21 @@ impl KernelPage {
     pub fn show_boot(&self, status: &BootStatus, entries: &[String]) {
         self.boot_loader.set_label(&status.loader);
         self.boot_default
-            .set_label(if status.default_entry.is_empty() {
-                "Padrão atual"
+            .set_label(&if status.default_entry.is_empty() {
+                gettext("Padrão atual")
             } else {
-                &status.default_entry
+                status.default_entry.clone()
             });
-        self.boot_timeout
-            .set_label(&format!("{} segundos", status.timeout));
-        self.boot_cmdline.set_label(if status.cmdline.is_empty() {
-            "Nenhum parâmetro adicional"
+        self.boot_timeout.set_label(
+            &gettext("{seconds} segundos").replace("{seconds}", &status.timeout.to_string()),
+        );
+        self.boot_cmdline.set_label(&if status.cmdline.is_empty() {
+            gettext("Nenhum parâmetro adicional")
         } else {
-            &status.cmdline
+            status.cmdline.clone()
         });
         let entries_text = if entries.is_empty() {
-            "Nenhuma entrada listada".into()
+            gettext("Nenhuma entrada listada")
         } else {
             entries.join(" • ")
         };

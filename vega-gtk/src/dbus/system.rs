@@ -11,13 +11,31 @@ pub struct BackendStatus {
     pub logo_path: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SystemClientError {
-    #[error("vegad indisponível: {0}")]
     Unavailable(String),
-    #[error("resposta inválida do vegad: {0}")]
     InvalidResponse(String),
 }
+
+impl std::fmt::Display for SystemClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unavailable(detail) => write!(
+                f,
+                "{}",
+                gettextrs::gettext("vegad indisponível: {detail}").replace("{detail}", detail)
+            ),
+            Self::InvalidResponse(detail) => write!(
+                f,
+                "{}",
+                gettextrs::gettext("resposta inválida do vegad: {detail}")
+                    .replace("{detail}", detail)
+            ),
+        }
+    }
+}
+
+impl std::error::Error for SystemClientError {}
 
 #[async_trait]
 pub trait SystemClient: Send + Sync {

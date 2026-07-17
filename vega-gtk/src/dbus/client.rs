@@ -1,12 +1,25 @@
 use super::{
     ZbusBackupClient, ZbusBluetoothClient, ZbusDateTimeClient, ZbusFirewallClient,
-    ZbusHardwareClient, ZbusKernelClient, ZbusLogsClient, ZbusNetworkClient, ZbusServicesClient,
-    ZbusSnapshotsClient, ZbusSoftwareClient, ZbusStorageClient, ZbusSystemClient, ZbusUsersClient,
+    ZbusHardwareClient, ZbusKernelClient, ZbusLogsClient, ZbusMonitorClient, ZbusNetworkClient,
+    ZbusServicesClient, ZbusSnapshotsClient, ZbusSoftwareClient, ZbusStorageClient,
+    ZbusSystemClient, ZbusUsersClient,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("não foi possível conectar ao system bus: {0}")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbusConnectionError(String);
+
+impl std::fmt::Display for DbusConnectionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            gettextrs::gettext("não foi possível conectar ao system bus: {detail}")
+                .replace("{detail}", &self.0)
+        )
+    }
+}
+
+impl std::error::Error for DbusConnectionError {}
 
 #[derive(Clone)]
 pub struct VegaDbus {
@@ -75,6 +88,10 @@ impl VegaDbus {
 
     pub fn logs(&self) -> ZbusLogsClient {
         ZbusLogsClient::from_connection(self.connection.clone())
+    }
+
+    pub fn monitor(&self) -> ZbusMonitorClient {
+        ZbusMonitorClient::from_connection(self.connection.clone())
     }
 }
 

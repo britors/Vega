@@ -2,10 +2,9 @@
 # Instalador de conveniência: baixa os pacotes pré-compilados da release mais
 # recente do Vega e instala com o gerenciador de pacotes da distro. Cobre
 # openSUSE Leap (RPM, via .github/workflows/release-opensuse.yml), Fedora
-# (RPM, via .github/workflows/release-fedora.yml) e Ubuntu/Debian (.deb, via
-# .github/workflows/release-debian.yml). Em Arch use o pacote no AUR
-# (`yay -S lyra-vega-gtk`), que já existe e é o caminho recomendado — não há
-# RPM/.deb equivalente pra Arch.
+# (RPM, via .github/workflows/release-fedora.yml), Ubuntu/Debian (.deb, via
+# .github/workflows/release-debian.yml) e Arch (.pkg.tar.zst, via
+# .github/workflows/release-arch.yml) — mesma release do GitHub pras 4.
 #
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
@@ -70,15 +69,15 @@ trap 'rm -rf "$workdir"' EXIT
 
 case "$distro_id $distro_id_like" in
   *arch*)
-    cat >&2 <<'EOF'
-Detectei Arch. Este instalador só empacota RPM/.deb pra openSUSE/Fedora/
-Ubuntu; em Arch use o pacote do AUR, que já é o caminho suportado:
+    if ! command -v pacman >/dev/null 2>&1; then
+      echo "Erro: 'pacman' não encontrado — isso não parece ser Arch." >&2
+      exit 1
+    fi
 
-  yay -S lyra-vega-gtk
+    download_release_assets '\.pkg\.tar\.zst'
 
-(ou `paru -S lyra-vega-gtk`, se preferir).
-EOF
-    exit 1
+    echo "==> Instalando via pacman"
+    pacman -U --noconfirm "$workdir"/*.pkg.tar.zst
     ;;
   *opensuse*|*suse*)
     if ! command -v zypper >/dev/null 2>&1; then

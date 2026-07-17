@@ -53,9 +53,21 @@ impl From<StorageVolumeRow> for StorageVolume {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("interface de armazenamento indisponível: {0}")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageClientError(String);
+
+impl std::fmt::Display for StorageClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            gettextrs::gettext("interface de armazenamento indisponível: {detail}")
+                .replace("{detail}", &self.0)
+        )
+    }
+}
+
+impl std::error::Error for StorageClientError {}
 
 impl StorageClientError {
     fn from_error(error: impl std::fmt::Display) -> Self {

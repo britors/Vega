@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use crate::dbus::{BackupConfig, BackupSnapshot};
 
@@ -30,7 +31,7 @@ pub struct BackupPage {
 impl BackupPage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Carregando configurações…")
+            .label(gettext("Carregando configurações…"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
@@ -41,17 +42,17 @@ impl BackupPage {
             .build();
         configs.add_css_class("backup-selection");
         let run_now = gtk::Button::builder()
-            .label("Executar agora")
+            .label(gettext("Executar agora"))
             .halign(gtk::Align::Start)
             .sensitive(false)
             .css_classes(["suggested-action"])
             .build();
         let new_config = gtk::Button::builder()
-            .label("Nova configuração")
+            .label(gettext("Nova configuração"))
             .css_classes(["suggested-action"])
             .build();
         let delete_config = gtk::Button::builder()
-            .label("Excluir")
+            .label(gettext("Excluir"))
             .sensitive(false)
             .css_classes(["destructive-action"])
             .build();
@@ -60,7 +61,7 @@ impl BackupPage {
         config_actions.append(&run_now);
         config_actions.append(&delete_config);
         let snapshot_status = gtk::Label::builder()
-            .label("Selecione uma configuração para ver os snapshots")
+            .label(gettext("Selecione uma configuração para ver os snapshots"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
@@ -71,7 +72,7 @@ impl BackupPage {
             .build();
         snapshots.add_css_class("backup-selection");
         let snapshot_paths = gtk::Label::builder()
-            .label("Os caminhos do snapshot selecionado aparecerão aqui.")
+            .label(gettext("Os caminhos do snapshot selecionado aparecerão aqui."))
             .xalign(0.0)
             .wrap(true)
             .selectable(true)
@@ -82,15 +83,15 @@ impl BackupPage {
             .css_classes(["boxed-list"])
             .build();
         let restore_target = gtk::Entry::builder()
-            .placeholder_text("Pasta de destino da restauração")
+            .placeholder_text(gettext("Pasta de destino da restauração"))
             .hexpand(true)
             .build();
         let restore_mode = gtk::DropDown::from_strings(&[
-            "Pasta separada (recomendado)",
-            "Substituir arquivos existentes",
+            &gettext("Pasta separada (recomendado)"),
+            &gettext("Substituir arquivos existentes"),
         ]);
         let restore_selected = gtk::Button::builder()
-            .label("Restaurar selecionados")
+            .label(gettext("Restaurar selecionados"))
             .halign(gtk::Align::Start)
             .sensitive(false)
             .build();
@@ -98,7 +99,7 @@ impl BackupPage {
         restore_controls.add_css_class("card");
         restore_controls.append(
             &gtk::Label::builder()
-                .label("Restauração parcial")
+                .label(gettext("Restauração parcial"))
                 .xalign(0.0)
                 .css_classes(["title-3"])
                 .build(),
@@ -107,7 +108,7 @@ impl BackupPage {
         restore_controls.append(&restore_mode);
         restore_controls.append(&restore_selected);
         let progress_label = gtk::Label::builder()
-            .label("Preparando backup…")
+            .label(gettext("Preparando backup…"))
             .xalign(0.0)
             .wrap(true)
             .build();
@@ -120,26 +121,12 @@ impl BackupPage {
 
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         content.add_css_class("content-page");
-        content.append(
-            &gtk::Label::builder()
-                .label("Backup")
-                .xalign(0.0)
-                .css_classes(["title-1"])
-                .build(),
-        );
-        content.append(
-            &gtk::Label::builder()
-                .label("Configurações e execuções protegidas pelo vegad")
-                .xalign(0.0)
-                .css_classes(["dim-label"])
-                .build(),
-        );
         content.append(&status);
         content.append(&configs);
         content.append(&config_actions);
         content.append(
             &gtk::Label::builder()
-                .label("Snapshots")
+                .label(gettext("Snapshots"))
                 .xalign(0.0)
                 .css_classes(["title-2"])
                 .build(),
@@ -190,10 +177,10 @@ impl BackupPage {
         while let Some(child) = self.configs.first_child() {
             self.configs.remove(&child);
         }
-        self.status.set_label(if configs.is_empty() {
-            "Nenhuma configuração de backup encontrada"
+        self.status.set_label(&if configs.is_empty() {
+            gettext("Nenhuma configuração de backup encontrada")
         } else {
-            "Selecione uma configuração para executar"
+            gettext("Selecione uma configuração para executar")
         });
         for config in &configs {
             let destination = if config.destination_uuid.is_empty() {
@@ -202,12 +189,12 @@ impl BackupPage {
                 format!("{} • UUID {}", config.destination, config.destination_uuid)
             };
             let safe_id = gtk::glib::markup_escape_text(&config.id);
-            let safe_subtitle = gtk::glib::markup_escape_text(&format!(
-                "{} • {} caminho(s) • {}",
-                destination,
-                config.paths.len(),
-                config.frequency
-            ));
+            let safe_subtitle = gtk::glib::markup_escape_text(
+                &gettext("{destination} • {count} caminho(s) • {frequency}")
+                    .replace("{destination}", &destination)
+                    .replace("{count}", &config.paths.len().to_string())
+                    .replace("{frequency}", &config.frequency),
+            );
             self.configs.append(
                 &adw::ActionRow::builder()
                     .title(safe_id)
@@ -229,20 +216,18 @@ impl BackupPage {
         while let Some(child) = self.snapshots.first_child() {
             self.snapshots.remove(&child);
         }
-        self.snapshot_status.set_label(if snapshots.is_empty() {
-            "Nenhum snapshot encontrado"
+        self.snapshot_status.set_label(&if snapshots.is_empty() {
+            gettext("Nenhum snapshot encontrado")
         } else {
-            "Selecione um snapshot para inspecionar seus caminhos"
+            gettext("Selecione um snapshot para inspecionar seus caminhos")
         });
         self.snapshot_paths
-            .set_label("Os caminhos do snapshot selecionado aparecerão aqui.");
+            .set_label(&gettext("Os caminhos do snapshot selecionado aparecerão aqui."));
         for snapshot in &snapshots {
             let title = format_timestamp(snapshot.timestamp);
-            let subtitle = format!(
-                "{} arquivo(s) • {}",
-                snapshot.file_count,
-                format_bytes(snapshot.size_bytes)
-            );
+            let subtitle = gettext("{count} arquivo(s) • {size}")
+                .replace("{count}", &snapshot.file_count.to_string())
+                .replace("{size}", &format_bytes(snapshot.size_bytes));
             self.snapshots.append(
                 &adw::ActionRow::builder()
                     .title(gtk::glib::markup_escape_text(&title))
@@ -267,14 +252,18 @@ impl BackupPage {
         self.restore_selected.set_sensitive(false);
         if paths.is_empty() {
             self.snapshot_paths
-                .set_label("O snapshot não contém caminhos restauráveis.");
+                .set_label(&gettext("O snapshot não contém caminhos restauráveis."));
             return;
         }
         let visible = paths.iter().take(100).cloned().collect::<Vec<_>>();
         let remaining = paths.len().saturating_sub(visible.len());
-        let mut text = format!("{} caminho(s) disponível(is)", paths.len());
+        let mut text = gettext("{count} caminho(s) disponível(is)")
+            .replace("{count}", &paths.len().to_string());
         if remaining > 0 {
-            text.push_str(&format!(" • exibindo 100, mais {remaining}"));
+            text.push_str(
+                &gettext(" • exibindo 100, mais {remaining}")
+                    .replace("{remaining}", &remaining.to_string()),
+            );
         }
         self.snapshot_paths.set_label(&text);
         for path in visible {
@@ -326,8 +315,11 @@ impl BackupPage {
     pub fn finish(&self, success: bool, message: &str) {
         self.progress_label.set_label(message);
         self.progress.set_fraction(1.0);
-        self.progress
-            .set_text(Some(if success { "Concluído" } else { "Falhou" }));
+        self.progress.set_text(Some(&if success {
+            gettext("Concluído")
+        } else {
+            gettext("Falhou")
+        }));
         self.progress_panel
             .remove_css_class(if success { "error" } else { "success" });
         self.progress_panel
@@ -339,7 +331,7 @@ fn format_timestamp(timestamp: i64) -> String {
     gtk::glib::DateTime::from_unix_local(timestamp)
         .and_then(|date| date.format("%d/%m/%Y %H:%M"))
         .map(|value| value.to_string())
-        .unwrap_or_else(|_| format!("Snapshot {timestamp}"))
+        .unwrap_or_else(|_| gettext("Snapshot {timestamp}").replace("{timestamp}", &timestamp.to_string()))
 }
 
 fn format_bytes(bytes: u64) -> String {

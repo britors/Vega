@@ -5,6 +5,7 @@ use std::{
 };
 
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use crate::dbus::{PackageRef, RepositoryRef};
 
@@ -57,21 +58,21 @@ pub struct SoftwarePage {
 impl SoftwarePage {
     pub fn new() -> Self {
         let query = gtk::SearchEntry::builder()
-            .placeholder_text("Buscar aplicativos e pacotes")
+            .placeholder_text(gettext("Buscar aplicativos e pacotes"))
             .hexpand(true)
             .build();
         let search = gtk::Button::builder()
-            .label("Buscar")
+            .label(gettext("Buscar"))
             .css_classes(["suggested-action"])
             .build();
         let controls = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         controls.append(&query);
         controls.append(&search);
 
-        let search_tab = tab_button("Buscar");
-        let installed_tab = tab_button("Instalados");
-        let updates_tab = tab_button("Atualizações");
-        let repositories_tab = tab_button("Repositórios");
+        let search_tab = tab_button(&gettext("Buscar"));
+        let installed_tab = tab_button(&gettext("Instalados"));
+        let updates_tab = tab_button(&gettext("Atualizações"));
+        let repositories_tab = tab_button(&gettext("Repositórios"));
         installed_tab.set_group(Some(&search_tab));
         updates_tab.set_group(Some(&search_tab));
         repositories_tab.set_group(Some(&search_tab));
@@ -83,19 +84,19 @@ impl SoftwarePage {
         tabs.append(&updates_tab);
         tabs.append(&repositories_tab);
         let global_action = gtk::Button::builder()
-            .label("Limpar cache")
+            .label(gettext("Limpar cache"))
             .halign(gtk::Align::End)
             .hexpand(true)
             .build();
         let list_view = gtk::ToggleButton::builder()
             .icon_name("view-list-symbolic")
-            .tooltip_text("Visualização em lista")
+            .tooltip_text(gettext("Visualização em lista"))
             .css_classes(["flat", "view-switch"])
             .active(true)
             .build();
         let card_view = gtk::ToggleButton::builder()
             .icon_name("view-grid-symbolic")
-            .tooltip_text("Visualização em cartões")
+            .tooltip_text(gettext("Visualização em cartões"))
             .css_classes(["flat", "view-switch"])
             .build();
         card_view.set_group(Some(&list_view));
@@ -103,7 +104,7 @@ impl SoftwarePage {
         tabs.append(&card_view);
         tabs.append(&global_action);
         let transaction_label = gtk::Label::builder()
-            .label("Preparando transação…")
+            .label(gettext("Preparando transação…"))
             .xalign(0.0)
             .wrap(true)
             .build();
@@ -118,7 +119,7 @@ impl SoftwarePage {
         transaction_panel.append(&transaction_progress);
 
         let status = gtk::Label::builder()
-            .label("Digite ao menos dois caracteres para buscar")
+            .label(gettext("Digite ao menos dois caracteres para buscar"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
@@ -153,11 +154,13 @@ impl SoftwarePage {
             .hexpand(true)
             .css_classes(["boxed-list"])
             .build();
-        let optimize_mirrors = gtk::Button::builder().label("Otimizar mirrors").build();
+        let optimize_mirrors = gtk::Button::builder()
+            .label(gettext("Otimizar mirrors"))
+            .build();
         let repository_header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         repository_header.append(
             &gtk::Label::builder()
-                .label("Repositórios do sistema")
+                .label(gettext("Repositórios do sistema"))
                 .xalign(0.0)
                 .hexpand(true)
                 .css_classes(["title-3"])
@@ -170,7 +173,9 @@ impl SoftwarePage {
         repository_panel.append(&repository_header);
         repository_panel.append(
             &gtk::Label::builder()
-                .label("Selecione um repositório. A lista mostra o estado informado pelo gerenciador de pacotes da distribuição.")
+                .label(gettext(
+                    "Selecione um repositório. A lista mostra o estado informado pelo gerenciador de pacotes da distribuição.",
+                ))
                 .xalign(0.0)
                 .wrap(true)
                 .css_classes(["dim-label"])
@@ -191,18 +196,18 @@ impl SoftwarePage {
             }
         });
         let detail_title = gtk::Label::builder()
-            .label("Selecione um pacote")
+            .label(gettext("Selecione um pacote"))
             .xalign(0.0)
             .css_classes(["title-3"])
             .build();
         let detail_body = gtk::Label::builder()
-            .label("Os detalhes e a ação disponível aparecerão aqui.")
+            .label(gettext("Os detalhes e a ação disponível aparecerão aqui."))
             .xalign(0.0)
             .wrap(true)
             .selectable(true)
             .build();
         let action = gtk::Button::builder()
-            .label("Instalar")
+            .label(gettext("Instalar"))
             .halign(gtk::Align::Start)
             .sensitive(false)
             .css_classes(["suggested-action"])
@@ -220,7 +225,7 @@ impl SoftwarePage {
         let detail_header = adw::HeaderBar::builder()
             .title_widget(
                 &gtk::Label::builder()
-                    .label("Detalhes do pacote")
+                    .label(gettext("Detalhes do pacote"))
                     .css_classes(["heading"])
                     .build(),
             )
@@ -241,7 +246,7 @@ impl SoftwarePage {
         content.add_css_class("content-page");
         content.append(
             &gtk::Label::builder()
-                .label("Software")
+                .label(gettext("Software"))
                 .xalign(0.0)
                 .css_classes(["title-1"])
                 .build(),
@@ -306,18 +311,21 @@ impl SoftwarePage {
     pub fn set_busy(&self, busy: bool) {
         self.query.set_sensitive(!busy);
         self.search.set_sensitive(!busy);
-        self.search
-            .set_label(if busy { "Buscando…" } else { "Buscar" });
+        self.search.set_label(&if busy {
+            gettext("Buscando…")
+        } else {
+            gettext("Buscar")
+        });
     }
 
     pub fn show_results(&self, packages: Vec<PackageRef>) {
         self.clear_results();
         let groups = group_packages(packages);
         *self.package_groups.borrow_mut() = groups.clone();
-        self.status.set_label(if groups.is_empty() {
-            "Nenhum resultado encontrado"
+        self.status.set_label(&if groups.is_empty() {
+            gettext("Nenhum resultado encontrado")
         } else {
-            "Escolha a origem antes de instalar"
+            gettext("Escolha a origem antes de instalar")
         });
         for (group_index, group) in groups.into_iter().enumerate() {
             let Some(package) = group.selected() else {
@@ -334,7 +342,7 @@ impl SoftwarePage {
                 .build();
             row.add_prefix(&package_icon(package, 34));
             if group.packages.iter().any(|package| package.installed) {
-                row.add_suffix(&gtk::Label::new(Some("Instalado")));
+                row.add_suffix(&gtk::Label::new(Some(&gettext("Instalado"))));
             }
             let origins = origin_pills(
                 group_index,
@@ -382,7 +390,8 @@ impl SoftwarePage {
     }
 
     pub fn show_error(&self, message: &str) {
-        self.status.set_label(&format!("Falha: {message}"));
+        self.status
+            .set_label(&gettext("Falha: {message}").replace("{message}", message));
     }
 
     pub fn selected_package(&self) -> Option<PackageRef> {
@@ -404,23 +413,25 @@ impl SoftwarePage {
             details.name,
             origin_label(&details.origin)
         ));
-        self.detail_body.set_label(&format!(
-            "{}\n\nDisponível: {}  •  Instalado: {}\nDownload: {}  •  Em disco: {}\nLicenças: {}",
-            details.description,
-            value_or_dash(&details.available_version),
-            value_or_dash(&details.installed_version),
-            value_or_dash(&details.download_size),
-            value_or_dash(&details.installed_size),
-            if details.licenses.is_empty() {
-                "—".into()
-            } else {
-                details.licenses.join(", ")
-            }
-        ));
-        self.action.set_label(if details.installed {
-            "Remover"
+        let licenses = if details.licenses.is_empty() {
+            "—".to_string()
         } else {
-            "Instalar"
+            details.licenses.join(", ")
+        };
+        let body = gettext(
+            "{description}\n\nDisponível: {available}  •  Instalado: {installed}\nDownload: {download}  •  Em disco: {disk}\nLicenças: {licenses}",
+        )
+        .replace("{description}", &details.description)
+        .replace("{available}", value_or_dash(&details.available_version))
+        .replace("{installed}", value_or_dash(&details.installed_version))
+        .replace("{download}", value_or_dash(&details.download_size))
+        .replace("{disk}", value_or_dash(&details.installed_size))
+        .replace("{licenses}", &licenses);
+        self.detail_body.set_label(&body);
+        self.action.set_label(&if details.installed {
+            gettext("Remover")
+        } else {
+            gettext("Instalar")
         });
         self.action.set_sensitive(true);
         if details.installed {
@@ -433,7 +444,8 @@ impl SoftwarePage {
     }
 
     pub fn show_detail_error(&self, message: &str) {
-        self.detail_title.set_label("Detalhes indisponíveis");
+        self.detail_title
+            .set_label(&gettext("Detalhes indisponíveis"));
         self.detail_body.set_label(message);
         self.action.set_sensitive(false);
     }
@@ -465,7 +477,7 @@ impl SoftwarePage {
         let status = if success {
             message.to_owned()
         } else {
-            format!("Falha: {message}")
+            gettext("Falha: {message}").replace("{message}", message)
         };
         self.status.set_label(&status);
     }
@@ -476,9 +488,9 @@ impl SoftwarePage {
         self.results_area.set_visible(true);
         self.repository_panel.set_visible(false);
         self.global_action.set_visible(true);
-        self.global_action.set_label("Limpar cache");
+        self.global_action.set_label(&gettext("Limpar cache"));
         self.status
-            .set_label("Digite ao menos dois caracteres para buscar");
+            .set_label(&gettext("Digite ao menos dois caracteres para buscar"));
     }
 
     pub fn select_installed(&self) {
@@ -487,7 +499,8 @@ impl SoftwarePage {
         self.results_area.set_visible(true);
         self.repository_panel.set_visible(false);
         self.global_action.set_visible(false);
-        self.status.set_label("Carregando pacotes instalados…");
+        self.status
+            .set_label(&gettext("Carregando pacotes instalados…"));
     }
 
     pub fn select_updates(&self) {
@@ -496,8 +509,9 @@ impl SoftwarePage {
         self.results_area.set_visible(true);
         self.repository_panel.set_visible(false);
         self.global_action.set_visible(true);
-        self.global_action.set_label("Atualizar tudo");
-        self.status.set_label("Verificando atualizações…");
+        self.global_action.set_label(&gettext("Atualizar tudo"));
+        self.status
+            .set_label(&gettext("Verificando atualizações…"));
     }
 
     pub fn select_repositories(&self) {
@@ -516,16 +530,16 @@ impl SoftwarePage {
             let row = adw::ActionRow::builder()
                 .title(&repository.name)
                 .subtitle(if repository.enabled {
-                    "Ativo"
+                    gettext("Ativo")
                 } else {
-                    "Inativo"
+                    gettext("Inativo")
                 })
                 .build();
             let action = gtk::Button::builder()
                 .label(if repository.enabled {
-                    "Desativar"
+                    gettext("Desativar")
                 } else {
-                    "Ativar"
+                    gettext("Ativar")
                 })
                 .valign(gtk::Align::Center)
                 .build();
@@ -633,13 +647,13 @@ fn origin_pills(
     for (origin_index, candidate) in group.packages.iter().enumerate() {
         let origin = origin_label(&candidate.origin);
         let origin_text = gtk::Label::builder()
-            .label(origin)
+            .label(&origin)
             .max_width_chars(14)
             .ellipsize(gtk::pango::EllipsizeMode::End)
             .build();
         let button = gtk::ToggleButton::builder()
             .css_classes(["flat", "origin-pill"])
-            .tooltip_text(format!("Usar a origem {origin}"))
+            .tooltip_text(gettext("Usar a origem {origin}").replace("{origin}", &origin))
             .child(&origin_text)
             .build();
         if let Some(first) = &first_button {
@@ -686,12 +700,12 @@ fn origin_rank(origin: &str) -> u8 {
     }
 }
 
-fn origin_label(origin: &str) -> &str {
+fn origin_label(origin: &str) -> String {
     match origin {
-        "official" => "Oficial",
-        "flathub" => "Flathub",
-        "aur" => "Comunidade",
-        value => value,
+        "official" => gettext("Oficial"),
+        "flathub" => "Flathub".to_string(),
+        "aur" => gettext("Comunidade"),
+        value => value.to_string(),
     }
 }
 

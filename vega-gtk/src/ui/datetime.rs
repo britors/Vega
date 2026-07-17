@@ -1,4 +1,5 @@
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use crate::dbus::DateTimeStatus;
 
@@ -16,7 +17,7 @@ pub struct DateTimePage {
 impl DateTimePage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Carregando data, hora e idioma…")
+            .label(gettext("Carregando data, hora e idioma…"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
@@ -34,34 +35,37 @@ impl DateTimePage {
             dropdown.set_valign(gtk::Align::Center);
         }
         let apply = gtk::Button::builder()
-            .label("Aplicar ao sistema")
+            .label(gettext("Aplicar ao sistema"))
             .halign(gtk::Align::End)
             .sensitive(false)
             .css_classes(["suggested-action"])
             .build();
 
         let settings = adw::PreferencesGroup::builder()
-            .title("Configuração global")
-            .description("As alterações afetam todos os usuários")
+            .title(gettext("Configuração global"))
+            .description(gettext("As alterações afetam todos os usuários"))
             .build();
-        settings.add(&property("Fuso horário", &timezone));
-        settings.add(&property("Sincronização automática (NTP)", &ntp));
-        settings.add(&property("Idioma e formato regional", &locale));
-        settings.add(&property("Layout do teclado", &keymap));
+        settings.add(&property(&gettext("Fuso horário"), &timezone));
+        settings.add(&property(
+            &gettext("Sincronização automática (NTP)"),
+            &ntp,
+        ));
+        settings.add(&property(&gettext("Idioma e formato regional"), &locale));
+        settings.add(&property(&gettext("Layout do teclado"), &keymap));
 
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         content.add_css_class("content-page");
         content.add_css_class("compact-page");
         content.append(
             &gtk::Label::builder()
-                .label("Data, Hora e Idioma")
+                .label(gettext("Data, Hora e Idioma"))
                 .xalign(0.0)
                 .css_classes(["title-1"])
                 .build(),
         );
         content.append(
             &gtk::Label::builder()
-                .label("Timezone, NTP, locale e teclado")
+                .label(gettext("Timezone, NTP, locale e teclado"))
                 .xalign(0.0)
                 .css_classes(["dim-label"])
                 .build(),
@@ -97,7 +101,8 @@ impl DateTimePage {
         set_choices(&self.keymap, keymaps, &status.keymap);
         self.ntp.set_active(status.ntp);
         self.apply.set_sensitive(true);
-        self.status.set_label("Configuração atual carregada");
+        self.status
+            .set_label(&gettext("Configuração atual carregada"));
     }
 
     pub fn selected(dropdown: &gtk::DropDown) -> String {

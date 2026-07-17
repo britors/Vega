@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use adw::prelude::*;
+use gettextrs::gettext;
 
 use crate::dbus::UserInfo;
 
@@ -21,21 +22,21 @@ pub struct UsersPage {
 impl UsersPage {
     pub fn new() -> Self {
         let status = gtk::Label::builder()
-            .label("Carregando usuários…")
+            .label(gettext("Carregando usuários…"))
             .xalign(0.0)
             .wrap(true)
             .css_classes(["dim-label"])
             .build();
         let username = gtk::Entry::builder()
-            .placeholder_text("nome de usuário")
+            .placeholder_text(gettext("nome de usuário"))
             .hexpand(true)
             .build();
         let admin = gtk::CheckButton::builder()
-            .label("Administrador")
+            .label(gettext("Administrador"))
             .active(true)
             .build();
         let create = gtk::Button::builder()
-            .label("Criar usuário")
+            .label(gettext("Criar usuário"))
             .sensitive(false)
             .css_classes(["suggested-action"])
             .build();
@@ -47,7 +48,7 @@ impl UsersPage {
         form.add_css_class("card");
         form.append(
             &gtk::Label::builder()
-                .label("Novo usuário")
+                .label(gettext("Novo usuário"))
                 .xalign(0.0)
                 .css_classes(["title-2"])
                 .build(),
@@ -58,9 +59,9 @@ impl UsersPage {
             .selection_mode(gtk::SelectionMode::Single)
             .css_classes(["boxed-list"])
             .build();
-        let change_admin = action("Alterar administração");
+        let change_admin = action(&gettext("Alterar administração"));
         let remove = gtk::Button::builder()
-            .label("Remover")
+            .label(gettext("Remover"))
             .sensitive(false)
             .css_classes(["destructive-action"])
             .build();
@@ -70,14 +71,14 @@ impl UsersPage {
         content.add_css_class("compact-page");
         content.append(
             &gtk::Label::builder()
-                .label("Contas e Usuários")
+                .label(gettext("Contas e Usuários"))
                 .xalign(0.0)
                 .css_classes(["title-1"])
                 .build(),
         );
         content.append(
             &gtk::Label::builder()
-                .label("Criação, remoção e controle de administração")
+                .label(gettext("Criação, remoção e controle de administração"))
                 .xalign(0.0)
                 .css_classes(["dim-label"])
                 .build(),
@@ -86,7 +87,7 @@ impl UsersPage {
         content.append(&form);
         content.append(
             &gtk::Label::builder()
-                .label("Usuários")
+                .label(gettext("Usuários"))
                 .xalign(0.0)
                 .css_classes(["title-2"])
                 .build(),
@@ -130,8 +131,8 @@ impl UsersPage {
             self.list.set_selection_mode(gtk::SelectionMode::None);
             self.list.append(
                 &adw::ActionRow::builder()
-                    .title("Nenhum usuário listado")
-                    .subtitle("Ainda não há contas cadastradas.")
+                    .title(gettext("Nenhum usuário listado"))
+                    .subtitle(gettext("Ainda não há contas cadastradas."))
                     .build(),
             );
         } else {
@@ -140,9 +141,9 @@ impl UsersPage {
                 let row = adw::ActionRow::builder()
                     .title(gtk::glib::markup_escape_text(&user.username))
                     .subtitle(if user.is_admin {
-                        "Administrador"
+                        gettext("Administrador")
                     } else {
-                        "Usuário comum"
+                        gettext("Usuário comum")
                     })
                     .activatable(true)
                     .build();
@@ -150,16 +151,16 @@ impl UsersPage {
                 let mutable = user.username != "root";
                 let admin_button = gtk::Button::builder()
                     .label(if user.is_admin {
-                        "Remover admin"
+                        gettext("Remover admin")
                     } else {
-                        "Tornar admin"
+                        gettext("Tornar admin")
                     })
                     .sensitive(mutable)
                     .valign(gtk::Align::Center)
                     .css_classes(["compact"])
                     .build();
                 let remove_button = gtk::Button::builder()
-                    .label("Remover")
+                    .label(gettext("Remover"))
                     .sensitive(mutable)
                     .valign(gtk::Align::Center)
                     .css_classes(["destructive-action", "compact"])
@@ -186,8 +187,9 @@ impl UsersPage {
                     .push((admin_button, remove_button, mutable));
             }
         }
-        self.status
-            .set_label(&format!("{} usuário(s)", items.len()));
+        self.status.set_label(
+            &gettext("{count} usuário(s)").replace("{count}", &items.len().to_string()),
+        );
         *self.items.borrow_mut() = items;
         self.update_actions();
     }
@@ -224,10 +226,10 @@ impl UsersPage {
         self.change_admin.set_sensitive(mutable);
         self.remove.set_sensitive(mutable);
         if let Some(user) = selected {
-            self.change_admin.set_label(if user.is_admin {
-                "Remover admin"
+            self.change_admin.set_label(&if user.is_admin {
+                gettext("Remover admin")
             } else {
-                "Tornar admin"
+                gettext("Tornar admin")
             });
         }
     }

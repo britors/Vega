@@ -1,8 +1,20 @@
 use async_trait::async_trait;
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("interface de logs indisponível: {0}")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LogsClientError(String);
+
+impl std::fmt::Display for LogsClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            gettextrs::gettext("interface de logs indisponível: {detail}")
+                .replace("{detail}", &self.0)
+        )
+    }
+}
+
+impl std::error::Error for LogsClientError {}
 
 impl LogsClientError {
     fn from_error(error: impl std::fmt::Display) -> Self {
