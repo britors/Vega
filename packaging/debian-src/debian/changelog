@@ -1,3 +1,13 @@
+vega (3.1.0-1) unstable; urgency=medium
+
+  * Adiciona a aba Monitor ao módulo Tela: resolução, taxa de atualização,
+    escala e orientação da tela, aplicados via xrandr (X11) ou wlr-randr
+    (Wayland/wlroots) na sessão gráfica ativa.
+  * Move o monitor de processos (CPU, memória, disco, rede) para uma
+    entrada própria "Monitor do Sistema" na navegação, separada da Tela.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Fri, 17 Jul 2026 14:50:00 -0300
+
 vega (3.0.0-1) unstable; urgency=medium
 
   * Torna a interface multi-idioma: lê o idioma do sistema automaticamente

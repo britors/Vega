@@ -73,6 +73,21 @@ impl MonitorPage {
             .build();
 
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
+        content.add_css_class("content-page");
+        content.append(
+            &gtk::Label::builder()
+                .label(gettext("Monitor do Sistema"))
+                .xalign(0.0)
+                .css_classes(["title-1"])
+                .build(),
+        );
+        content.append(
+            &gtk::Label::builder()
+                .label(gettext("Uso de recursos e processos em execução"))
+                .xalign(0.0)
+                .css_classes(["dim-label"])
+                .build(),
+        );
         content.append(&status);
         content.append(&metrics_grid);
         content.append(

@@ -6,7 +6,7 @@
 # and VEGA_SOURCE_DIR for local builds.
 
 pkgname=lyra-vega-gtk
-pkgver=3.0.0
+pkgver=3.1.0
 pkgrel=1
 pkgdesc="Centro de controle para Linux"
 arch=('x86_64')

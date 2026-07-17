@@ -4,6 +4,7 @@ src/dbus/backup.rs
 src/dbus/bluetooth.rs
 src/dbus/client.rs
 src/dbus/datetime.rs
+src/dbus/display.rs
 src/dbus/firewall.rs
 src/dbus/hardware.rs
 src/dbus/kernel.rs
@@ -23,10 +24,12 @@ src/ui/assistant.rs
 src/ui/backup.rs
 src/ui/bluetooth.rs
 src/ui/datetime.rs
+src/ui/display.rs
 src/ui/kernel.rs
 src/ui/logs.rs
 src/ui/mod.rs
 src/ui/network.rs
+src/ui/screen.rs
 src/ui/services.rs
 src/ui/shell.rs
 src/ui/snapshots.rs

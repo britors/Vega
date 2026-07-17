@@ -2,8 +2,8 @@ use adw::prelude::*;
 use gettextrs::gettext;
 
 use super::{
-    AssistantPage, BackupPage, BluetoothPage, DateTimePage, KernelPage, LogsPage, NetworkPage,
-    ScreenPage, ServicesPage, SnapshotsPage, SoftwarePage, StoragePage, UsersPage,
+    AssistantPage, BackupPage, BluetoothPage, DateTimePage, KernelPage, LogsPage, MonitorPage,
+    NetworkPage, ScreenPage, ServicesPage, SnapshotsPage, SoftwarePage, StoragePage, UsersPage,
 };
 
 #[derive(Clone)]
@@ -39,6 +39,7 @@ pub struct VegaShell {
     pub logs: LogsPage,
     pub assistant: AssistantPage,
     pub screen: ScreenPage,
+    pub monitor: MonitorPage,
 }
 
 impl VegaShell {
@@ -80,6 +81,7 @@ impl VegaShell {
             crate::assistant::load_history(),
         );
         let screen = ScreenPage::new();
+        let monitor = MonitorPage::new();
 
         let stack = gtk::Stack::builder()
             .transition_type(gtk::StackTransitionType::Crossfade)
@@ -119,6 +121,11 @@ impl VegaShell {
             &gettext("Data, Hora e Idioma"),
         );
         stack.add_titled(&screen.root, Some("screen"), &gettext("Tela"));
+        stack.add_titled(
+            &monitor.root,
+            Some("monitor"),
+            &gettext("Monitor do Sistema"),
+        );
         stack.add_titled(&software.root, Some("software"), &gettext("Software"));
         stack.add_titled(
             &tabbed_page(
@@ -209,6 +216,11 @@ impl VegaShell {
                     gettext("Tela"),
                     "screen",
                     "preferences-desktop-wallpaper-symbolic",
+                ),
+                (
+                    gettext("Monitor do Sistema"),
+                    "monitor",
+                    "utilities-system-monitor-symbolic",
                 ),
                 (
                     gettext("Armazenamento"),
@@ -317,6 +329,7 @@ impl VegaShell {
             logs,
             assistant,
             screen,
+            monitor,
         }
     }
 }
