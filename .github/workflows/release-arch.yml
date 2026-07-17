@@ -27,6 +27,7 @@ jobs:
             work="/tmp/pkg-$package"
             install -d -o builder -g builder "$work/src"
             cp "packaging/$package/PKGBUILD" "$work/PKGBUILD"
+            cp packaging/"$package"/*.install "$work/" 2>/dev/null || true
             cp -a . "$work/src/Vega"
             chown -R builder:builder "$work"
             sed -i "s/^pkgver=.*/pkgver=$version/" "$work/PKGBUILD"
