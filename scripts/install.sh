@@ -10,60 +10,10 @@
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
 #
-# VEGA_UI=qt sudo -E bash install.sh             # sobrescreve auto: gtk, qt ou both
 # VEGA_VERSION=v1.3.4 sudo -E bash install.sh    # trava numa tag específica
 set -euo pipefail
 
 REPO="britors/Vega"
-VEGA_UI="${VEGA_UI:-auto}"
-
-case "$VEGA_UI" in
-  auto|gtk|qt|both) ;;
-  *) echo "VEGA_UI deve ser 'auto', 'gtk', 'qt' ou 'both'." >&2; exit 2 ;;
-esac
-
-detect_desktop_ui() {
-  local desktop="${XDG_CURRENT_DESKTOP:-} ${XDG_SESSION_DESKTOP:-} ${DESKTOP_SESSION:-}"
-  if [[ "$desktop" =~ [Kk][Dd][Ee]|[Pp][Ll][Aa][Ss][Mm][Aa] ]] ||
-     [ "${KDE_FULL_SESSION:-}" = "true" ]; then
-    printf '%s\n' qt
-    return
-  fi
-  # A sessão atual é mais autoritativa que sessões paralelas do logind.
-  if [ -n "${desktop//[[:space:]]/}" ]; then
-    printf '%s\n' gtk
-    return
-  fi
-
-  if command -v loginctl >/dev/null 2>&1; then
-    local session session_desktop
-    while read -r session _; do
-      [ -n "$session" ] || continue
-      session_desktop="$(loginctl show-session "$session" -p Desktop --value 2>/dev/null || true)"
-      if [[ "$session_desktop" =~ [Kk][Dd][Ee]|[Pp][Ll][Aa][Ss][Mm][Aa] ]]; then
-        printf '%s\n' qt
-        return
-      fi
-    done < <(loginctl list-sessions --no-legend 2>/dev/null || true)
-  fi
-
-  if command -v pgrep >/dev/null 2>&1 && pgrep -x plasmashell >/dev/null 2>&1; then
-    printf '%s\n' qt
-    return
-  fi
-
-  printf '%s\n' gtk
-}
-
-if [ "$VEGA_UI" = auto ]; then
-  VEGA_UI="$(detect_desktop_ui)"
-  echo "==> Interface detectada para a sessão: $VEGA_UI" >&2
-fi
-
-if [ "${1:-}" = "--detect-ui" ]; then
-  printf '%s\n' "$VEGA_UI"
-  exit 0
-fi
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Rode como root (sudo bash install.sh, ou via curl ... | sudo bash)." >&2
@@ -115,19 +65,6 @@ download_release_assets() {
   done
 }
 
-filter_ui_assets() {
-  local file base
-  for file in "$workdir"/*; do
-    [ -e "$file" ] || continue
-    base="$(basename "$file")"
-    case "$VEGA_UI:$base" in
-      gtk:lyra-vega-qt-*|gtk:lyra-vega-qt_*|qt:lyra-vega-gtk-*|qt:lyra-vega-gtk_*)
-        rm -f "$file"
-        ;;
-    esac
-  done
-}
-
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
@@ -137,13 +74,7 @@ case "$distro_id $distro_id_like" in
 Detectei Arch. Este instalador só empacota RPM/.deb pra openSUSE/Fedora/
 Ubuntu; em Arch use o pacote do AUR, que já é o caminho suportado:
 
-EOF
-    if [ "$VEGA_UI" = both ]; then
-      echo "  yay -S lyra-vega-gtk lyra-vega-qt"
-    else
-      echo "  yay -S lyra-vega-$VEGA_UI"
-    fi
-    cat >&2 <<'EOF'
+  yay -S lyra-vega-gtk
 
 (ou `paru -S lyra-vega-gtk`, se preferir).
 EOF
@@ -163,7 +94,6 @@ EOF
     # packaging/fedora/*.spec definem "dist .fcNN" (terminam em
     # "-1.fcNN.x86_64.rpm") — usa isso pra distinguir os dois conjuntos.
     download_release_assets '-1\.x86_64\.rpm'
-    filter_ui_assets
 
     echo "==> Instalando via zypper"
     echo "Aviso: os RPMs desta release ainda não são assinados (sem chave GPG"
@@ -177,7 +107,6 @@ EOF
     fi
 
     download_release_assets '-1\.fc[0-9]+\.x86_64\.rpm'
-    filter_ui_assets
 
     echo "==> Instalando via dnf"
     echo "Aviso: empacotamento Fedora ainda é considerado de teste, não"
@@ -192,7 +121,6 @@ EOF
     fi
 
     download_release_assets '\.deb'
-    filter_ui_assets
 
     echo "==> Instalando via apt"
     echo "Aviso: empacotamento Ubuntu/Debian ainda é considerado de teste,"
@@ -213,8 +141,7 @@ cat <<EOF
 
 Instalação concluída.
 - Daemon: vegad, ativado sob demanda via D-Bus (org.lyraos.Vega1)
-- Interface instalada: $VEGA_UI
-- GTK: /usr/bin/lyra-vega-gtk; Qt: /usr/bin/lyra-vega-qt
+- Interface: /usr/bin/lyra-vega-gtk
 
 Empacotamento ainda é considerado de teste — reporte problemas em
 https://github.com/britors/Vega/issues.

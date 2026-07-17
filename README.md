@@ -1,6 +1,6 @@
 # Vega
 
-Centro de controle nativo para Linux com interfaces oficiais GTK4 e Qt 6.
+Centro de controle nativo para Linux com interface oficial GTK4.
 O Vega reúne administração de software, hardware, kernel, rede, backups,
 usuários e serviços em uma interface integrada ao GNOME. Operações
 privilegiadas passam pelo daemon `vegad` (Go), via D-Bus e polkit.
@@ -25,8 +25,6 @@ Publicado no AUR:
 
 ```sh
 yay -S lyra-vega-gtk
-# ou: yay -S lyra-vega-qt
-# ambas: yay -S lyra-vega-gtk lyra-vega-qt
 ```
 
 ### openSUSE Leap, Fedora e Ubuntu/Debian
@@ -39,17 +37,6 @@ recente:
 ```sh
 curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
 ```
-
-O instalador detecta a sessão gráfica: KDE Plasma recebe a interface Qt e os
-demais desktops recebem GTK. Para sobrescrever a detecção ou instalar ambas:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh -o install.sh
-VEGA_UI=qt sudo -E bash install.sh
-VEGA_UI=both sudo -E bash install.sh
-```
-
-Para conferir a escolha sem instalar: `bash install.sh --detect-ui`.
 
 Em openSUSE isso baixa `vegad-*.rpm`/`lyra-vega-gtk-*.rpm` (gerados por
 [`.github/workflows/release-opensuse.yml`](.github/workflows/release-opensuse.yml)
@@ -82,9 +69,8 @@ documentado também em [`CONTRIBUTING.md`](CONTRIBUTING.md) e
 
 ## Layout do repositório
 
-```
+```sh
 vega-gtk/    UI oficial (Rust + GTK4/libadwaita), roda como usuário comum
-vega-qt/     UI oficial alternativa (C++20 + Qt 6), roda como usuário comum
 vegad/       Daemon privilegiado (Go), roda como root, exposto via D-Bus
 dbus/        Definições de interface D-Bus (XML de introspecção) — contrato entre vega e vegad
 packaging/   Unit systemd, policy polkit, conf D-Bus system.d, sysusers.d, PKGBUILDs (Arch), specs RPM (openSUSE, Fedora) e debian/rules (Ubuntu/Debian)
@@ -105,33 +91,20 @@ Serviços, Logs, Assistente e Sobre. O backend seleciona implementações por
 distribuição e apresenta recursos opcionais como indisponíveis quando a
 ferramenta correspondente não está instalada.
 
-A UI Qt é distribuída em paralelo, com binário, desktop file, application ID e
-configurações independentes. Remover uma interface não remove a outra; ambas usam
-o mesmo `vegad` e nenhuma substitui a GTK.
-
 ## Desenvolvimento
 
 ### lyra-vega-gtk (UI)
 
-```
+```sh
 cd vega-gtk
 cargo run
-```
-
-### lyra-vega-qt (UI)
-
-```sh
-cmake -S vega-qt -B build/vega-qt -G Ninja -DBUILD_TESTING=ON
-cmake --build build/vega-qt
-ctest --test-dir build/vega-qt --output-on-failure
-./build/vega-qt/lyra-vega-qt
 ```
 
 ### vegad (daemon)
 
 Requer Go instalado:
 
-```
+```sh
 cd vegad
 go mod tidy
 go build ./...
@@ -141,20 +114,20 @@ Os PKGBUILDs em `packaging/vega` e `packaging/vegad` empacotam este checkout
 local por padrão. Para gerar os dois pacotes em ordem (`vegad` e depois
 `lyra-vega-gtk`):
 
-```
+```sh
 ./scripts/build-local-packages.sh
 ```
 
 Para copiar os `.pkg.tar.zst` gerados para o repositório local usado pelo
 perfil `lyra-iso`, informe o diretório como argumento ou via `LYRA_REPO_DIR`:
 
-```
+```sh
 ./scripts/build-local-packages.sh ~/.local/share/lyra-repo
 ```
 
 Depois atualize o banco do repositório local no ambiente de build:
 
-```
+```sh
 repo-add ~/.local/share/lyra-repo/lyra.db.tar.gz ~/.local/share/lyra-repo/*.pkg.tar.zst
 ```
 
@@ -167,7 +140,7 @@ O roteiro reproduzível de smoke test está em
 [`docs/validation/vega-end-to-end.md`](docs/validation/vega-end-to-end.md).
 Para rodar os checks automatizados deste checkout, use:
 
-```
+```sh
 ./scripts/qa-smoke.sh
 ```
 

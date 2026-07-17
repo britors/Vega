@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Vega (Qt)
-Comment=Administração do sistema LyraOS
-Exec=lyra-vega-qt
-Icon=org.lyraos.VegaQt
-Categories=Settings;System;
-Keywords=system;settings;software;backup;
-StartupNotify=true
