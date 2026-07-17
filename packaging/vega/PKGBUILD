@@ -12,6 +12,10 @@ pkgdesc="Centro de controle para Linux"
 arch=('x86_64')
 url="https://github.com/britors/Vega"
 license=('GPL-3.0-only')
+# !lto: Arch's default LTO build breaks the `ring` crate's hand-written
+# assembly, leaving symbols like ring_core_*__x25519_fe_invert undefined
+# at link time (see briansmith/ring#1444).
+options=('!lto')
 depends=('gtk4' 'libadwaita' 'vegad')
 optdepends=(
   'flatpak: origem Flathub para o módulo Software'

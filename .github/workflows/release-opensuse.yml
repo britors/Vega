@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Instalar dependências de build
         run: |
-          zypper --non-interactive install -y tar gzip go rust cargo gcc curl \
+          zypper --non-interactive install -y tar gzip go rust cargo gcc curl bash \
             pkg-config gtk4-devel libadwaita-devel \
             rpm-build rpmdevtools
 
