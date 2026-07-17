@@ -270,17 +270,15 @@ impl NetworkPage {
         self.proxy_https.set_text(&p.https);
         self.proxy_socks.set_text(&p.socks);
         self.proxy_exceptions.set_text(&p.no_proxy);
-        self.proxy.set_label(
-            &if p.http.is_empty()
-                && p.https.is_empty()
-                && p.socks.is_empty()
-                && p.no_proxy.is_empty()
-            {
-                gettext("Proxy não configurado")
-            } else {
-                gettext("Configuração carregada de /etc/environment")
-            },
-        );
+        self.proxy.set_label(&if p.http.is_empty()
+            && p.https.is_empty()
+            && p.socks.is_empty()
+            && p.no_proxy.is_empty()
+        {
+            gettext("Proxy não configurado")
+        } else {
+            gettext("Configuração carregada de /etc/environment")
+        });
     }
 
     pub fn proxy_config(&self) -> ProxyConfig {
@@ -332,7 +330,10 @@ impl NetworkPage {
             self.firewall_services.append(&row);
         }
         if services.is_empty() {
-            empty(&self.firewall_services, &gettext("Nenhum serviço publicado"));
+            empty(
+                &self.firewall_services,
+                &gettext("Nenhum serviço publicado"),
+            );
         }
         *self.firewall_items.borrow_mut() = services.to_vec();
         self.update_firewall_action();

@@ -156,9 +156,8 @@ impl ServicesPage {
                 service: service.clone(),
             });
         }
-        self.status.set_label(
-            &gettext("{count} serviço(s)").replace("{count}", &items.len().to_string()),
-        );
+        self.status
+            .set_label(&gettext("{count} serviço(s)").replace("{count}", &items.len().to_string()));
         *self.items.borrow_mut() = items;
         self.update_actions();
     }

@@ -12,7 +12,9 @@ fn main() {
     };
 
     if Command::new("msgfmt").arg("--version").output().is_err() {
-        println!("cargo:warning=msgfmt não encontrado; pulando compilação dos catálogos de tradução (.po -> .mo)");
+        println!(
+            "cargo:warning=msgfmt não encontrado; pulando compilação dos catálogos de tradução (.po -> .mo)"
+        );
         return;
     }
 
@@ -30,7 +32,10 @@ fn main() {
         // dentro do diretório que a gente passa (ele sempre soma "locale").
         let out_dir = po_dir.join("locale").join(lang).join("LC_MESSAGES");
         if let Err(error) = std::fs::create_dir_all(&out_dir) {
-            println!("cargo:warning=não foi possível criar {}: {error}", out_dir.display());
+            println!(
+                "cargo:warning=não foi possível criar {}: {error}",
+                out_dir.display()
+            );
             continue;
         }
 

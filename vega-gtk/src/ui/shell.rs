@@ -118,11 +118,7 @@ impl VegaShell {
             Some("datetime"),
             &gettext("Data, Hora e Idioma"),
         );
-        stack.add_titled(
-            &screen.root,
-            Some("screen"),
-            &gettext("Tela"),
-        );
+        stack.add_titled(&screen.root, Some("screen"), &gettext("Tela"));
         stack.add_titled(&software.root, Some("software"), &gettext("Software"));
         stack.add_titled(
             &tabbed_page(
@@ -227,11 +223,7 @@ impl VegaShell {
                 (gettext("Bluetooth"), "desktop", "bluetooth-symbolic"),
                 (gettext("Serviços"), "services", "system-run-symbolic"),
                 (gettext("Usuários"), "users", "system-users-symbolic"),
-                (
-                    gettext("Log do Sistema"),
-                    "logs",
-                    "text-x-generic-symbolic",
-                ),
+                (gettext("Log do Sistema"), "logs", "text-x-generic-symbolic"),
             ],
             &stack,
             &mut searchable,
@@ -384,12 +376,7 @@ fn dashboard_page(stack: &gtk::Stack, widgets: DashboardWidgets<'_>) -> gtk::Wid
         -1,
     );
     grid.insert(
-        &dashboard_card(
-            &gettext("Disco (/)"),
-            widgets.disk,
-            Some("hardware"),
-            stack,
-        ),
+        &dashboard_card(&gettext("Disco (/)"), widgets.disk, Some("hardware"), stack),
         -1,
     );
     content.append(&grid);
@@ -507,9 +494,7 @@ fn hardware_page(
         .title(gettext("Troca de driver NVIDIA"))
         .description(gettext("Um snapshot será criado antes da alteração"))
         .build();
-    let driver_row = adw::ActionRow::builder()
-        .title(gettext("Driver"))
-        .build();
+    let driver_row = adw::ActionRow::builder().title(gettext("Driver")).build();
     driver_row.add_suffix(driver_dropdown);
     driver_row.add_suffix(driver_apply);
     drivers.add(&driver_row);

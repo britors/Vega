@@ -28,7 +28,8 @@ pub fn schema_available() -> bool {
     let Some(source) = gio::SettingsSchemaSource::default() else {
         return false;
     };
-    source.lookup(SCREENSAVER_SCHEMA, true).is_some() && source.lookup(SESSION_SCHEMA, true).is_some()
+    source.lookup(SCREENSAVER_SCHEMA, true).is_some()
+        && source.lookup(SESSION_SCHEMA, true).is_some()
 }
 
 pub fn current() -> Option<ScreensaverSettings> {

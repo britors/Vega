@@ -510,8 +510,7 @@ impl SoftwarePage {
         self.repository_panel.set_visible(false);
         self.global_action.set_visible(true);
         self.global_action.set_label(&gettext("Atualizar tudo"));
-        self.status
-            .set_label(&gettext("Verificando atualizações…"));
+        self.status.set_label(&gettext("Verificando atualizações…"));
     }
 
     pub fn select_repositories(&self) {

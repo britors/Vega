@@ -171,9 +171,8 @@ impl LogsPage {
             lines.join("\n")
         };
         self.output.buffer().set_text(&text);
-        self.status.set_label(
-            &gettext("{count} linha(s)").replace("{count}", &lines.len().to_string()),
-        );
+        self.status
+            .set_label(&gettext("{count} linha(s)").replace("{count}", &lines.len().to_string()));
     }
 
     pub fn set_busy(&self, busy: bool) {

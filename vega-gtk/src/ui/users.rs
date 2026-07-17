@@ -187,9 +187,8 @@ impl UsersPage {
                     .push((admin_button, remove_button, mutable));
             }
         }
-        self.status.set_label(
-            &gettext("{count} usuário(s)").replace("{count}", &items.len().to_string()),
-        );
+        self.status
+            .set_label(&gettext("{count} usuário(s)").replace("{count}", &items.len().to_string()));
         *self.items.borrow_mut() = items;
         self.update_actions();
     }

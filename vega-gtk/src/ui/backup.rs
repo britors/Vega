@@ -72,7 +72,9 @@ impl BackupPage {
             .build();
         snapshots.add_css_class("backup-selection");
         let snapshot_paths = gtk::Label::builder()
-            .label(gettext("Os caminhos do snapshot selecionado aparecerão aqui."))
+            .label(gettext(
+                "Os caminhos do snapshot selecionado aparecerão aqui.",
+            ))
             .xalign(0.0)
             .wrap(true)
             .selectable(true)
@@ -221,8 +223,9 @@ impl BackupPage {
         } else {
             gettext("Selecione um snapshot para inspecionar seus caminhos")
         });
-        self.snapshot_paths
-            .set_label(&gettext("Os caminhos do snapshot selecionado aparecerão aqui."));
+        self.snapshot_paths.set_label(&gettext(
+            "Os caminhos do snapshot selecionado aparecerão aqui.",
+        ));
         for snapshot in &snapshots {
             let title = format_timestamp(snapshot.timestamp);
             let subtitle = gettext("{count} arquivo(s) • {size}")
@@ -331,7 +334,9 @@ fn format_timestamp(timestamp: i64) -> String {
     gtk::glib::DateTime::from_unix_local(timestamp)
         .and_then(|date| date.format("%d/%m/%Y %H:%M"))
         .map(|value| value.to_string())
-        .unwrap_or_else(|_| gettext("Snapshot {timestamp}").replace("{timestamp}", &timestamp.to_string()))
+        .unwrap_or_else(|_| {
+            gettext("Snapshot {timestamp}").replace("{timestamp}", &timestamp.to_string())
+        })
 }
 
 fn format_bytes(bytes: u64) -> String {

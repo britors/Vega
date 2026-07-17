@@ -1,11 +1,7 @@
 use adw::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib};
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    time::Instant,
-};
+use std::{cell::RefCell, rc::Rc, time::Instant};
 
 use crate::dbus::{
     BackupClient, BackupConfig, BackupEvent, BluetoothClient, DateTimeClient, FirewallClient,
@@ -117,17 +113,15 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
         }
 
         match dbus.software().community_layer_name().await {
-            Ok(channel) if channel.is_empty() => {
-                shell.about_channel.set_label(&gettext("Nenhuma"))
-            }
+            Ok(channel) if channel.is_empty() => shell.about_channel.set_label(&gettext("Nenhuma")),
             Ok(channel) => shell.about_channel.set_label(&channel),
             Err(error) => shell.about_channel.set_label(&error.to_string()),
         }
 
         match dbus.software().list_updates().await {
-            Ok(updates) if updates.is_empty() => shell
-                .dashboard_updates
-                .set_label(&gettext("Tudo em dia")),
+            Ok(updates) if updates.is_empty() => {
+                shell.dashboard_updates.set_label(&gettext("Tudo em dia"))
+            }
             Ok(updates) => shell.dashboard_updates.set_label(
                 &gettext("{count} pacote(s) pendente(s)")
                     .replace("{count}", &updates.len().to_string()),
@@ -208,11 +202,12 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
 
 fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
     let page = shell.assistant.clone();
-    page.status.set_label(&if crate::assistant::keyring_available() {
-        gettext("Pronto • credenciais protegidas pelo Secret Service")
-    } else {
-        gettext("Secret Service indisponível: não será possível armazenar chaves")
-    });
+    page.status
+        .set_label(&if crate::assistant::keyring_available() {
+            gettext("Pronto • credenciais protegidas pelo Secret Service")
+        } else {
+            gettext("Secret Service indisponível: não será possível armazenar chaves")
+        });
 
     let provider_page = page.clone();
     page.provider.connect_selected_notify(move |_| {
@@ -298,9 +293,7 @@ fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
             }
             let result = gio::spawn_blocking(move || crate::assistant::clear_key(provider)).await;
             match result {
-                Ok(Ok(())) => page
-                    .status
-                    .set_label(&gettext("Chave removida do keyring")),
+                Ok(Ok(())) => page.status.set_label(&gettext("Chave removida do keyring")),
                 Ok(Err(error)) => page.status.set_label(&error.to_string()),
                 Err(_) => page
                     .status
@@ -541,8 +534,7 @@ async fn handle_assistant_tool(
         }
         _ => {
             page.status.set_label(
-                &gettext("Ferramenta desconhecida recusada: {name}")
-                    .replace("{name}", &call.name),
+                &gettext("Ferramenta desconhecida recusada: {name}").replace("{name}", &call.name),
             );
             let _ = crate::assistant::audit("tool_rejected", &call.name);
             return;
@@ -838,9 +830,8 @@ fn connect_user_action(
                 return;
             }
             page.set_busy(true);
-            page.status.set_label(
-                &gettext("Processando {user}…").replace("{user}", &user.username),
-            );
+            page.status
+                .set_label(&gettext("Processando {user}…").replace("{user}", &user.username));
             let result = match action {
                 UserAction::Admin => dbus.users().set_admin(&user.username, !user.is_admin).await,
                 UserAction::Remove => dbus.users().remove(&user.username).await,
@@ -1117,9 +1108,8 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
                 return;
             }
             page.device_action.set_sensitive(false);
-            page.status.set_label(
-                &gettext("{action} dispositivo…").replace("{action}", &action),
-            );
+            page.status
+                .set_label(&gettext("{action} dispositivo…").replace("{action}", &action));
             let result = if !device.paired {
                 dbus.bluetooth().pair(&device.address).await
             } else if device.connected {
@@ -1157,7 +1147,8 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
                 return;
             }
             let Some(path) = chooser.file().and_then(|file| file.path()) else {
-                page.status.set_label(&gettext("Selecione um arquivo local."));
+                page.status
+                    .set_label(&gettext("Selecione um arquivo local."));
                 return;
             };
             let display_path = path.display().to_string();
@@ -1922,7 +1913,9 @@ fn configure_monitor_tab(page: &crate::ui::MonitorPage, dbus: VegaDbus) {
                 return;
             }
             match dbus.monitor().kill_process(process.pid).await {
-                Ok(()) => page.status.set_label(&gettext("Sinal enviado ao processo.")),
+                Ok(()) => page
+                    .status
+                    .set_label(&gettext("Sinal enviado ao processo.")),
                 Err(error) => page.status.set_label(&error.to_string()),
             }
         });
@@ -1951,8 +1944,16 @@ async fn refresh_monitor_page(
                         metrics.disk_write_bytes,
                         elapsed,
                     ),
-                    net_rx_per_sec: rate_per_sec(previous.net_rx_bytes, metrics.net_rx_bytes, elapsed),
-                    net_tx_per_sec: rate_per_sec(previous.net_tx_bytes, metrics.net_tx_bytes, elapsed),
+                    net_rx_per_sec: rate_per_sec(
+                        previous.net_rx_bytes,
+                        metrics.net_rx_bytes,
+                        elapsed,
+                    ),
+                    net_tx_per_sec: rate_per_sec(
+                        previous.net_tx_bytes,
+                        metrics.net_tx_bytes,
+                        elapsed,
+                    ),
                 }
             });
             page.show_metrics(&metrics, rates);
@@ -2535,7 +2536,10 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
             (gettext("Identificador"), id.clone().upcast::<gtk::Widget>()),
             (gettext("Caminhos"), paths.clone().upcast()),
             (gettext("Destino"), destination.clone().upcast()),
-            (gettext("UUID do destino"), destination_uuid.clone().upcast()),
+            (
+                gettext("UUID do destino"),
+                destination_uuid.clone().upcast(),
+            ),
             (gettext("Frequência"), frequency.clone().upcast()),
         ] {
             form.append(
@@ -3013,9 +3017,9 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
     page.search.connect_clicked(move |_| {
         let query = page_for_click.query.text().trim().to_owned();
         if query.chars().count() < 2 {
-            page_for_click.status.set_label(&gettext(
-                "Digite ao menos dois caracteres para buscar",
-            ));
+            page_for_click
+                .status
+                .set_label(&gettext("Digite ao menos dois caracteres para buscar"));
             return;
         }
 
@@ -3210,7 +3214,11 @@ fn connect_repository_toggle(page: &crate::ui::SoftwarePage, dbus: &VegaDbus) {
 
 async fn confirm_package_action(name: &str, verb: &str, destructive: bool) -> bool {
     let dialog = adw::AlertDialog::new(
-        Some(&gettext("{verb} {name}?").replace("{verb}", verb).replace("{name}", name)),
+        Some(
+            &gettext("{verb} {name}?")
+                .replace("{verb}", verb)
+                .replace("{name}", name),
+        ),
         Some(&gettext(
             "A operação será autorizada pelo polkit e acompanhada até a conclusão.",
         )),

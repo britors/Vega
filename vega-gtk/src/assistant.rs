@@ -416,7 +416,9 @@ pub fn consume_usage(limit: u32) -> Result<u32, AssistantError> {
 }
 
 fn current_username() -> Option<String> {
-    std::env::var("USER").or_else(|_| std::env::var("LOGNAME")).ok()
+    std::env::var("USER")
+        .or_else(|_| std::env::var("LOGNAME"))
+        .ok()
 }
 
 fn current_hostname() -> Option<String> {
@@ -429,13 +431,16 @@ fn current_hostname() -> Option<String> {
 fn looks_like_ipv6(word: &str) -> bool {
     word.matches(':').count() >= 2
         && word.split(':').all(|segment| {
-            segment.is_empty() || (segment.len() <= 4 && segment.chars().all(|c| c.is_ascii_hexdigit()))
+            segment.is_empty()
+                || (segment.len() <= 4 && segment.chars().all(|c| c.is_ascii_hexdigit()))
         })
 }
 
 fn looks_like_token(word: &str) -> bool {
     word.len() >= 20
-        && word.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        && word
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
         && word.chars().any(|c| c.is_ascii_digit())
         && word.chars().any(|c| c.is_ascii_alphabetic())
 }

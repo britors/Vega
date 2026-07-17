@@ -74,7 +74,9 @@ impl BluetoothPage {
         );
         content.append(
             &gtk::Label::builder()
-                .label(gettext("Adaptador, dispositivos e transferência de arquivos"))
+                .label(gettext(
+                    "Adaptador, dispositivos e transferência de arquivos",
+                ))
                 .xalign(0.0)
                 .css_classes(["dim-label"])
                 .build(),

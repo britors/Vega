@@ -150,7 +150,8 @@ impl MonitorClient for ZbusMonitorClient {
         call!(self, metrics()).map(Into::into)
     }
     async fn list_processes(&self) -> Result<Vec<ProcessInfo>, MonitorClientError> {
-        call!(self, list_processes()).map(|rows: Vec<ProcessRow>| rows.into_iter().map(Into::into).collect())
+        call!(self, list_processes())
+            .map(|rows: Vec<ProcessRow>| rows.into_iter().map(Into::into).collect())
     }
     async fn kill_process(&self, pid: u32) -> Result<(), MonitorClientError> {
         call!(self, kill_process(pid))

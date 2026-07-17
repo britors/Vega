@@ -44,7 +44,9 @@ impl StoragePage {
         );
         content.append(
             &gtk::Label::builder()
-                .label(gettext("Volumes e pontos de montagem detectados pelo vegad"))
+                .label(gettext(
+                    "Volumes e pontos de montagem detectados pelo vegad",
+                ))
                 .xalign(0.0)
                 .css_classes(["dim-label"])
                 .build(),

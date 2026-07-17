@@ -77,8 +77,10 @@ impl ScreensaverPage {
 
     pub fn show(&self, settings: &ScreensaverSettings) {
         self.lock_enabled.set_active(settings.lock_enabled);
-        self.lock_delay.set_value(f64::from(settings.lock_delay_secs));
-        self.idle_delay.set_value(f64::from(settings.idle_delay_secs));
+        self.lock_delay
+            .set_value(f64::from(settings.lock_delay_secs));
+        self.idle_delay
+            .set_value(f64::from(settings.idle_delay_secs));
         self.status
             .set_label(&gettext("Configuração atual carregada"));
     }

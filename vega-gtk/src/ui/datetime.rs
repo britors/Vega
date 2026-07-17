@@ -46,10 +46,7 @@ impl DateTimePage {
             .description(gettext("As alterações afetam todos os usuários"))
             .build();
         settings.add(&property(&gettext("Fuso horário"), &timezone));
-        settings.add(&property(
-            &gettext("Sincronização automática (NTP)"),
-            &ntp,
-        ));
+        settings.add(&property(&gettext("Sincronização automática (NTP)"), &ntp));
         settings.add(&property(&gettext("Idioma e formato regional"), &locale));
         settings.add(&property(&gettext("Layout do teclado"), &keymap));
 

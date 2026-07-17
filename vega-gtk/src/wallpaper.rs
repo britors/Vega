@@ -37,7 +37,8 @@ impl std::error::Error for WallpaperError {}
 /// não passa pelo vegad, ao contrário do resto do Vega. Um daemon root não
 /// tem uma forma robusta de escrever na sessão dconf de um usuário logado.
 pub fn schema_available() -> bool {
-    gio::SettingsSchemaSource::default().is_some_and(|source| source.lookup(SCHEMA_ID, true).is_some())
+    gio::SettingsSchemaSource::default()
+        .is_some_and(|source| source.lookup(SCHEMA_ID, true).is_some())
 }
 
 pub fn list_wallpapers() -> Vec<WallpaperEntry> {
@@ -46,8 +47,9 @@ pub fn list_wallpapers() -> Vec<WallpaperEntry> {
         catalog_entries.extend(parse_catalog_dir(Path::new(dir)));
     }
     if let Some(home) = glib::home_dir().to_str().map(PathBuf::from) {
-        catalog_entries
-            .extend(parse_catalog_dir(&home.join(".local/share/gnome-background-properties")));
+        catalog_entries.extend(parse_catalog_dir(
+            &home.join(".local/share/gnome-background-properties"),
+        ));
     }
 
     let mut by_light_path = BTreeMap::<PathBuf, WallpaperEntry>::new();
@@ -59,7 +61,9 @@ pub fn list_wallpapers() -> Vec<WallpaperEntry> {
         if let Some(dark) = &entry.dark_path {
             known_dark_paths.insert(dark.clone());
         }
-        by_light_path.entry(entry.light_path.clone()).or_insert(entry);
+        by_light_path
+            .entry(entry.light_path.clone())
+            .or_insert(entry);
     }
 
     for dir in IMAGE_DIRS {
@@ -67,11 +71,13 @@ pub fn list_wallpapers() -> Vec<WallpaperEntry> {
             if known_dark_paths.contains(&path) || by_light_path.contains_key(&path) {
                 continue;
             }
-            by_light_path.entry(path.clone()).or_insert_with(|| WallpaperEntry {
-                name: display_name_from_path(&path),
-                light_path: path,
-                dark_path: None,
-            });
+            by_light_path
+                .entry(path.clone())
+                .or_insert_with(|| WallpaperEntry {
+                    name: display_name_from_path(&path),
+                    light_path: path,
+                    dark_path: None,
+                });
         }
     }
 
@@ -124,7 +130,11 @@ fn load_cover_thumbnail(path: &Path) -> Option<ThumbnailData> {
     Some(crop_center(&scaled, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT))
 }
 
-fn crop_center(pixbuf: &gtk::gdk_pixbuf::Pixbuf, target_width: i32, target_height: i32) -> ThumbnailData {
+fn crop_center(
+    pixbuf: &gtk::gdk_pixbuf::Pixbuf,
+    target_width: i32,
+    target_height: i32,
+) -> ThumbnailData {
     let src_width = pixbuf.width();
     let src_height = pixbuf.height();
     let channels = if pixbuf.has_alpha() { 4 } else { 3 };
@@ -192,9 +202,9 @@ pub fn apply(entry: &WallpaperEntry) -> Result<(), WallpaperError> {
         .as_deref()
         .map(|path| gio::File::for_path(path).uri())
         .unwrap_or_else(|| light_uri.clone());
-    settings.set_string("picture-uri", &light_uri).map_err(|_| {
-        WallpaperError(gettext("Não foi possível aplicar o papel de parede."))
-    })?;
+    settings
+        .set_string("picture-uri", &light_uri)
+        .map_err(|_| WallpaperError(gettext("Não foi possível aplicar o papel de parede.")))?;
     let _ = settings.set_string("picture-uri-dark", &dark_uri);
     let _ = settings.set_string("picture-options", "zoom");
     Ok(())
