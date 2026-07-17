@@ -62,3 +62,4 @@ jobs:
             gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --generate-notes
           fi
           gh release upload "$tag" dist/*.pkg.tar.* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false
