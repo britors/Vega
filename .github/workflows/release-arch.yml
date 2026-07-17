@@ -14,7 +14,7 @@ jobs:
     container: archlinux:latest
     steps:
       - name: Dependências
-        run: pacman -Syu --noconfirm base-devel git go rust gtk4 libadwaita cmake ninja qt6-base
+        run: pacman -Syu --noconfirm base-devel git go rust gtk4 libadwaita
       - uses: actions/checkout@v7
       - name: Construir pacotes locais
         run: |
@@ -23,7 +23,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           version="${version%%-*}"
           mkdir -p dist
-          for package in vega vega-qt vegad; do
+          for package in vega vegad; do
             work="/tmp/pkg-$package"
             install -d -o builder -g builder "$work/src"
             cp "packaging/$package/PKGBUILD" "$work/PKGBUILD"
@@ -33,25 +33,12 @@ jobs:
             su builder -c "cd '$work' && VEGA_SOURCE_DIR='$work/src/Vega' makepkg --noconfirm --nodeps --noextract"
             cp "$work"/*.pkg.tar.* dist/
           done
-      - name: Validar instalação, coexistência e remoção independente
+      - name: Validar instalação
         run: |
           pacman -U --noconfirm dist/*.pkg.tar.*
           test -x /usr/bin/lyra-vega-gtk
-          test -x /usr/bin/lyra-vega-qt
           test -x /usr/lib/vega/vegad
           test -f /usr/share/applications/vega.desktop
-          test -f /usr/share/applications/org.lyraos.VegaQt.desktop
-
-          pacman -R --noconfirm lyra-vega-qt
-          test -x /usr/bin/lyra-vega-gtk
-          test -x /usr/lib/vega/vegad
-          test ! -e /usr/bin/lyra-vega-qt
-
-          pacman -U --noconfirm dist/lyra-vega-qt-*.pkg.tar.*
-          pacman -R --noconfirm lyra-vega-gtk
-          test -x /usr/bin/lyra-vega-qt
-          test -x /usr/lib/vega/vegad
-          test ! -e /usr/bin/lyra-vega-gtk
       - uses: actions/upload-artifact@v4
         with:
           name: arch-packages

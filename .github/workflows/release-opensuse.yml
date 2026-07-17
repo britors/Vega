@@ -1,6 +1,6 @@
 name: Release RPMs (openSUSE)
 
-# Builda vegad e as interfaces GTK/Qt em RPMs independentes a partir dos specs
+# Builda vegad e a interface GTK em RPMs independentes a partir dos specs
 # em packaging/opensuse/ e anexa os dois na GitHub Release da tag empurrada.
 # Empacotamento ainda de teste, ver packaging/opensuse/vegad.spec.
 on:
@@ -19,7 +19,7 @@ jobs:
       - name: Instalar dependências de build
         run: |
           zypper --non-interactive install -y tar gzip go rust cargo gcc curl \
-            pkg-config gtk4-devel libadwaita-devel cmake ninja qt6-base-devel \
+            pkg-config gtk4-devel libadwaita-devel \
             rpm-build rpmdevtools
 
       - uses: actions/checkout@v7
@@ -36,7 +36,6 @@ jobs:
             .
           rpmbuild -bb --define "version $version" packaging/opensuse/vegad.spec
           rpmbuild -bb --define "version $version" packaging/opensuse/vega.spec
-          rpmbuild -bb --define "version $version" packaging/opensuse/vega-qt.spec
 
       - name: Coletar RPMs finais (sem debuginfo/debugsource)
         run: |
@@ -45,25 +44,12 @@ jobs:
             ! -name '*debuginfo*' ! -name '*debugsource*' -exec cp {} dist/ \;
           ls -lh dist/
 
-      - name: Validar instalação, coexistência e remoção independente
+      - name: Validar instalação
         run: |
           zypper --non-interactive --no-gpg-checks install -y dist/*.rpm
           test -x /usr/bin/lyra-vega-gtk
-          test -x /usr/bin/lyra-vega-qt
           test -x /usr/lib/vega/vegad
           test -f /usr/share/applications/vega.desktop
-          test -f /usr/share/applications/org.lyraos.VegaQt.desktop
-
-          zypper --non-interactive remove -y lyra-vega-qt
-          test -x /usr/bin/lyra-vega-gtk
-          test -x /usr/lib/vega/vegad
-          test ! -e /usr/bin/lyra-vega-qt
-
-          zypper --non-interactive --no-gpg-checks install -y dist/lyra-vega-qt-*.rpm
-          zypper --non-interactive remove -y lyra-vega-gtk
-          test -x /usr/bin/lyra-vega-qt
-          test -x /usr/lib/vega/vegad
-          test ! -e /usr/bin/lyra-vega-gtk
 
       - uses: actions/upload-artifact@v4
         with:

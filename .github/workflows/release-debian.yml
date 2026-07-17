@@ -1,6 +1,6 @@
 name: Release DEBs (Ubuntu/Debian)
 
-# Builda as interfaces GTK/Qt e o vegad em pacotes independentes.
+# Builda a interface GTK e o vegad em pacotes independentes.
 on:
   push:
     tags:
@@ -21,7 +21,6 @@ jobs:
           apt-get install -y --no-install-recommends \
             build-essential debhelper dpkg-dev fakeroot golang-go \
             cargo rustc pkg-config libgtk-4-dev libadwaita-1-dev \
-            cmake ninja-build qt6-base-dev \
             ca-certificates curl git
 
       - uses: actions/checkout@v7
@@ -48,25 +47,12 @@ jobs:
           cp ../*.deb dist/
           ls -lh dist/
 
-      - name: Validar instalação, coexistência e remoção independente
+      - name: Validar instalação
         run: |
           apt-get install -y ./dist/*.deb
           test -x /usr/bin/lyra-vega-gtk
-          test -x /usr/bin/lyra-vega-qt
           test -x /usr/lib/vega/vegad
           test -f /usr/share/applications/vega.desktop
-          test -f /usr/share/applications/org.lyraos.VegaQt.desktop
-
-          apt-get remove -y lyra-vega-qt
-          test -x /usr/bin/lyra-vega-gtk
-          test -x /usr/lib/vega/vegad
-          test ! -e /usr/bin/lyra-vega-qt
-
-          apt-get install -y ./dist/lyra-vega-qt_*.deb
-          apt-get remove -y lyra-vega-gtk
-          test -x /usr/bin/lyra-vega-qt
-          test -x /usr/lib/vega/vegad
-          test ! -e /usr/bin/lyra-vega-gtk
 
       - uses: actions/upload-artifact@v4
         with:

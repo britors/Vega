@@ -1,5 +1,5 @@
 name: Release RPMs (Fedora)
-# Builda vegad e as interfaces GTK/Qt em RPMs independentes a partir dos specs em
+# Builda vegad e a interface GTK em RPMs independentes a partir dos specs em
 # packaging/fedora/ e anexa os dois na GitHub Release da tag empurrada.
 # Empacotamento ainda de teste, ver packaging/fedora/vegad.spec.
 #
@@ -22,7 +22,7 @@ jobs:
       - name: Instalar dependências de build
         run: |
           dnf install -y golang rust cargo gcc curl pkgconf-pkg-config \
-            gtk4-devel libadwaita-devel cmake ninja-build qt6-qtbase-devel \
+            gtk4-devel libadwaita-devel \
             rpm-build rpmdevtools
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -38,32 +38,18 @@ jobs:
             .
           rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vegad.spec
           rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vega.spec
-          rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vega-qt.spec
       - name: Coletar RPMs finais (sem debuginfo/debugsource)
         run: |
           mkdir -p dist
           find "$HOME/rpmbuild/RPMS/x86_64" -maxdepth 1 -name '*.rpm' \
             ! -name '*debuginfo*' ! -name '*debugsource*' -exec cp {} dist/ \;
           ls -lh dist/
-      - name: Validar instalação, coexistência e remoção independente
+      - name: Validar instalação
         run: |
           dnf install -y dist/*.rpm
           test -x /usr/bin/lyra-vega-gtk
-          test -x /usr/bin/lyra-vega-qt
           test -x /usr/lib/vega/vegad
           test -f /usr/share/applications/vega.desktop
-          test -f /usr/share/applications/org.lyraos.VegaQt.desktop
-
-          dnf remove -y lyra-vega-qt
-          test -x /usr/bin/lyra-vega-gtk
-          test -x /usr/lib/vega/vegad
-          test ! -e /usr/bin/lyra-vega-qt
-
-          dnf install -y dist/lyra-vega-qt-*.rpm
-          dnf remove -y lyra-vega-gtk
-          test -x /usr/bin/lyra-vega-qt
-          test -x /usr/lib/vega/vegad
-          test ! -e /usr/bin/lyra-vega-gtk
       - uses: actions/upload-artifact@v4
         with:
           name: fedora-rpms
