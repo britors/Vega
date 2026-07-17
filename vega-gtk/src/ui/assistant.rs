@@ -94,7 +94,7 @@ impl AssistantPage {
         let settings_group = adw::PreferencesGroup::builder()
             .title(gettext("Configurações e credenciais"))
             .description(gettext(
-                "As chaves ficam no Secret Service e nunca em arquivos do Vega",
+                "As chaves ficam no Secret Service e nunca em arquivos do Lyra Vega",
             ))
             .build();
         settings_group.add(&row(&gettext("Provedor"), &provider));
@@ -280,7 +280,7 @@ impl AssistantPage {
         let history = self.history.borrow();
         let text = if history.is_empty() {
             gettext(
-                "Olá! Posso explicar o estado do sistema e ajudar com tarefas no Vega. Configure um provedor e sua chave abaixo para começar.",
+                "Olá! Posso explicar o estado do sistema e ajudar com tarefas no Lyra Vega. Configure um provedor e sua chave abaixo para começar.",
             )
         } else {
             history
@@ -291,7 +291,7 @@ impl AssistantPage {
                         if message.role == "user" {
                             gettext("Você")
                         } else {
-                            "Vega".to_string()
+                            "Lyra Vega".to_string()
                         },
                         message.content
                     )

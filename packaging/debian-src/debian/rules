@@ -25,7 +25,7 @@ override_dh_auto_build:
 override_dh_auto_install:
 	install -Dm755 vega-gtk/target/release/lyra-vega-gtk \
 		debian/lyra-vega-gtk/usr/bin/lyra-vega-gtk
-	ln -s lyra-vega-gtk debian/lyra-vega-gtk/usr/bin/vega
+	ln -s lyra-vega-gtk debian/lyra-vega-gtk/usr/bin/vega-gtk
 	install -Dm644 packaging/vega/vega.desktop \
 		debian/lyra-vega-gtk/usr/share/applications/vega.desktop
 	install -Dm644 packaging/vega/vega.svg \

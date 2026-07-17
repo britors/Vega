@@ -1,8 +1,8 @@
-# Vega
+# Lyra Vega - Enterprise Control Center
 
 *[Read in English](README.md)*
 
-Vega é um centro de controle nativo para Linux: reúne administração de
+Lyra Vega é um centro de controle nativo para Linux: reúne administração de
 software, hardware, kernel, rede, backups, usuários e serviços numa única
 interface integrada ao GNOME, no lugar de espalhar essas tarefas entre
 `nmcli`, `systemctl`, editores de arquivo de configuração e um punhado de

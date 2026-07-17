@@ -21,7 +21,7 @@ rm -f /usr/share/polkit-1/actions/org.lyraos.vega.policy
 echo "==> Removendo binários e app"
 rm -f /usr/lib/vega/vegad
 rmdir --ignore-fail-on-non-empty /usr/lib/vega 2>/dev/null || true
-rm -f /usr/bin/vega
+rm -f /usr/bin/vega-gtk
 rm -rf /usr/lib/lyra-vega
 rm -f /usr/share/applications/vega.desktop
 rm -f /usr/share/icons/hicolor/scalable/apps/vega.svg

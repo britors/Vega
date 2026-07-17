@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Vega
-Comment=Centro de controle para Linux
+Name=Lyra Vega
+Comment=Enterprise Control Center
 GenericName=Configurações do sistema
 Exec=/usr/bin/lyra-vega-gtk
 Icon=vega

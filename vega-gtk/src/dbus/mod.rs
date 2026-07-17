@@ -2,7 +2,6 @@ mod backup;
 mod bluetooth;
 mod client;
 mod datetime;
-mod display;
 mod firewall;
 mod hardware;
 mod kernel;
@@ -27,9 +26,6 @@ pub use bluetooth::{
 };
 pub use client::{DbusConnectionError, VegaDbus};
 pub use datetime::{DateTimeClient, DateTimeClientError, DateTimeStatus, ZbusDateTimeClient};
-pub use display::{
-    DisplayClient, DisplayClientError, DisplayMode, DisplayOutput, ZbusDisplayClient,
-};
 pub use firewall::{
     FirewallClient, FirewallClientError, FirewallService, FirewallStatus, ZbusFirewallClient,
 };
@@ -38,7 +34,7 @@ pub use kernel::{BootStatus, KernelClient, KernelClientError, ZbusKernelClient};
 pub use logs::{LogsClient, LogsClientError, ZbusLogsClient};
 pub use mock::MockSystemClient;
 pub use monitor::{
-    MonitorClient, MonitorClientError, ProcessInfo, SystemMetrics, ZbusMonitorClient,
+    MonitorClient, MonitorClientError, NotNan, ProcessInfo, SystemMetrics, ZbusMonitorClient,
 };
 pub use network::{
     NetworkClient, NetworkClientError, NetworkInterface, ProxyConfig, WifiNetwork,

@@ -4,10 +4,10 @@ use gtk::{gio, glib};
 use std::{cell::RefCell, rc::Rc, time::Instant};
 
 use crate::dbus::{
-    BackupClient, BackupConfig, BackupEvent, BluetoothClient, DateTimeClient, DisplayClient,
-    FirewallClient, HardwareClient, KernelClient, LogsClient, MonitorClient, NetworkClient,
-    ServicesClient, SnapshotsClient, SoftwareClient, SoftwareEvent, StorageClient, SystemClient,
-    UsersClient, VegaDbus,
+    BackupClient, BackupConfig, BackupEvent, BluetoothClient, DateTimeClient, FirewallClient,
+    HardwareClient, KernelClient, LogsClient, MonitorClient, NetworkClient, ServicesClient,
+    SnapshotsClient, SoftwareClient, SoftwareEvent, StorageClient, SystemClient, UsersClient,
+    VegaDbus,
 };
 use crate::model::AppIdentity;
 use crate::ui::VegaShell;
@@ -1778,50 +1778,7 @@ async fn refresh_storage_page(page: &crate::ui::StoragePage, dbus: &VegaDbus) {
 fn configure_screen(shell: &VegaShell, dbus: VegaDbus) {
     configure_wallpaper_tab(&shell.screen.wallpaper);
     configure_screensaver_tab(&shell.screen.screensaver);
-    configure_display_tab(&shell.screen.display, dbus.clone());
     configure_monitor_tab(&shell.monitor, dbus);
-}
-
-fn configure_display_tab(page: &crate::ui::DisplayPage, dbus: VegaDbus) {
-    let load_page = page.clone();
-    let load_dbus = dbus.clone();
-    glib::MainContext::default().spawn_local(async move {
-        refresh_display_page(&load_page, &load_dbus).await;
-    });
-
-    let apply_page = page.clone();
-    let apply_dbus = dbus;
-    page.apply.connect_clicked(move |_| {
-        let Some((output, width, height, refresh_hz, scale, rotation)) = apply_page.selection()
-        else {
-            return;
-        };
-        let page = apply_page.clone();
-        let dbus = apply_dbus.clone();
-        page.apply.set_sensitive(false);
-        page.status
-            .set_label(&gettext("Aplicando configuração de tela…"));
-        glib::MainContext::default().spawn_local(async move {
-            match dbus
-                .display()
-                .apply(&output, width, height, refresh_hz, scale, rotation)
-                .await
-            {
-                Ok(()) => refresh_display_page(&page, &dbus).await,
-                Err(error) => {
-                    page.status.set_label(&error.to_string());
-                    page.apply.set_sensitive(true);
-                }
-            }
-        });
-    });
-}
-
-async fn refresh_display_page(page: &crate::ui::DisplayPage, dbus: &VegaDbus) {
-    match dbus.display().list_outputs().await {
-        Ok(outputs) => page.show(&outputs),
-        Err(error) => page.status.set_label(&error.to_string()),
-    }
 }
 
 fn configure_wallpaper_tab(page: &crate::ui::WallpaperPage) {
@@ -1930,10 +1887,7 @@ fn configure_monitor_tab(page: &crate::ui::MonitorPage, dbus: VegaDbus) {
     });
 
     let kill_page = page.clone();
-    page.kill.connect_clicked(move |_| {
-        let Some(process) = kill_page.selected() else {
-            return;
-        };
+    page.connect_kill(move |process| {
         let dialog = adw::AlertDialog::new(
             Some(&gettext("Encerrar processo?")),
             Some(
@@ -2006,7 +1960,7 @@ async fn refresh_monitor_page(
     }
     match client.list_processes().await {
         Ok(processes) => page.show_processes(processes),
-        Err(error) => page.status.set_label(&error.to_string()),
+        Err(error) => page.processes_status.set_label(&error.to_string()),
     }
 }
 

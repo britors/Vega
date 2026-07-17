@@ -1,3 +1,22 @@
+vega (3.2.0-1) unstable; urgency=medium
+
+  * Renomeia o produto para "Lyra Vega - Enterprise Control Center" (título
+    da janela, ícone, página Sobre, .desktop); o comando instalado passa a
+    ser vega-gtk em vez de vega.
+  * Remove a aba de configuração de tela (resolução/escala/orientação) do
+    módulo Tela, que tinha sido adicionada na 3.1.0.
+  * Reorganiza o Monitor do Sistema: abas Recursos/Processos, cards com
+    altura fixa e grade de 0-100% nos gráficos, CPU com gráfico por núcleo,
+    processos agrupados em árvore (pai/filho) e botão de encerrar em cada
+    linha.
+  * Reorganiza Tela: Papel de Parede antes de Proteção de Tela.
+  * Reorganiza Rede e Firewall em abas (Interfaces, Wi-Fi, Proxy, VPN,
+    Firewall).
+  * Renomeia o item de navegação Hardware para "Hardware e Kernel".
+  * Remove a conta de sistema "nobody" da lista de Usuários.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Fri, 17 Jul 2026 16:15:00 -0300
+
 vega (3.1.0-1) unstable; urgency=medium
 
   * Adiciona a aba Monitor ao módulo Tela: resolução, taxa de atualização,

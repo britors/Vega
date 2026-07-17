@@ -141,7 +141,7 @@ impl VegaShell {
         );
         stack.add_titled(
             &tabbed_page(
-                &gettext("Hardware"),
+                &gettext("Hardware e Kernel"),
                 &gettext("Inventário e kernel detectados pelo vegad"),
                 &[
                     (
@@ -159,7 +159,7 @@ impl VegaShell {
                 ],
             ),
             Some("hardware"),
-            &gettext("Hardware"),
+            &gettext("Hardware e Kernel"),
         );
         stack.add_titled(
             &about_page(&about_versions, &about_channel, &about_distro, &about_logo),
@@ -172,7 +172,7 @@ impl VegaShell {
         let mark = gtk::Label::new(Some(" "));
         mark.add_css_class("brand-mark");
         brand.append(&mark);
-        brand.append(&gtk::Label::new(Some("Vega")));
+        brand.append(&gtk::Label::new(Some("Lyra Vega")));
         let sidebar_search = gtk::SearchEntry::builder()
             .placeholder_text(gettext("Buscar configuração…"))
             .build();
@@ -206,7 +206,11 @@ impl VegaShell {
             &nav,
             &gettext("Sistema"),
             &[
-                (gettext("Hardware"), "hardware", "computer-symbolic"),
+                (
+                    gettext("Hardware e Kernel"),
+                    "hardware",
+                    "computer-symbolic",
+                ),
                 (
                     gettext("Data, Hora e Idioma"),
                     "datetime",
@@ -289,7 +293,7 @@ impl VegaShell {
             .vexpand(true)
             .build();
 
-        let title = adw::WindowTitle::new("Vega", "Centro de controle");
+        let title = adw::WindowTitle::new("Lyra Vega", &gettext("Centro de Controle Empresarial"));
         let header = adw::HeaderBar::builder().title_widget(&title).build();
         header.add_css_class("window-chrome");
         let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -521,7 +525,7 @@ fn about_page(
     distro: &gtk::Label,
     logo: &gtk::Image,
 ) -> gtk::Widget {
-    let content = page_box(&gettext("Sobre"), &gettext("Vega para Linux"));
+    let content = page_box(&gettext("Sobre"), "Lyra Vega - Enterprise Control Center");
     content.append(&card(&gettext("Versões"), versions));
     let system = adw::PreferencesGroup::builder()
         .title(gettext("Sistema"))

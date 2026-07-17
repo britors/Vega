@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SystemMetrics {
     pub cpu_percent: f64,
     pub mem_used: u64,
@@ -11,9 +11,10 @@ pub struct SystemMetrics {
     pub disk_write_bytes: u64,
     pub net_rx_bytes: u64,
     pub net_tx_bytes: u64,
+    pub cpu_per_core: Vec<f64>,
 }
 
-type MetricsRow = (f64, u64, u64, u64, u64, u64, u64, u64, u64);
+type MetricsRow = (f64, u64, u64, u64, u64, u64, u64, u64, u64, Vec<f64>);
 
 impl From<MetricsRow> for SystemMetrics {
     fn from(row: MetricsRow) -> Self {
@@ -27,6 +28,7 @@ impl From<MetricsRow> for SystemMetrics {
             disk_write_bytes: row.6,
             net_rx_bytes: row.7,
             net_tx_bytes: row.8,
+            cpu_per_core: row.9,
         }
     }
 }
@@ -34,6 +36,7 @@ impl From<MetricsRow> for SystemMetrics {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcessInfo {
     pub pid: u32,
+    pub ppid: u32,
     pub name: String,
     pub user: String,
     pub cpu_percent: NotNan,
@@ -41,17 +44,18 @@ pub struct ProcessInfo {
     pub state: String,
 }
 
-type ProcessRow = (u32, String, String, f64, u64, String);
+type ProcessRow = (u32, u32, String, String, f64, u64, String);
 
 impl From<ProcessRow> for ProcessInfo {
     fn from(row: ProcessRow) -> Self {
         Self {
             pid: row.0,
-            name: row.1,
-            user: row.2,
-            cpu_percent: NotNan(row.3),
-            memory: row.4,
-            state: row.5,
+            ppid: row.1,
+            name: row.2,
+            user: row.3,
+            cpu_percent: NotNan(row.4),
+            memory: row.5,
+            state: row.6,
         }
     }
 }
@@ -66,6 +70,12 @@ pub struct NotNan(f64);
 impl NotNan {
     pub fn get(self) -> f64 {
         self.0
+    }
+}
+
+impl From<f64> for NotNan {
+    fn from(value: f64) -> Self {
+        Self(value)
     }
 }
 

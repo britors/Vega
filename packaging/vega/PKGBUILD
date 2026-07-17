@@ -6,7 +6,7 @@
 # and VEGA_SOURCE_DIR for local builds.
 
 pkgname=lyra-vega-gtk
-pkgver=3.1.0
+pkgver=3.2.0
 pkgrel=1
 pkgdesc="Centro de controle para Linux"
 arch=('x86_64')
@@ -40,7 +40,7 @@ package() {
 
   install -Dm755 vega-gtk/target/release/lyra-vega-gtk \
     "$pkgdir/usr/bin/lyra-vega-gtk"
-  ln -s lyra-vega-gtk "$pkgdir/usr/bin/vega"
+  ln -s lyra-vega-gtk "$pkgdir/usr/bin/vega-gtk"
 
   install -Dm644 packaging/vega/vega.desktop \
     "$pkgdir/usr/share/applications/vega.desktop"

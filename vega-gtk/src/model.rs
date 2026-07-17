@@ -7,7 +7,7 @@ pub struct AppIdentity {
 impl Default for AppIdentity {
     fn default() -> Self {
         Self {
-            name: "Vega".into(),
+            name: "Lyra Vega".into(),
             version: env!("CARGO_PKG_VERSION").into(),
         }
     }
@@ -20,7 +20,7 @@ mod tests {
     #[test]
     fn identity_comes_from_package_metadata() {
         let identity = AppIdentity::default();
-        assert_eq!(identity.name, "Vega");
+        assert_eq!(identity.name, "Lyra Vega");
         assert_eq!(identity.version, env!("CARGO_PKG_VERSION"));
     }
 }

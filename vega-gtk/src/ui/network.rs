@@ -114,6 +114,59 @@ impl NetworkPage {
             .halign(gtk::Align::Start)
             .sensitive(false)
             .build();
+        let interfaces_tab_content = gtk::Box::new(gtk::Orientation::Vertical, 18);
+        interfaces_tab_content.append(&status);
+        interfaces_tab_content.append(&interfaces);
+        interfaces_tab_content.append(&interface_action);
+
+        let wifi_tab_content = gtk::Box::new(gtk::Orientation::Vertical, 18);
+        wifi_tab_content.append(&wifi);
+
+        let proxy_tab_content = gtk::Box::new(gtk::Orientation::Vertical, 18);
+        proxy_tab_content.append(&proxy);
+        proxy_tab_content.append(&proxy_grid);
+        proxy_tab_content.append(&proxy_apply);
+
+        let vpn_tab_content = gtk::Box::new(gtk::Orientation::Vertical, 18);
+        vpn_tab_content.append(&vpn_status);
+        vpn_tab_content.append(&vpn_import);
+
+        let firewall_tab_content = gtk::Box::new(gtk::Orientation::Vertical, 18);
+        firewall_tab_content.append(&firewall_status);
+        firewall_tab_content.append(&firewall_services);
+        firewall_tab_content.append(&firewall_action);
+
+        let tabs = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        tabs.add_css_class("module-tabs");
+        let stack = gtk::Stack::builder()
+            .transition_type(gtk::StackTransitionType::Crossfade)
+            .vexpand(true)
+            .build();
+        let mut group: Option<gtk::ToggleButton> = None;
+        for (name, label, widget) in [
+            ("interfaces", gettext("Interfaces"), &interfaces_tab_content),
+            ("wifi", gettext("Wi‑Fi"), &wifi_tab_content),
+            ("proxy", gettext("Proxy"), &proxy_tab_content),
+            ("vpn", "VPN".to_string(), &vpn_tab_content),
+            ("firewall", gettext("Firewall"), &firewall_tab_content),
+        ] {
+            stack.add_named(widget, Some(name));
+            let button = tab_button(&label);
+            if let Some(first) = &group {
+                button.set_group(Some(first));
+            } else {
+                button.set_active(true);
+                group = Some(button.clone());
+            }
+            let target_stack = stack.clone();
+            button.connect_clicked(move |button| {
+                if button.is_active() {
+                    target_stack.set_visible_child_name(name);
+                }
+            });
+            tabs.append(&button);
+        }
+
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         content.add_css_class("content-page");
         content.add_css_class("compact-page");
@@ -131,39 +184,8 @@ impl NetworkPage {
                 .css_classes(["dim-label"])
                 .build(),
         );
-        content.append(&status);
-        content.append(&section(&gettext("Interfaces"), &interfaces));
-        content.append(&interface_action);
-        content.append(&section(&gettext("Redes Wi‑Fi"), &wifi));
-        content.append(
-            &gtk::Label::builder()
-                .label(gettext("Proxy"))
-                .xalign(0.0)
-                .css_classes(["title-2"])
-                .build(),
-        );
-        content.append(&proxy);
-        content.append(&proxy_grid);
-        content.append(&proxy_apply);
-        content.append(
-            &gtk::Label::builder()
-                .label("VPN")
-                .xalign(0.0)
-                .css_classes(["title-2"])
-                .build(),
-        );
-        content.append(&vpn_status);
-        content.append(&vpn_import);
-        content.append(
-            &gtk::Label::builder()
-                .label(gettext("Firewall"))
-                .xalign(0.0)
-                .css_classes(["title-2"])
-                .build(),
-        );
-        content.append(&firewall_status);
-        content.append(&firewall_services);
-        content.append(&firewall_action);
+        content.append(&tabs);
+        content.append(&stack);
         let root = gtk::ScrolledWindow::builder()
             .child(&content)
             .hscrollbar_policy(gtk::PolicyType::Never)
@@ -378,17 +400,11 @@ impl NetworkPage {
         }
     }
 }
-fn section(t: &str, l: &gtk::ListBox) -> gtk::Box {
-    let b = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    b.append(
-        &gtk::Label::builder()
-            .label(t)
-            .xalign(0.0)
-            .css_classes(["title-2"])
-            .build(),
-    );
-    b.append(l);
-    b
+fn tab_button(label: &str) -> gtk::ToggleButton {
+    gtk::ToggleButton::builder()
+        .label(label)
+        .css_classes(["flat", "module-tab"])
+        .build()
 }
 fn clear(l: &gtk::ListBox) {
     while let Some(c) = l.first_child() {
