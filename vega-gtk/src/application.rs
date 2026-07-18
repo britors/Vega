@@ -2243,10 +2243,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
 
     let compare_page = page;
     let compare_dbus = dbus.clone();
-    shell.snapshots.compare.connect_clicked(move |_| {
-        let Some(snapshot) = compare_page.selected_snapshot() else {
-            return;
-        };
+    shell.snapshots.connect_compare(move |snapshot, _button| {
         compare_page
             .comparison
             .set_label(&gettext("Comparando pacotes…"));
@@ -2308,10 +2305,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
 
     let delete_page = shell.snapshots.clone();
     let delete_dbus = dbus.clone();
-    shell.snapshots.delete.connect_clicked(move |_| {
-        let Some(snapshot) = delete_page.selected_snapshot() else {
-            return;
-        };
+    shell.snapshots.connect_delete(move |snapshot, button| {
         let dialog = adw::AlertDialog::new(
             Some(&gettext("Excluir ponto de restauração?")),
             Some(
@@ -2332,7 +2326,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
             if dialog.choose_future(gtk::Widget::NONE).await != "delete" {
                 return;
             }
-            page.delete.set_sensitive(false);
+            button.set_sensitive(false);
             page.status
                 .set_label(&gettext("Excluindo ponto de restauração…"));
             match client.delete(snapshot.id).await {
@@ -2347,11 +2341,8 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
 
     let rollback_page = shell.snapshots.clone();
     let rollback_dbus = dbus.clone();
-    shell.snapshots.rollback.connect_clicked(move |_| {
-        let Some(snapshot) = rollback_page.selected_snapshot() else {
-            return;
-        };
-        rollback_page.rollback.set_sensitive(false);
+    shell.snapshots.connect_apply(move |snapshot, button| {
+        button.set_sensitive(false);
         rollback_page
             .comparison
             .set_label(&gettext("Carregando revisão obrigatória do rollback…"));
@@ -2362,7 +2353,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
                 Ok(changes) => changes,
                 Err(error) => {
                     page.comparison.set_label(&error.to_string());
-                    page.rollback.set_sensitive(true);
+                    button.set_sensitive(true);
                     return;
                 }
             };
@@ -2404,7 +2395,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
             dialog.set_default_response(Some("cancel"));
             dialog.set_close_response("cancel");
             if dialog.choose_future(gtk::Widget::NONE).await != "rollback" {
-                page.rollback.set_sensitive(true);
+                button.set_sensitive(true);
                 return;
             }
             page.status
@@ -2415,7 +2406,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
                 )),
                 Err(error) => page.status.set_label(&error.to_string()),
             }
-            page.rollback.set_sensitive(true);
+            button.set_sensitive(true);
         });
     });
 

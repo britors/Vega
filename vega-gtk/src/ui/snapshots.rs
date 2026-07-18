@@ -5,19 +5,20 @@ use gettextrs::gettext;
 
 use crate::dbus::Snapshot;
 
+type SnapshotCallback = Rc<RefCell<Option<Box<dyn Fn(Snapshot, gtk::Button)>>>>;
+
 #[derive(Clone)]
 pub struct SnapshotsPage {
     pub root: gtk::Widget,
     pub status: gtk::Label,
     pub list: gtk::ListBox,
     pub create: gtk::Button,
-    pub compare: gtk::Button,
-    pub rollback: gtk::Button,
-    pub delete: gtk::Button,
     pub retention: gtk::SpinButton,
     pub apply_retention: gtk::Button,
     pub comparison: gtk::Label,
-    items: Rc<RefCell<Vec<Snapshot>>>,
+    on_apply: SnapshotCallback,
+    on_delete: SnapshotCallback,
+    on_compare: SnapshotCallback,
 }
 
 impl SnapshotsPage {
@@ -37,19 +38,8 @@ impl SnapshotsPage {
             .label(gettext("Criar ponto"))
             .css_classes(["suggested-action"])
             .build();
-        let compare = gtk::Button::with_label(&gettext("Comparar pacotes"));
-        let rollback = gtk::Button::with_label(&gettext("Aplicar"));
-        rollback.add_css_class("suggested-action");
-        let delete = gtk::Button::with_label(&gettext("Excluir"));
-        delete.add_css_class("destructive-action");
-        for button in [&compare, &rollback, &delete] {
-            button.set_sensitive(false);
-        }
         let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         actions.append(&create);
-        actions.append(&compare);
-        actions.append(&rollback);
-        actions.append(&delete);
         let comparison = gtk::Label::builder()
             .label(gettext(
                 "Selecione um ponto para comparar os pacotes com o estado atual.",
@@ -91,24 +81,26 @@ impl SnapshotsPage {
             status,
             list,
             create,
-            compare,
-            rollback,
-            delete,
             retention,
             apply_retention,
             comparison,
-            items: Rc::new(RefCell::new(Vec::new())),
+            on_apply: Rc::new(RefCell::new(None)),
+            on_delete: Rc::new(RefCell::new(None)),
+            on_compare: Rc::new(RefCell::new(None)),
         };
-        let compare = page.compare.clone();
-        let rollback = page.rollback.clone();
-        let delete = page.delete.clone();
-        page.list.connect_row_selected(move |_, row| {
-            let selected = row.is_some();
-            compare.set_sensitive(selected);
-            rollback.set_sensitive(selected);
-            delete.set_sensitive(selected);
-        });
         page
+    }
+
+    pub fn connect_apply<F: Fn(Snapshot, gtk::Button) + 'static>(&self, callback: F) {
+        *self.on_apply.borrow_mut() = Some(Box::new(callback));
+    }
+
+    pub fn connect_delete<F: Fn(Snapshot, gtk::Button) + 'static>(&self, callback: F) {
+        *self.on_delete.borrow_mut() = Some(Box::new(callback));
+    }
+
+    pub fn connect_compare<F: Fn(Snapshot, gtk::Button) + 'static>(&self, callback: F) {
+        *self.on_compare.borrow_mut() = Some(Box::new(callback));
     }
 
     pub fn set_available(&self, available: bool) {
@@ -136,20 +128,55 @@ impl SnapshotsPage {
                 snapshot.description.clone()
             };
             let subtitle = format!("#{0} • {date} • {1}", snapshot.id, snapshot.trigger);
-            self.list.append(
-                &adw::ActionRow::builder()
-                    .title(gtk::glib::markup_escape_text(&title))
-                    .subtitle(gtk::glib::markup_escape_text(&subtitle))
-                    .activatable(true)
-                    .build(),
-            );
-        }
-        *self.items.borrow_mut() = snapshots;
-    }
+            let row = adw::ActionRow::builder()
+                .title(gtk::glib::markup_escape_text(&title))
+                .subtitle(gtk::glib::markup_escape_text(&subtitle))
+                .activatable(true)
+                .build();
 
-    pub fn selected_snapshot(&self) -> Option<Snapshot> {
-        let index = self.list.selected_row()?.index() as usize;
-        self.items.borrow().get(index).cloned()
+            let compare = gtk::Button::builder()
+                .label(gettext("Comparar"))
+                .valign(gtk::Align::Center)
+                .build();
+            let on_compare = self.on_compare.clone();
+            let compare_snapshot = snapshot.clone();
+            compare.connect_clicked(move |button| {
+                if let Some(callback) = on_compare.borrow().as_ref() {
+                    callback(compare_snapshot.clone(), button.clone());
+                }
+            });
+
+            let apply = gtk::Button::builder()
+                .label(gettext("Aplicar"))
+                .valign(gtk::Align::Center)
+                .css_classes(["suggested-action"])
+                .build();
+            let on_apply = self.on_apply.clone();
+            let apply_snapshot = snapshot.clone();
+            apply.connect_clicked(move |button| {
+                if let Some(callback) = on_apply.borrow().as_ref() {
+                    callback(apply_snapshot.clone(), button.clone());
+                }
+            });
+
+            let delete = gtk::Button::builder()
+                .label(gettext("Excluir"))
+                .valign(gtk::Align::Center)
+                .css_classes(["destructive-action"])
+                .build();
+            let on_delete = self.on_delete.clone();
+            let delete_snapshot = snapshot.clone();
+            delete.connect_clicked(move |button| {
+                if let Some(callback) = on_delete.borrow().as_ref() {
+                    callback(delete_snapshot.clone(), button.clone());
+                }
+            });
+
+            row.add_suffix(&compare);
+            row.add_suffix(&apply);
+            row.add_suffix(&delete);
+            self.list.append(&row);
+        }
     }
 
     pub fn show_comparison(&self, changes: &[String]) {
