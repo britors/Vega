@@ -1,3 +1,17 @@
+vega (4.0.1-1) unstable; urgency=medium
+
+  * Corrige o release-opensuse.yml: a v4.0.0 tentou usar
+    dtolnay/rust-toolchain@stable, mas essa action falha dentro do
+    container opensuse/leap:16.0 (bash não encontrado), quebrando o build
+    do pacote openSUSE naquela release. O openSUSE volta a usar o
+    rust/cargo do próprio zypper, como sempre funcionou antes da v4.0.0.
+  * Atualiza o ícone do vega-gtk: fundo em degradê preenchendo todo o
+    squircle, glifo branco liso por cima, no lugar de fundo escuro sólido
+    com glifo colorido — visual mais próximo do padrão de ícones nativos
+    do GNOME.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Sat, 18 Jul 2026 12:15:00 -0300
+
 vega (4.0.0-1) unstable; urgency=medium
 
   * Adiciona o pacote vega-cli: interface de terminal (shell + dialog) do
