@@ -43,7 +43,14 @@ if grep -Ei '(electron|node_modules|npm (ci|install|run)|nodejs)' "${package_fil
   echo "Erro: referência ao runtime legado no pacote GTK" >&2
   exit 1
 fi
-for workflow in release-fedora.yml release-opensuse.yml release-debian.yml; do
+# Só Fedora e Debian pinam o toolchain via dtolnay/rust-toolchain (as
+# imagens desses containers têm rust do sistema desatualizado demais pra
+# esse projeto). Arch e openSUSE usam o rust/cargo do próprio gerenciador
+# de pacotes direto — openSUSE especificamente NÃO deve ganhar essa action
+# de volta: já foi tentado (release v4.0.0) e quebrou com
+# `exec: "bash": executable file not found in $PATH` dentro do container
+# opensuse/leap, incompatibilidade real confirmada em CI, não teórica.
+for workflow in release-fedora.yml release-debian.yml; do
   grep -q 'dtolnay/rust-toolchain@stable' "$repo_root/.github/workflows/$workflow"
 done
 
