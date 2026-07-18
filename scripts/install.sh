@@ -10,9 +10,16 @@
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
 #
 # VEGA_VERSION=v1.3.4 sudo -E bash install.sh    # trava numa tag específica
+# VEGA_CLI_ONLY=1 sudo -E bash install.sh        # só vegad + vega-cli, sem
+#                                                 # a interface GTK (e sem
+#                                                 # puxar gtk4/libadwaita) —
+#                                                 # pensado pra servidor
+#                                                 # headless administrado só
+#                                                 # por SSH.
 set -euo pipefail
 
 REPO="britors/Vega"
+VEGA_CLI_ONLY="${VEGA_CLI_ONLY:-0}"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Rode como root (sudo bash install.sh, ou via curl ... | sudo bash)." >&2
@@ -64,6 +71,18 @@ download_release_assets() {
   done
 }
 
+# skip_gtk_package_if_cli_only remove do $workdir o(s) pacote(s) da
+# interface GTK (lyra-vega-gtk) quando VEGA_CLI_ONLY=1 — feito depois do
+# download e antes de instalar, pra nenhum gerenciador de pacotes puxar
+# gtk4/libadwaita como dependência dela num servidor headless. O nome do
+# pacote vira prefixo do arquivo com "-" (Arch/RPM) ou "_" (Debian), daí os
+# dois padrões de glob.
+skip_gtk_package_if_cli_only() {
+  [ "$VEGA_CLI_ONLY" = "1" ] || return 0
+  echo "==> VEGA_CLI_ONLY=1: pulando a interface GTK (lyra-vega-gtk)" >&2
+  rm -f "$workdir"/lyra-vega-gtk-* "$workdir"/lyra-vega-gtk_*
+}
+
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
@@ -75,6 +94,7 @@ case "$distro_id $distro_id_like" in
     fi
 
     download_release_assets '\.pkg\.tar\.zst'
+    skip_gtk_package_if_cli_only
 
     echo "==> Instalando via pacman"
     pacman -U --noconfirm "$workdir"/*.pkg.tar.zst
@@ -89,10 +109,12 @@ case "$distro_id $distro_id_like" in
     # do Fedora agora (release-opensuse.yml e release-fedora.yml publicam no
     # mesmo tag) — um suffix genérico '\.rpm' pegaria os dois conjuntos.
     # Os specs de packaging/opensuse/*.spec não definem %dist (então o
-    # nome do arquivo termina em "-1.x86_64.rpm"), enquanto os de
-    # packaging/fedora/*.spec definem "dist .fcNN" (terminam em
-    # "-1.fcNN.x86_64.rpm") — usa isso pra distinguir os dois conjuntos.
-    download_release_assets '-1\.x86_64\.rpm'
+    # nome do arquivo termina em "-1.x86_64.rpm" ou, pro vega-cli
+    # noarch, "-1.noarch.rpm"), enquanto os de packaging/fedora/*.spec
+    # definem "dist .fcNN" (terminam em "-1.fcNN.x86_64.rpm"/".fcNN.noarch.rpm")
+    # — usa isso pra distinguir os dois conjuntos.
+    download_release_assets '-1\.(x86_64|noarch)\.rpm'
+    skip_gtk_package_if_cli_only
 
     echo "==> Instalando via zypper"
     echo "Aviso: os RPMs desta release ainda não são assinados (sem chave GPG"
@@ -105,7 +127,8 @@ case "$distro_id $distro_id_like" in
       exit 1
     fi
 
-    download_release_assets '-1\.fc[0-9]+\.x86_64\.rpm'
+    download_release_assets '-1\.fc[0-9]+\.(x86_64|noarch)\.rpm'
+    skip_gtk_package_if_cli_only
 
     echo "==> Instalando via dnf"
     echo "Aviso: empacotamento Fedora ainda é considerado de teste, não"
@@ -120,6 +143,7 @@ case "$distro_id $distro_id_like" in
     fi
 
     download_release_assets '\.deb'
+    skip_gtk_package_if_cli_only
 
     echo "==> Instalando via apt"
     echo "Aviso: empacotamento Ubuntu/Debian ainda é considerado de teste,"
@@ -136,12 +160,25 @@ case "$distro_id $distro_id_like" in
     ;;
 esac
 
-cat <<EOF
+if [ "$VEGA_CLI_ONLY" = "1" ]; then
+  cat <<EOF
 
 Instalação concluída.
 - Daemon: vegad, ativado sob demanda via D-Bus (org.lyraos.Vega1)
-- Interface: /usr/bin/lyra-vega-gtk
+- Interface: /usr/bin/vega (terminal, dialog)
 
 Empacotamento ainda é considerado de teste — reporte problemas em
 https://github.com/britors/Vega/issues.
 EOF
+else
+  cat <<EOF
+
+Instalação concluída.
+- Daemon: vegad, ativado sob demanda via D-Bus (org.lyraos.Vega1)
+- Interface gráfica: /usr/bin/lyra-vega-gtk
+- Interface de terminal: /usr/bin/vega (rode via SSH, sem precisar do ambiente gráfico)
+
+Empacotamento ainda é considerado de teste — reporte problemas em
+https://github.com/britors/Vega/issues.
+EOF
+fi

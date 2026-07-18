@@ -1,3 +1,11 @@
+vega (0.0.0-1) unstable; urgency=medium
+
+  * Adiciona o pacote vega-cli: interface de terminal (shell + dialog) do
+    Vega para administração via SSH sem ambiente gráfico, reaproveitando o
+    vegad e o mesmo contrato D-Bus já usado pela interface GTK.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Sat, 18 Jul 2026 10:30:00 -0300
+
 vega (3.2.0-1) unstable; urgency=medium
 
   * Renomeia o produto para "Lyra Vega - Enterprise Control Center" (título

@@ -45,6 +45,35 @@ override_dh_auto_install:
 	install -Dm644 packaging/vegad/org.lyraos.vega.policy \
 		debian/vegad/usr/share/polkit-1/actions/org.lyraos.vega.policy
 
+	# Exportação periódica do journal do vegad para /var/log/vega/vegad.log
+	# — journalctl continua sendo a fonte de verdade (o módulo Log do
+	# Sistema do vega-cli lê o journal direto), isso só mantém uma cópia
+	# persistente em arquivo, com rotação via logrotate.
+	install -Dm644 packaging/vegad/tmpfiles.d/vega-log.conf \
+		debian/vegad/usr/lib/tmpfiles.d/vega-log.conf
+	install -Dm644 packaging/vegad/vegad-log-export.service \
+		debian/vegad/usr/lib/systemd/system/vegad-log-export.service
+	install -Dm644 packaging/vegad/vegad-log-export.timer \
+		debian/vegad/usr/lib/systemd/system/vegad-log-export.timer
+	install -Dm644 packaging/vegad/logrotate.d/vegad \
+		debian/vegad/etc/logrotate.d/vegad
+
+	# vega-cli é puro shell script — sem nada pra compilar, só instalar.
+	# Mesmo mecanismo do -ldflags do vegad: a versão real da release
+	# substitui o placeholder "0.1.0-dev" só no momento do empacotamento.
+	sed -i "s/^VEGA_CLI_VERSION=.*/VEGA_CLI_VERSION=\"$(DEB_VERSION_UPSTREAM)\"/" \
+		vega-cli/bin/vega
+	install -Dm755 vega-cli/bin/vega debian/vega-cli/usr/lib/vega-cli/bin/vega
+	install -d debian/vega-cli/usr/lib/vega-cli/lib
+	install -m644 vega-cli/lib/*.sh debian/vega-cli/usr/lib/vega-cli/lib/
+	install -m644 vega-cli/lib/theme.dialogrc \
+		debian/vega-cli/usr/lib/vega-cli/lib/theme.dialogrc
+	# /usr/bin/vega é um symlink pro script real — vega::resolve_root
+	# (bin/vega) segue o symlink e resolve VEGA_CLI_ROOT a partir do
+	# caminho real, achando lib/ como irmã de bin/.
+	install -d debian/vega-cli/usr/bin
+	ln -s /usr/lib/vega-cli/bin/vega debian/vega-cli/usr/bin/vega
+
 # Units are installed by hand above (not via the debian/<pkg>.<unit> naming
 # dh_installsystemd expects), and enabling only the update-check timer
 # (not vegad.service, which is bus-activated) is handled explicitly in

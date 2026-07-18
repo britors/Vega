@@ -19,10 +19,20 @@ Description: Centro de controle para Linux
 Package: vegad
 Architecture: amd64
 Depends: ${misc:Depends}, ${shlibs:Depends}, dbus, polkitd | policykit-1, apt
-Recommends: ufw, network-manager, fwupd, bluez, restic, ubuntu-drivers-common
+Recommends: ufw, network-manager, fwupd, bluez, restic, ubuntu-drivers-common, logrotate
 Description: Daemon privilegiado do Vega, centro de controle para Linux
  Expõe operações de sistema (pacotes via APT, snapshots via snapper quando
  disponível, kernel, hardware, rede, firewall, usuários) via D-Bus, autorizadas por
  polkit. Ativado sob demanda pelo D-Bus (Type=dbus), não roda como
  serviço permanente.
+ .
+
+Package: vega-cli
+Architecture: all
+Depends: ${misc:Depends}, dialog, jq, systemd, polkitd | policykit-1
+Description: Interface de terminal do Vega (dialog) para administração via SSH
+ Interface de terminal (shell + dialog) do Vega, para administrar
+ servidores via SSH sem ambiente gráfico. Reaproveita o vegad e o mesmo
+ contrato D-Bus (org.lyraos.Vega1.*) já usado pela interface GTK — só o
+ frontend é novo.
  .

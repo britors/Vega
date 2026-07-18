@@ -38,10 +38,13 @@ jobs:
             .
           rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vegad.spec
           rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vega.spec
+          rpmbuild -bb --define "version $version" --define "dist .fc${fedora_rel}" packaging/fedora/vega-cli.spec
       - name: Coletar RPMs finais (sem debuginfo/debugsource)
         run: |
           mkdir -p dist
-          find "$HOME/rpmbuild/RPMS/x86_64" -maxdepth 1 -name '*.rpm' \
+          # vega-cli.spec é BuildArch:noarch (puro shell), então seu RPM
+          # sai em RPMS/noarch, não RPMS/x86_64 como vegad/vega-gtk.
+          find "$HOME/rpmbuild/RPMS/x86_64" "$HOME/rpmbuild/RPMS/noarch" -maxdepth 1 -name '*.rpm' \
             ! -name '*debuginfo*' ! -name '*debugsource*' -exec cp {} dist/ \;
           ls -lh dist/
       - name: Validar instalação
@@ -50,6 +53,8 @@ jobs:
           test -x /usr/bin/lyra-vega-gtk
           test -x /usr/lib/vega/vegad
           test -f /usr/share/applications/vega.desktop
+          test -x /usr/bin/vega
+          test -x /usr/lib/vega-cli/bin/vega
       - uses: actions/upload-artifact@v4
         with:
           name: fedora-rpms

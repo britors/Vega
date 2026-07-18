@@ -3,6 +3,7 @@ set -e
 
 if [ "$1" = "remove" ] && [ -d /run/systemd/system ]; then
 	systemctl disable --now vegad-update-check.timer 2>/dev/null || true
+	systemctl disable --now vegad-log-export.timer 2>/dev/null || true
 fi
 
 #DEBHELPER#

@@ -12,9 +12,11 @@ set -e
 # scary "Can't operate" / "Failed to connect to system scope bus" errors
 # to stderr even though the || true made them harmless.
 if [ "$1" = "configure" ] && [ -d /run/systemd/system ]; then
+	systemd-tmpfiles --create /usr/lib/tmpfiles.d/vega-log.conf 2>/dev/null || true
 	systemctl daemon-reload || true
 	systemctl reload dbus.service 2>/dev/null || true
 	systemctl enable --now vegad-update-check.timer 2>/dev/null || true
+	systemctl enable --now vegad-log-export.timer 2>/dev/null || true
 fi
 
 #DEBHELPER#

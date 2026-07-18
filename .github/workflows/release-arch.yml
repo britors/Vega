@@ -23,7 +23,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           version="${version%%-*}"
           mkdir -p dist
-          for package in vega vegad; do
+          for package in vega vegad vega-cli; do
             work="/tmp/pkg-$package"
             install -d -o builder -g builder "$work/src"
             cp "packaging/$package/PKGBUILD" "$work/PKGBUILD"
@@ -40,6 +40,8 @@ jobs:
           test -x /usr/bin/lyra-vega-gtk
           test -x /usr/lib/vega/vegad
           test -f /usr/share/applications/vega.desktop
+          test -x /usr/bin/vega
+          test -x /usr/lib/vega-cli/bin/vega
       - uses: actions/upload-artifact@v4
         with:
           name: arch-packages
