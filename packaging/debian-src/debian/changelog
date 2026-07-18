@@ -1,3 +1,16 @@
+vega (4.0.2-1) unstable; urgency=medium
+
+  * Corrige nome acessível ausente em 13 botões de navegação da barra
+    lateral e na caixa de busca do vega-gtk (o texto só existia num Label
+    filho, não no próprio controle focável — um leitor de tela anunciaria
+    "botão" sem dizer qual). Requer gtk4-rs com a feature v4_10
+    (gtk::accessible).
+  * Adiciona scripts/a11y-audit.py: audita a árvore AT-SPI da UI em
+    execução e falha se algum elemento interativo ficar sem nome
+    acessível.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Sat, 18 Jul 2026 12:45:00 -0300
+
 vega (4.0.1-1) unstable; urgency=medium
 
   * Corrige o release-opensuse.yml: a v4.0.0 tentou usar

@@ -14,6 +14,7 @@
 | Arch Linux | PKGBUILD validado por `makepkg --printsrcinfo` quando disponível | Smoke/Arch |
 | Wayland | abertura e fechamento automatizados; navegação e diálogos | Medido + manual por release |
 | X11 | mesma sequência, usando `GDK_BACKEND=x11` | Manual por release |
+| Nome acessível dos controles | `scripts/a11y-audit.py` percorre a árvore AT-SPI e falha se algum botão/entrada/item focável estiver sem nome acessível | Automatizado |
 | Teclado e foco | Tab/Shift+Tab, setas, Enter/Espaço e Escape em todas as páginas | Manual por release |
 | Leitor de tela | nomes de controles, estados, progresso e erros com Orca | Manual por release |
 | Contraste e escala | tema escuro, alto contraste e escalas 100%/200% | Manual por release |
@@ -25,7 +26,25 @@
 ./scripts/qa-smoke.sh
 ./scripts/benchmark-ui.sh 10
 GDK_BACKEND=x11 ./vega-gtk/target/release/lyra-vega-gtk
+
+# Auditoria de nome acessível (exige a UI rodando e python3-gi com Atspi):
+./vega-gtk/target/release/lyra-vega-gtk &
+sleep 2
+python3 scripts/a11y-audit.py
 ```
+
+### Sobre a navegação por teclado automatizada
+
+Tentamos automatizar Tab/Shift+Tab/Enter/Escape via
+`Atspi.generate_keyboard_event` (a mesma API que ferramentas de teste de
+acessibilidade usam). Numa sessão Wayland nativa — e também forçando
+`GDK_BACKEND=x11` — os eventos sintéticos não chegam à janela do vega-gtk
+de forma confiável (a injeção via AT-SPI depende de XTest, que não atinge
+superfícies Wayland puras, e o roteamento de foco X11/XWayland numa sessão
+mista não é confiável o suficiente pra garantir que o evento vá pra janela
+certa). A auditoria de nome acessível (acima) não depende de injeção de
+tecla e é confiável; a navegação por teclado de verdade continua exigindo
+um humano num teclado real.
 
 O benchmark gera `docs/migration/rust-gtk-benchmark.csv`. A inicialização é
 medida entre o início do processo e `window.present()`. PSS e CPU são coletados

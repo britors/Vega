@@ -177,6 +177,12 @@ impl VegaShell {
             .placeholder_text(gettext("Buscar configuração…"))
             .build();
         sidebar_search.add_css_class("sidebar-search");
+        // Placeholder sozinho não vira nome acessível (confirmado via
+        // inspeção AT-SPI: a entrada aparecia sem "name" pro leitor de
+        // tela) — expõe o mesmo texto como Property::Label.
+        sidebar_search.update_property(&[gtk::accessible::Property::Label(&gettext(
+            "Buscar configuração",
+        ))]);
 
         let nav = gtk::Box::new(gtk::Orientation::Vertical, 2);
         let mut searchable = Vec::new();
@@ -464,6 +470,11 @@ fn add_nav_section(
             .halign(gtk::Align::Fill)
             .css_classes(["flat", "sidebar-item"])
             .build();
+        // O texto de navegação só existe no Label filho (dentro de `row`);
+        // sem isso, o próprio botão focável (o item real da árvore de
+        // acessibilidade) chega vazio pro leitor de tela — confirmado por
+        // inspeção AT-SPI, 13 botões de navegação afetados.
+        button.update_property(&[gtk::accessible::Property::Label(&label)]);
         if let Some(first) = group.as_ref() {
             button.set_group(Some(first));
         } else {

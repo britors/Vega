@@ -994,6 +994,11 @@ async fn refresh_services_page(page: &crate::ui::ServicesPage, dbus: &VegaDbus, 
     }
 }
 
+// FileChooserNative foi descontinuado na GTK 4.10 em favor de FileDialog —
+// migrar é uma tarefa separada (mudança de API, não de acessibilidade);
+// por ora só suprime o aviso pra não quebrar `cargo clippy -D warnings`
+// depois de habilitar a feature v4_10 (necessária pra gtk::accessible).
+#[allow(deprecated)]
 fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
     let page = shell.bluetooth.clone();
     let load_page = page.clone();
@@ -1258,6 +1263,8 @@ async fn refresh_bluetooth_page(page: &crate::ui::BluetoothPage, dbus: &VegaDbus
     }
 }
 
+// Ver comentário em configure_bluetooth sobre FileChooserNative.
+#[allow(deprecated)]
 fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
     let page = shell.network.clone();
     let load_page = page.clone();
