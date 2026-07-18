@@ -1,6 +1,6 @@
 [package]
 name = "lyra-vega-gtk"
-version = "4.0.2"
+version = "4.0.3"
 edition = "2024"
 license = "GPL-3.0"
 authors = ["Rodrigo Brito"]

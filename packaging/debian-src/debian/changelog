@@ -1,3 +1,13 @@
+vega (4.0.3-1) unstable; urgency=medium
+
+  * Adiciona a dependência de secret-tool/libsecret que faltava nos
+    pacotes lyra-vega-gtk do Arch (libsecret) e Fedora (libsecret) — só o
+    Debian já declarava isso (libsecret-tools); o openSUSE ganhou na
+    4.0.2 (secret-tool). Sem isso, o módulo Assistente de IA falha
+    silenciosamente ao tentar guardar/ler credenciais no keyring.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Sat, 18 Jul 2026 14:10:00 -0300
+
 vega (4.0.2-1) unstable; urgency=medium
 
   * Corrige nome acessível ausente em 13 botões de navegação da barra

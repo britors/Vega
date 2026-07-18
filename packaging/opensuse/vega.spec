@@ -15,6 +15,7 @@ BuildRequires:  rust
 BuildRequires:  pkgconfig(gtk4)
 BuildRequires:  pkgconfig(libadwaita-1)
 Requires:       vegad
+Requires:       secret-tool
 Provides:       vega = %{version}-%{release}
 Obsoletes:      vega < %{version}-%{release}
 

@@ -16,7 +16,7 @@ license=('GPL-3.0-only')
 # assembly, leaving symbols like ring_core_*__x25519_fe_invert undefined
 # at link time (see briansmith/ring#1444).
 options=('!lto')
-depends=('gtk4' 'libadwaita' 'vegad')
+depends=('gtk4' 'libadwaita' 'vegad' 'libsecret')
 optdepends=(
   'flatpak: origem Flathub para o módulo Software'
   'restic: motor do módulo Backup'
