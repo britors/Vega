@@ -20,9 +20,12 @@ jobs:
         run: |
           zypper --non-interactive install -y tar gzip go rust cargo gcc \
             pkg-config gtk4-devel libadwaita-devel \
-            rpm-build rpmdevtools
+            rpm-build rpmdevtools \
+            checkpolicy policycoreutils
 
       - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Buildar os RPMs
         run: |

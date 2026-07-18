@@ -11,14 +11,17 @@ to cover the range of system administration it leaves out — packages,
 kernel, snapshots, firewall, users — with the same visual integration
 quality.
 
-The project is split into two parts. The interface (`vega-gtk`, in Rust +
-GTK4/libadwaita) runs as your regular user, with no privileges. When an
-action actually needs to touch the system — switching a driver, installing
-a package, changing the network — it's `vegad`, a separate daemon (Go),
-that runs as root and asks for your password via polkit, the same
-authorization mechanism GNOME Settings uses. The interface never has
-direct root access; the two communicate through a well-defined D-Bus
-contract.
+The project is split into three parts. `vegad`, a separate daemon (Go),
+runs as root and asks for your password via polkit — the same
+authorization mechanism GNOME Settings uses — whenever an action actually
+needs to touch the system: switching a driver, installing a package,
+changing the network. Neither interface ever has direct root access; both
+talk to `vegad` through the same well-defined D-Bus contract. On top of
+that shared backend there are two interfaces, for two different contexts:
+`vega-gtk` (Rust + GTK4/libadwaita), a graphical interface that runs as
+your regular user, with no privileges; and `vega-cli` (bash + `dialog`), a
+terminal interface for administering a server over SSH with no graphical
+environment at all.
 
 Licensed under GPL-3.0. Code at [github.com/britors/Vega](https://github.com/britors/Vega).
 
@@ -47,17 +50,30 @@ curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.s
 To pin a specific version: `VEGA_VERSION=v1.3.4 sudo -E bash install.sh`
 (download the script first if you use this variant).
 
+On a headless server managed only over SSH, skip the graphical interface
+(and its GTK4/libadwaita dependency) and install just `vegad` + `vega-cli`:
+`VEGA_CLI_ONLY=1 sudo -E bash install.sh` (or `sudo -E bash install.sh` if
+downloaded first).
+
 None of the four distributions are in an official repository yet (no AUR,
 OBS, Copr, or PPA), and packages aren't signed yet — privileged operations
 should be validated carefully before each release.
 
 ## What already works
 
-The interface covers Dashboard, Software, Restore Points, Backup, Hardware,
-Kernel, Storage, Date and Time, Network/Firewall, Wi-Fi, Bluetooth, Users,
-Services, Logs, Assistant, and About. Features that depend on a tool that
-isn't installed (Snapper, firewalld, etc.) show up as unavailable instead of
-breaking the screen.
+The graphical interface covers Dashboard, Software, Restore Points, Backup,
+Hardware, Kernel, Storage, Date and Time, Network/Firewall, Wi-Fi,
+Bluetooth, Users, Services, Logs, Assistant, and About. Features that
+depend on a tool that isn't installed (Snapper, firewalld, etc.) show up as
+unavailable instead of breaking the screen.
+
+`vega-cli`, the terminal interface, covers the same functional range minus
+what doesn't make sense on a headless server: Dashboard, Software, Backup
+and Restore Points, Hardware and Kernel, Users, Network and Firewall,
+Services, Date/Time/Locale, Storage, System Log, and System Monitor
+(values only, no graphs). Wi-Fi, Bluetooth, the AI Assistant, and Screen
+are graphical-session concepts and are intentionally left out of this
+interface.
 
 ## Tested distributions
 

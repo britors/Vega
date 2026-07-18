@@ -1,8 +1,24 @@
-vega (0.0.0-1) unstable; urgency=medium
+vega (4.0.0-1) unstable; urgency=medium
 
   * Adiciona o pacote vega-cli: interface de terminal (shell + dialog) do
     Vega para administração via SSH sem ambiente gráfico, reaproveitando o
-    vegad e o mesmo contrato D-Bus já usado pela interface GTK.
+    vegad e o mesmo contrato D-Bus já usado pela interface GTK. Cobre
+    Painel, Software, Backup e Pontos de Restauração, Hardware e Kernel,
+    Usuários, Rede e Firewall, Serviços, Data/Hora/Idioma, Armazenamento,
+    Log do Sistema e Monitor do Sistema (só valores, sem gráficos).
+  * Adiciona VEGA_CLI_ONLY=1 ao instalador por curl, pra instalar só
+    vegad + vega-cli num servidor headless, sem puxar GTK4/libadwaita.
+  * vegad passa a exportar seu journal periodicamente para
+    /var/log/vega/vegad.log (com rotação via logrotate), mantendo o
+    journal como fonte de verdade para o módulo Log do Sistema do
+    vega-cli.
+  * Corrige o catálogo do firewall, que usava "printer" (nome de serviço
+    inexistente no firewalld) em vez de "ipp".
+  * Corrige DateTime.Status, que podia devolver "(unset)" como se fosse
+    um layout de teclado válido.
+  * Corrige Kernel.ApplyBootConfig falhando com "permission denied" em
+    /etc/default/grub em sistemas com SELinux enforcing (openSUSE), via
+    um módulo de política dedicado.
 
  -- Rodrigo Brito <rodrigo@w3ti.com.br>  Sat, 18 Jul 2026 10:30:00 -0300
 

@@ -11,13 +11,17 @@ Configurações do GNOME, e sim cobrir a faixa de administração de sistema que
 elas deixam de fora — pacotes, kernel, snapshots, firewall, usuários — com a
 mesma qualidade de integração visual.
 
-O projeto é dividido em duas partes. A interface (`vega-gtk`, em Rust +
-GTK4/libadwaita) roda com o seu usuário normal, sem privilégios. Quando
-alguma ação realmente precisa mexer no sistema — trocar driver, instalar
-pacote, alterar rede — quem executa é `vegad`, um daemon separado (Go) que
-roda como root e pede sua senha via polkit, o mesmo mecanismo de autorização
-usado pelas Configurações do GNOME. A interface nunca tem acesso root
-direto; os dois se comunicam por um contrato D-Bus bem definido.
+O projeto é dividido em três partes. O `vegad`, um daemon separado (Go),
+roda como root e pede sua senha via polkit — o mesmo mecanismo de
+autorização usado pelas Configurações do GNOME — sempre que uma ação
+realmente precisa mexer no sistema: trocar driver, instalar pacote, alterar
+rede. Nenhuma das interfaces tem acesso root direto; as duas conversam com
+o `vegad` pelo mesmo contrato D-Bus bem definido. Em cima desse backend
+compartilhado existem duas interfaces, pra dois contextos diferentes: o
+`vega-gtk` (Rust + GTK4/libadwaita), interface gráfica que roda com o seu
+usuário normal, sem privilégios; e o `vega-cli` (bash + `dialog`), interface
+de terminal pra administrar um servidor via SSH sem ambiente gráfico
+nenhum.
 
 Licenciado sob GPL-3.0. Código em [github.com/britors/Vega](https://github.com/britors/Vega).
 
@@ -46,17 +50,30 @@ curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.s
 Para travar numa versão específica: `VEGA_VERSION=v1.3.4 sudo -E bash install.sh`
 (baixe o script primeiro se for usar essa variante).
 
+Num servidor headless administrado só por SSH, dá pra pular a interface
+gráfica (e a dependência de GTK4/libadwaita) e instalar só `vegad` +
+`vega-cli`: `VEGA_CLI_ONLY=1 sudo -E bash install.sh` (ou
+`sudo -E bash install.sh` já com o script baixado antes).
+
 Nenhuma das quatro distribuições está em repositório oficial ainda (nem AUR,
 nem OBS, nem Copr, nem PPA) e os pacotes ainda não são assinados — operações
 privilegiadas devem ser validadas com cuidado antes de cada release.
 
 ## O que já funciona
 
-A interface cobre Painel, Software, Pontos de Restauração, Backup, Hardware,
-Kernel, Armazenamento, Data e Hora, Rede/Firewall, Wi-Fi, Bluetooth, Usuários,
-Serviços, Logs, Assistente e Sobre. Recursos que dependem de uma ferramenta
-não instalada (Snapper, firewalld, etc.) aparecem como indisponíveis em vez
-de travar a tela.
+A interface gráfica cobre Painel, Software, Pontos de Restauração, Backup,
+Hardware, Kernel, Armazenamento, Data e Hora, Rede/Firewall, Wi-Fi,
+Bluetooth, Usuários, Serviços, Logs, Assistente e Sobre. Recursos que
+dependem de uma ferramenta não instalada (Snapper, firewalld, etc.)
+aparecem como indisponíveis em vez de travar a tela.
+
+O `vega-cli`, a interface de terminal, cobre a mesma faixa funcional menos
+o que não faz sentido num servidor headless: Painel, Software, Backup e
+Pontos de Restauração, Hardware e Kernel, Usuários, Rede e Firewall,
+Serviços, Data/Hora/Idioma, Armazenamento, Log do Sistema e Monitor do
+Sistema (só valores, sem gráficos). Wi-Fi, Bluetooth, o Assistente de IA e
+Tela são conceitos de sessão gráfica e ficam de fora dessa interface de
+propósito.
 
 ## Distribuições testadas
 
