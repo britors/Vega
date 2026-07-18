@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Vega CLI">
+  <defs>
+    <linearGradient id="vega-cli-gradient" x1="20" y1="12" x2="108" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="0.52" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#1e1e2e"/>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="none" stroke="url(#vega-cli-gradient)" stroke-width="4"/>
+  <circle cx="22" cy="24" r="4" fill="#ff5f56"/>
+  <circle cx="36" cy="24" r="4" fill="#ffbd2e"/>
+  <circle cx="50" cy="24" r="4" fill="#27c93f"/>
+  <path
+    fill="url(#vega-cli-gradient)"
+    d="M64 40l7.4 23.4L96 71l-23.6 7.6L64 102l-7.4-23.4L32 71l24-7.6L64 40z"
+  />
+</svg>

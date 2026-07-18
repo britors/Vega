@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Vega CLI
+Comment=Interface de terminal do Vega (dialog) para administração via SSH
+Exec=/usr/bin/vega
+Icon=vega-cli
+Terminal=true
+Categories=System;ConsoleOnly;

@@ -1,3 +1,12 @@
+vega (4.0.5-1) unstable; urgency=medium
+
+  * Adiciona lançador de menu (.desktop) e ícone para o vega-cli — a
+    interface de terminal (dialog) só era acessível abrindo um terminal
+    e digitando vega, sem entrada no menu de aplicativos como o
+    vega-gtk já tinha.
+
+ -- Rodrigo Brito <rodrigo@w3ti.com.br>  Sat, 18 Jul 2026 19:40:00 -0300
+
 vega (4.0.3-1) unstable; urgency=medium
 
   * Adiciona a dependência de secret-tool/libsecret que faltava nos

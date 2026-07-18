@@ -39,4 +39,9 @@ package() {
   # a partir do caminho real, achando lib/ como irmã de bin/.
   install -d "$pkgdir/usr/bin"
   ln -s /usr/lib/vega-cli/bin/vega "$pkgdir/usr/bin/vega"
+
+  install -Dm644 packaging/vega-cli/vega-cli.desktop \
+    "$pkgdir/usr/share/applications/vega-cli.desktop"
+  install -Dm644 packaging/vega-cli/vega-cli.svg \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/vega-cli.svg"
 }
