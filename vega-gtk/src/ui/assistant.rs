@@ -1,4 +1,4 @@
-use crate::assistant::{Message, Provider, Settings};
+use crate::assistant::{Attachment, Message, Provider, Settings};
 use adw::prelude::*;
 use gettextrs::gettext;
 use std::{cell::RefCell, rc::Rc};
@@ -8,7 +8,8 @@ pub struct AssistantPage {
     pub root: gtk::Widget,
     pub status: gtk::Label,
     pub transcript: gtk::TextView,
-    pub prompt: gtk::Entry,
+    pub prompt: gtk::TextView,
+    pub attach: gtk::Button,
     pub send: gtk::Button,
     pub clear_history: gtk::Button,
     pub provider: gtk::DropDown,
@@ -20,8 +21,10 @@ pub struct AssistantPage {
     pub save_settings: gtk::Button,
     pub save_key: gtk::Button,
     pub remove_key: gtk::Button,
+    attachments_flow: gtk::FlowBox,
     history: Rc<RefCell<Vec<Message>>>,
     models: Rc<RefCell<Vec<String>>>,
+    pending_attachments: Rc<RefCell<Vec<Attachment>>>,
 }
 
 impl AssistantPage {
@@ -49,19 +52,71 @@ impl AssistantPage {
             .vexpand(true)
             .build();
         transcript_scroll.add_css_class("card");
-        let prompt = gtk::Entry::builder()
-            .placeholder_text(gettext("Pergunte sobre seu sistema…"))
+        // TextView em vez de Entry porque a mensagem pode ter várias linhas
+        // (colar um trecho de log, por exemplo); Enter sozinho envia, e
+        // Shift+Enter quebra linha — ver o EventControllerKey logo abaixo.
+        let prompt = gtk::TextView::builder()
+            .wrap_mode(gtk::WrapMode::WordChar)
+            .accepts_tab(false)
+            .top_margin(6)
+            .bottom_margin(6)
+            .left_margin(8)
+            .right_margin(8)
             .hexpand(true)
+            .build();
+        let prompt_scroll = gtk::ScrolledWindow::builder()
+            .child(&prompt)
+            .hscrollbar_policy(gtk::PolicyType::Never)
+            .min_content_height(36)
+            .max_content_height(120)
+            .propagate_natural_height(true)
+            .hexpand(true)
+            .build();
+        prompt_scroll.add_css_class("card");
+        let attach = gtk::Button::builder()
+            .icon_name("mail-attachment-symbolic")
+            .tooltip_text(gettext("Anexar arquivo ou imagem"))
+            .valign(gtk::Align::End)
             .build();
         let send = gtk::Button::builder()
             .label(gettext("Enviar"))
             .css_classes(["suggested-action"])
+            .valign(gtk::Align::End)
             .build();
-        let clear_history = gtk::Button::with_label(&gettext("Limpar conversa"));
-        let composer = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        composer.append(&prompt);
-        composer.append(&send);
-        composer.append(&clear_history);
+        let clear_history = gtk::Button::builder()
+            .label(gettext("Limpar conversa"))
+            .valign(gtk::Align::End)
+            .build();
+        let send_on_enter = send.clone();
+        let enter_controller = gtk::EventControllerKey::new();
+        enter_controller.connect_key_pressed(move |_, key, _, modifiers| {
+            if matches!(key, gtk::gdk::Key::Return | gtk::gdk::Key::KP_Enter)
+                && !modifiers.contains(gtk::gdk::ModifierType::SHIFT_MASK)
+            {
+                send_on_enter.emit_clicked();
+                gtk::glib::Propagation::Stop
+            } else {
+                gtk::glib::Propagation::Proceed
+            }
+        });
+        prompt.add_controller(enter_controller);
+        let attachments_flow = gtk::FlowBox::builder()
+            .column_spacing(6)
+            .row_spacing(6)
+            .min_children_per_line(1)
+            .max_children_per_line(8)
+            .selection_mode(gtk::SelectionMode::None)
+            .homogeneous(false)
+            .visible(false)
+            .build();
+        let input_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        input_row.append(&prompt_scroll);
+        input_row.append(&attach);
+        input_row.append(&send);
+        input_row.append(&clear_history);
+        let composer = gtk::Box::new(gtk::Orientation::Vertical, 8);
+        composer.append(&attachments_flow);
+        composer.append(&input_row);
         let provider = gtk::DropDown::from_strings(&Provider::ALL.map(Provider::label));
         provider.set_selected(settings.provider.index());
         let model = gtk::DropDown::from_strings(&[settings.model()]);
@@ -185,6 +240,7 @@ impl AssistantPage {
             status,
             transcript,
             prompt,
+            attach,
             send,
             clear_history,
             provider,
@@ -196,8 +252,10 @@ impl AssistantPage {
             save_settings,
             save_key,
             remove_key,
+            attachments_flow,
             history: Rc::new(RefCell::new(history)),
             models: Rc::new(RefCell::new(vec![settings.model().to_owned()])),
+            pending_attachments: Rc::new(RefCell::new(Vec::new())),
         };
         page.render_history();
         page
@@ -233,10 +291,21 @@ impl AssistantPage {
     pub fn history(&self) -> Vec<Message> {
         self.history.borrow().clone()
     }
-    pub fn append(&self, role: &str, content: String) {
+    pub fn prompt_text(&self) -> String {
+        let buffer = self.prompt.buffer();
+        buffer
+            .text(&buffer.start_iter(), &buffer.end_iter(), false)
+            .trim()
+            .to_owned()
+    }
+    pub fn clear_prompt(&self) {
+        self.prompt.buffer().set_text("");
+    }
+    pub fn append(&self, role: &str, content: String, attachments: Vec<Attachment>) {
         self.history.borrow_mut().push(Message {
             role: role.into(),
             content,
+            attachments,
         });
         self.render_history();
     }
@@ -244,6 +313,7 @@ impl AssistantPage {
         self.history.borrow_mut().push(Message {
             role: "assistant".into(),
             content: String::new(),
+            attachments: Vec::new(),
         });
         let words = content.split_whitespace().collect::<Vec<_>>();
         for end in (8..words.len())
@@ -286,20 +356,96 @@ impl AssistantPage {
             history
                 .iter()
                 .map(|message| {
+                    let attachments = message
+                        .attachments
+                        .iter()
+                        .map(|attachment| {
+                            gettext("📎 {name}").replace("{name}", &attachment.name)
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
                     format!(
-                        "{}\n{}",
+                        "{}\n{}{}",
                         if message.role == "user" {
                             gettext("Você")
                         } else {
                             "Lyra Vega".to_string()
                         },
-                        message.content
+                        message.content,
+                        if attachments.is_empty() {
+                            String::new()
+                        } else {
+                            format!("\n{attachments}")
+                        }
                     )
                 })
                 .collect::<Vec<_>>()
                 .join("\n\n")
         };
-        self.transcript.buffer().set_text(&text);
+        let buffer = self.transcript.buffer();
+        buffer.set_text(&text);
+        // Rola pro fim a cada atualização (inclusive as parciais do efeito
+        // de "digitando" em append_progressively) pra acompanhar a resposta
+        // chegando sem o usuário precisar arrastar a barra de rolagem.
+        let mut end = buffer.end_iter();
+        self.transcript.scroll_to_iter(&mut end, 0.0, false, 0.0, 0.0);
+    }
+    /// Anexos escolhidos pelo usuário mas ainda não enviados — mostrados
+    /// como chips acima do campo de texto até o Enviar ou uma remoção.
+    pub fn has_staged_attachments(&self) -> bool {
+        !self.pending_attachments.borrow().is_empty()
+    }
+    pub fn stage_attachment(&self, attachment: Attachment) {
+        self.pending_attachments.borrow_mut().push(attachment);
+        self.render_attachments();
+    }
+    /// Esvazia os anexos pendentes e devolve para quem for montar a
+    /// mensagem do usuário (chamado ao clicar em Enviar).
+    pub fn take_staged_attachments(&self) -> Vec<Attachment> {
+        let attachments = std::mem::take(&mut *self.pending_attachments.borrow_mut());
+        self.render_attachments();
+        attachments
+    }
+    fn render_attachments(&self) {
+        while let Some(child) = self.attachments_flow.first_child() {
+            self.attachments_flow.remove(&child);
+        }
+        let pending = self.pending_attachments.borrow();
+        self.attachments_flow.set_visible(!pending.is_empty());
+        for (index, attachment) in pending.iter().enumerate() {
+            let chip = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+            chip.add_css_class("card");
+            chip.set_margin_top(2);
+            chip.set_margin_bottom(2);
+            chip.append(&gtk::Image::builder()
+                .icon_name(if attachment.is_image() {
+                    "image-x-generic-symbolic"
+                } else {
+                    "text-x-generic-symbolic"
+                })
+                .build());
+            chip.append(
+                &gtk::Label::builder()
+                    .label(&attachment.name)
+                    .ellipsize(gtk::pango::EllipsizeMode::Middle)
+                    .max_width_chars(24)
+                    .build(),
+            );
+            let remove = gtk::Button::builder()
+                .icon_name("window-close-symbolic")
+                .css_classes(["flat", "circular"])
+                .tooltip_text(gettext("Remover anexo"))
+                .build();
+            let page = self.clone();
+            remove.connect_clicked(move |_| {
+                if index < page.pending_attachments.borrow().len() {
+                    page.pending_attachments.borrow_mut().remove(index);
+                }
+                page.render_attachments();
+            });
+            chip.append(&remove);
+            self.attachments_flow.insert(&chip, -1);
+        }
     }
 }
 fn row(title: &str, widget: &impl IsA<gtk::Widget>) -> adw::ActionRow {

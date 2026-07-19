@@ -195,12 +195,12 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
         configure_services(&shell, dbus.clone());
         configure_users(&shell, dbus.clone());
         configure_logs(&shell, dbus.clone());
-        configure_assistant(&shell, dbus.clone());
+        configure_assistant(&shell, &window, dbus.clone());
         configure_driver_action(&shell, &window, dbus);
     });
 }
 
-fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
+fn configure_assistant(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
     let page = shell.assistant.clone();
     page.status
         .set_label(&if crate::assistant::keyring_available() {
@@ -311,10 +311,48 @@ fn configure_assistant(shell: &VegaShell, dbus: VegaDbus) {
         }
     });
 
+    let attach_page = page.clone();
+    let attach_window = window.clone();
+    page.attach.connect_clicked(move |_| {
+        let filter = gtk::FileFilter::new();
+        filter.set_name(Some(&gettext("Imagens e arquivos de texto")));
+        filter.add_mime_type("image/*");
+        filter.add_mime_type("text/*");
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&filter);
+        let dialog = gtk::FileDialog::builder()
+            .title(gettext("Anexar arquivo ou imagem"))
+            .filters(&filters)
+            .build();
+        let page = attach_page.clone();
+        let window = attach_window.clone();
+        glib::MainContext::default().spawn_local(async move {
+            let Ok(files) = dialog.open_multiple_future(Some(&window)).await else {
+                return;
+            };
+            for index in 0..files.n_items() {
+                let Some(file) = files.item(index).and_downcast::<gio::File>() else {
+                    continue;
+                };
+                let Some(path) = file.path() else {
+                    page.status
+                        .set_label(&gettext("Só é possível anexar arquivos locais."));
+                    continue;
+                };
+                let result =
+                    gio::spawn_blocking(move || crate::assistant::read_attachment(&path)).await;
+                match result {
+                    Ok(Ok(attachment)) => page.stage_attachment(attachment),
+                    Ok(Err(error)) => page.status.set_label(&error.to_string()),
+                    Err(_) => page
+                        .status
+                        .set_label(&gettext("Falha interna ao ler o arquivo")),
+                }
+            }
+        });
+    });
+
     connect_assistant_send(&page.send, &page, &dbus);
-    let activate_page = page.clone();
-    page.prompt
-        .connect_activate(move |_| activate_page.send.emit_clicked());
     let initial_page = page.clone();
     glib::MainContext::default().spawn_local(async move {
         refresh_assistant_models(&initial_page).await;
@@ -356,12 +394,16 @@ fn connect_assistant_send(button: &gtk::Button, page: &crate::ui::AssistantPage,
     let page = page.clone();
     let dbus = dbus.clone();
     button.connect_clicked(move |_| {
-        let prompt = page.prompt.text().trim().to_owned();
-        if prompt.is_empty() {
+        let prompt = page.prompt_text();
+        if prompt.is_empty() && !page.has_staged_attachments() {
             return;
         }
-        page.prompt.set_text("");
-        page.append("user", prompt.clone());
+        page.clear_prompt();
+        let attachments = page.take_staged_attachments();
+        for attachment in &attachments {
+            let _ = crate::assistant::audit("user_attachment", &attachment.name);
+        }
+        page.append("user", prompt.clone(), attachments);
         let _ = crate::assistant::audit("user_message", &prompt);
         let _ = crate::assistant::save_history(&page.history());
         let settings = page.settings();
@@ -518,6 +560,7 @@ async fn handle_assistant_tool(
                             .replace("{used}", &used)
                             .replace("{total}", &total)
                             .replace("{percent}", &percent.to_string()),
+                        Vec::new(),
                     );
                     let _ = crate::assistant::audit("read", "get_system_status concluída");
                     return;
@@ -554,6 +597,7 @@ async fn handle_assistant_tool(
                     "<dado_nao_confiavel origem=\"tool:{}\">\n{output}\n</dado_nao_confiavel>\n{instruction}",
                     call.name
                 ),
+                Vec::new(),
             );
             let _ = crate::assistant::audit("read", &format!("{} concluída", call.name));
         }
@@ -623,6 +667,7 @@ async fn handle_assistant_mutation(
         page.append(
             "assistant",
             gettext("A proposta foi rejeitada. Nenhuma alteração foi realizada."),
+            Vec::new(),
         );
         let _ = crate::assistant::audit("mutation_rejected", &description);
         return;
@@ -638,6 +683,7 @@ async fn handle_assistant_mutation(
                 "assistant",
                 gettext("Ação aprovada e enviada ao vegad (transação #{transaction}).")
                     .replace("{transaction}", &transaction.to_string()),
+                Vec::new(),
             );
             let _ = crate::assistant::audit("mutation_approved", &description);
         }

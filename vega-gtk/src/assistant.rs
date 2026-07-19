@@ -2,11 +2,12 @@ use std::{
     fs::{self, OpenOptions},
     io::Write,
     os::unix::fs::{OpenOptionsExt, PermissionsExt},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
     time::Duration,
 };
 
+use base64::{Engine, engine::general_purpose::STANDARD as base64_engine};
 use gettextrs::gettext;
 use gtk::glib;
 use serde::{Deserialize, Serialize};
@@ -99,6 +100,108 @@ impl Settings {
 pub struct Message {
     pub role: String,
     pub content: String,
+    #[serde(default)]
+    pub attachments: Vec<Attachment>,
+}
+
+/// Um arquivo ou imagem anexado a uma mensagem do usuário. `data` guarda os
+/// bytes originais em base64 — tanto para reenviar às APIs de IA (que já
+/// esperam base64 para imagens) quanto para persistir no histórico local.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Attachment {
+    pub name: String,
+    pub mime: String,
+    pub data: String,
+}
+
+/// Tamanho bruto máximo por anexo. Cobre folgadamente uma captura de tela ou
+/// um log exportado sem deixar a requisição (e o custo por token) explodir —
+/// bem abaixo dos limites de imagem inline dos três provedores (5–20 MB).
+const MAX_ATTACHMENT_BYTES: u64 = 8 * 1024 * 1024;
+/// Anexos que não são imagem são embutidos como texto na mensagem; acima
+/// disso o conteúdo é cortado para não estourar o orçamento de tokens.
+const MAX_TEXT_ATTACHMENT_CHARS: usize = 20_000;
+
+impl Attachment {
+    pub fn is_image(&self) -> bool {
+        self.mime.starts_with("image/")
+    }
+}
+
+fn guess_mime(path: &Path) -> String {
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    match extension.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "bmp" => "image/bmp",
+        _ => "text/plain",
+    }
+    .to_owned()
+}
+
+/// Lê um arquivo do disco (em uma thread de fundo, chamado via
+/// `spawn_blocking`) e o transforma num anexo pronto para guardar no
+/// histórico. Rejeita arquivos grandes demais e arquivos binários que não
+/// sejam imagem, já que estes últimos seriam embutidos como texto (lixo
+/// ilegível) na mensagem enviada à IA.
+pub fn read_attachment(path: &Path) -> Result<Attachment, AssistantError> {
+    let name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| gettext("arquivo"));
+    let size = fs::metadata(path)?.len();
+    if size > MAX_ATTACHMENT_BYTES {
+        return Err(AssistantError::Message(
+            gettext("{name} tem {size} MB; o limite por anexo é {limit} MB.")
+                .replace("{name}", &name)
+                .replace("{size}", &format!("{:.1}", size as f64 / 1_048_576.0))
+                .replace(
+                    "{limit}",
+                    &(MAX_ATTACHMENT_BYTES / 1_048_576).to_string(),
+                ),
+        ));
+    }
+    let mime = guess_mime(path);
+    let bytes = fs::read(path)?;
+    // NUL nos primeiros bytes é a mesma heurística usada por `git diff` para
+    // distinguir texto de binário — evita embutir lixo ilegível de um PDF,
+    // ZIP etc. como se fosse texto no prompt.
+    if mime == "text/plain" && bytes.iter().take(1024).any(|byte| *byte == 0) {
+        return Err(AssistantError::Message(
+            gettext(
+                "{name} parece ser um arquivo binário. Envie imagens ou arquivos de texto.",
+            )
+            .replace("{name}", &name),
+        ));
+    }
+    Ok(Attachment {
+        name,
+        mime,
+        data: base64_engine.encode(&bytes),
+    })
+}
+
+/// Texto decodificado de um anexo não-imagem, pronto para ser embutido como
+/// mais um bloco de conteúdo na mensagem — igual nas três APIs, cada uma só
+/// muda o formato do bloco em volta (ver send_openai/send_anthropic/send_gemini).
+fn attachment_text(attachment: &Attachment) -> String {
+    let bytes = base64_engine
+        .decode(&attachment.data)
+        .unwrap_or_default();
+    let mut text = String::from_utf8_lossy(&bytes).into_owned();
+    if text.chars().count() > MAX_TEXT_ATTACHMENT_CHARS {
+        text = text.chars().take(MAX_TEXT_ATTACHMENT_CHARS).collect();
+        text.push_str(&gettext("\n[conteúdo cortado]"));
+    }
+    gettext("Arquivo anexado: {name}\n{content}")
+        .replace("{name}", &attachment.name)
+        .replace("{content}", &text)
 }
 
 #[derive(Debug, Clone)]
@@ -630,6 +733,24 @@ fn response_json(response: reqwest::blocking::Response) -> Result<Value, Assista
     }
 }
 
+fn openai_content_blocks(message: &Message) -> Vec<Value> {
+    let mut blocks = Vec::new();
+    if !message.content.is_empty() {
+        blocks.push(json!({"type":"text","text":message.content}));
+    }
+    for attachment in &message.attachments {
+        if attachment.is_image() {
+            blocks.push(json!({
+                "type":"image_url",
+                "image_url":{"url":format!("data:{};base64,{}", attachment.mime, attachment.data)},
+            }));
+        } else {
+            blocks.push(json!({"type":"text","text":attachment_text(attachment)}));
+        }
+    }
+    blocks
+}
+
 fn send_openai(
     client: &reqwest::blocking::Client,
     key: &str,
@@ -637,11 +758,13 @@ fn send_openai(
     history: &[Message],
 ) -> Result<Reply, AssistantError> {
     let mut messages = vec![json!({"role":"system", "content":system_prompt()})];
-    messages.extend(
-        history
-            .iter()
-            .map(|m| json!({"role":m.role, "content":m.content})),
-    );
+    messages.extend(history.iter().map(|m| {
+        if m.attachments.is_empty() {
+            json!({"role":m.role, "content":m.content})
+        } else {
+            json!({"role":m.role, "content":openai_content_blocks(m)})
+        }
+    }));
     let tools = tool_declarations()
         .into_iter()
         .map(|function| json!({"type":"function", "function":function}))
@@ -689,6 +812,24 @@ fn send_openai(
     })
 }
 
+fn anthropic_content_blocks(message: &Message) -> Vec<Value> {
+    let mut blocks = Vec::new();
+    if !message.content.is_empty() {
+        blocks.push(json!({"type":"text","text":message.content}));
+    }
+    for attachment in &message.attachments {
+        if attachment.is_image() {
+            blocks.push(json!({
+                "type":"image",
+                "source":{"type":"base64","media_type":attachment.mime,"data":attachment.data},
+            }));
+        } else {
+            blocks.push(json!({"type":"text","text":attachment_text(attachment)}));
+        }
+    }
+    blocks
+}
+
 fn send_anthropic(
     client: &reqwest::blocking::Client,
     key: &str,
@@ -699,7 +840,11 @@ fn send_anthropic(
         .into_iter()
         .map(|item| json!({"name":item["name"],"description":item["description"],"input_schema":item["parameters"]}))
         .collect::<Vec<_>>();
-    let value = response_json(client.post("https://api.anthropic.com/v1/messages").header("x-api-key", key).header("anthropic-version", "2023-06-01").json(&json!({"model":model,"max_tokens":2048,"system":system_prompt(),"messages":history,"tools":tools})).send().map_err(http_error)?)?;
+    let messages = history
+        .iter()
+        .map(|m| json!({"role":m.role, "content":anthropic_content_blocks(m)}))
+        .collect::<Vec<_>>();
+    let value = response_json(client.post("https://api.anthropic.com/v1/messages").header("x-api-key", key).header("anthropic-version", "2023-06-01").json(&json!({"model":model,"max_tokens":2048,"system":system_prompt(),"messages":messages,"tools":tools})).send().map_err(http_error)?)?;
     let content = value
         .get("content")
         .and_then(Value::as_array)
@@ -736,13 +881,38 @@ fn send_anthropic(
     })
 }
 
+fn gemini_parts(message: &Message) -> Vec<Value> {
+    let mut parts = Vec::new();
+    if !message.content.is_empty() {
+        parts.push(json!({"text":message.content}));
+    }
+    for attachment in &message.attachments {
+        if attachment.is_image() {
+            parts.push(json!({
+                "inlineData":{"mimeType":attachment.mime,"data":attachment.data},
+            }));
+        } else {
+            parts.push(json!({"text":attachment_text(attachment)}));
+        }
+    }
+    parts
+}
+
 fn send_gemini(
     client: &reqwest::blocking::Client,
     key: &str,
     model: &str,
     history: &[Message],
 ) -> Result<Reply, AssistantError> {
-    let contents = history.iter().map(|m| json!({"role":if m.role == "assistant" {"model"} else {"user"},"parts":[{"text":m.content}]})).collect::<Vec<_>>();
+    let contents = history
+        .iter()
+        .map(|m| {
+            json!({
+                "role":if m.role == "assistant" {"model"} else {"user"},
+                "parts":gemini_parts(m),
+            })
+        })
+        .collect::<Vec<_>>();
     let url =
         format!("https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent");
     let declarations = tool_declarations()

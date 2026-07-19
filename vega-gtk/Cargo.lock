@@ -1112,6 +1112,7 @@ name = "lyra-vega-gtk"
 version = "4.0.3"
 dependencies = [
  "async-trait",
+ "base64",
  "futures-lite",
  "futures-util",
  "gettext-rs",
