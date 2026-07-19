@@ -2,7 +2,7 @@
 Type=Application
 Name=Vega CLI
 Comment=Interface de terminal do Vega (dialog) para administração via SSH
-Exec=/usr/bin/sudo /usr/bin/vega
+Exec=/usr/bin/pkexec /usr/bin/vega
 Icon=vega-cli
 Terminal=true
 Categories=System;ConsoleOnly;

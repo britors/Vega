@@ -22,7 +22,7 @@ GTK4/libadwaita), a graphical interface that runs as your regular user,
 with no privileges; and `vega-cli` (bash + `dialog`), a terminal interface
 for administering a server over SSH with no graphical environment at all.
 When Vega CLI is opened from its application-menu icon, the launcher uses
-`sudo` and prompts for the administrator password in the terminal.
+`pkexec` and prompts for the administrator password via polkit.
 
 Licensed under GPL-3.0. Code at [github.com/britors/Vega](https://github.com/britors/Vega).
 
@@ -57,7 +57,7 @@ On a headless server managed only over SSH, skip the graphical interface
 downloaded first).
 
 After installation, Vega CLI can be opened from its application-menu icon —
-which runs `/usr/bin/vega` through `sudo` — or directly in a terminal with
+which runs `/usr/bin/vega` through `pkexec` — or directly in a terminal with
 `sudo vega`.
 
 None of the four distributions are in an official repository yet (no AUR,
