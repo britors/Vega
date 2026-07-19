@@ -15,13 +15,13 @@ O projeto é dividido em três partes. O `vegad`, um daemon separado (Go),
 roda como root e pede sua senha via polkit — o mesmo mecanismo de
 autorização usado pelas Configurações do GNOME — sempre que uma ação
 realmente precisa mexer no sistema: trocar driver, instalar pacote, alterar
-rede. Nenhuma das interfaces tem acesso root direto; as duas conversam com
-o `vegad` pelo mesmo contrato D-Bus bem definido. Em cima desse backend
-compartilhado existem duas interfaces, pra dois contextos diferentes: o
-`vega-gtk` (Rust + GTK4/libadwaita), interface gráfica que roda com o seu
-usuário normal, sem privilégios; e o `vega-cli` (bash + `dialog`), interface
-de terminal pra administrar um servidor via SSH sem ambiente gráfico
-nenhum.
+rede. As duas interfaces conversam com o `vegad` pelo mesmo contrato D-Bus
+bem definido. Em cima desse backend compartilhado existem duas interfaces,
+pra dois contextos diferentes: o `vega-gtk` (Rust + GTK4/libadwaita),
+interface gráfica que roda com o seu usuário normal, sem privilégios; e o
+`vega-cli` (bash + `dialog`), interface de terminal pra administrar um
+servidor via SSH sem ambiente gráfico nenhum. Ao abrir o Vega CLI pelo ícone
+do menu, o lançador usa `sudo` e solicita a senha administrativa no terminal.
 
 Licenciado sob GPL-3.0. Código em [github.com/britors/Vega](https://github.com/britors/Vega).
 
@@ -54,6 +54,10 @@ Num servidor headless administrado só por SSH, dá pra pular a interface
 gráfica (e a dependência de GTK4/libadwaita) e instalar só `vegad` +
 `vega-cli`: `VEGA_CLI_ONLY=1 sudo -E bash install.sh` (ou
 `sudo -E bash install.sh` já com o script baixado antes).
+
+Depois da instalação, o Vega CLI pode ser aberto pelo ícone do menu — que
+executa `/usr/bin/vega` via `sudo` — ou diretamente em um terminal com
+`sudo vega`.
 
 Nenhuma das quatro distribuições está em repositório oficial ainda (nem AUR,
 nem OBS, nem Copr, nem PPA) e os pacotes ainda não são assinados — operações
