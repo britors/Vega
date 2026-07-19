@@ -235,7 +235,7 @@ impl VegaShell {
                 (
                     gettext("Armazenamento"),
                     "storage",
-                    "drive-harddisk-symbolic",
+                    "drive-harddisk",
                 ),
                 (
                     gettext("Rede e Firewall"),
