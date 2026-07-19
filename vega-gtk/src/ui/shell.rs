@@ -232,11 +232,7 @@ impl VegaShell {
                     "monitor",
                     "power-profile-performance-symbolic",
                 ),
-                (
-                    gettext("Armazenamento"),
-                    "storage",
-                    "drive-harddisk",
-                ),
+                (gettext("Armazenamento"), "storage", "drive-harddisk"),
                 (
                     gettext("Rede e Firewall"),
                     "network",
