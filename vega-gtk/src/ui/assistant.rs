@@ -359,9 +359,7 @@ impl AssistantPage {
                     let attachments = message
                         .attachments
                         .iter()
-                        .map(|attachment| {
-                            gettext("📎 {name}").replace("{name}", &attachment.name)
-                        })
+                        .map(|attachment| gettext("📎 {name}").replace("{name}", &attachment.name))
                         .collect::<Vec<_>>()
                         .join("\n");
                     format!(
@@ -388,7 +386,8 @@ impl AssistantPage {
         // de "digitando" em append_progressively) pra acompanhar a resposta
         // chegando sem o usuário precisar arrastar a barra de rolagem.
         let mut end = buffer.end_iter();
-        self.transcript.scroll_to_iter(&mut end, 0.0, false, 0.0, 0.0);
+        self.transcript
+            .scroll_to_iter(&mut end, 0.0, false, 0.0, 0.0);
     }
     /// Anexos escolhidos pelo usuário mas ainda não enviados — mostrados
     /// como chips acima do campo de texto até o Enviar ou uma remoção.
@@ -417,13 +416,15 @@ impl AssistantPage {
             chip.add_css_class("card");
             chip.set_margin_top(2);
             chip.set_margin_bottom(2);
-            chip.append(&gtk::Image::builder()
-                .icon_name(if attachment.is_image() {
-                    "image-x-generic-symbolic"
-                } else {
-                    "text-x-generic-symbolic"
-                })
-                .build());
+            chip.append(
+                &gtk::Image::builder()
+                    .icon_name(if attachment.is_image() {
+                        "image-x-generic-symbolic"
+                    } else {
+                        "text-x-generic-symbolic"
+                    })
+                    .build(),
+            );
             chip.append(
                 &gtk::Label::builder()
                     .label(&attachment.name)

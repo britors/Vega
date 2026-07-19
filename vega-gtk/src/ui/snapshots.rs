@@ -76,7 +76,7 @@ impl SnapshotsPage {
             .hscrollbar_policy(gtk::PolicyType::Never)
             .build()
             .upcast();
-        let page = Self {
+        Self {
             root,
             status,
             list,
@@ -87,8 +87,7 @@ impl SnapshotsPage {
             on_apply: Rc::new(RefCell::new(None)),
             on_delete: Rc::new(RefCell::new(None)),
             on_compare: Rc::new(RefCell::new(None)),
-        };
-        page
+        }
     }
 
     pub fn connect_apply<F: Fn(Snapshot, gtk::Button) + 'static>(&self, callback: F) {

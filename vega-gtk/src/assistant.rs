@@ -161,10 +161,7 @@ pub fn read_attachment(path: &Path) -> Result<Attachment, AssistantError> {
             gettext("{name} tem {size} MB; o limite por anexo é {limit} MB.")
                 .replace("{name}", &name)
                 .replace("{size}", &format!("{:.1}", size as f64 / 1_048_576.0))
-                .replace(
-                    "{limit}",
-                    &(MAX_ATTACHMENT_BYTES / 1_048_576).to_string(),
-                ),
+                .replace("{limit}", &(MAX_ATTACHMENT_BYTES / 1_048_576).to_string()),
         ));
     }
     let mime = guess_mime(path);
@@ -174,10 +171,8 @@ pub fn read_attachment(path: &Path) -> Result<Attachment, AssistantError> {
     // ZIP etc. como se fosse texto no prompt.
     if mime == "text/plain" && bytes.iter().take(1024).any(|byte| *byte == 0) {
         return Err(AssistantError::Message(
-            gettext(
-                "{name} parece ser um arquivo binário. Envie imagens ou arquivos de texto.",
-            )
-            .replace("{name}", &name),
+            gettext("{name} parece ser um arquivo binário. Envie imagens ou arquivos de texto.")
+                .replace("{name}", &name),
         ));
     }
     Ok(Attachment {
@@ -191,9 +186,7 @@ pub fn read_attachment(path: &Path) -> Result<Attachment, AssistantError> {
 /// mais um bloco de conteúdo na mensagem — igual nas três APIs, cada uma só
 /// muda o formato do bloco em volta (ver send_openai/send_anthropic/send_gemini).
 fn attachment_text(attachment: &Attachment) -> String {
-    let bytes = base64_engine
-        .decode(&attachment.data)
-        .unwrap_or_default();
+    let bytes = base64_engine.decode(&attachment.data).unwrap_or_default();
     let mut text = String::from_utf8_lossy(&bytes).into_owned();
     if text.chars().count() > MAX_TEXT_ATTACHMENT_CHARS {
         text = text.chars().take(MAX_TEXT_ATTACHMENT_CHARS).collect();
