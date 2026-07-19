@@ -230,7 +230,7 @@ impl VegaShell {
                 (
                     gettext("Monitor do Sistema"),
                     "monitor",
-                    "utilities-system-monitor-symbolic",
+                    "power-profile-performance-symbolic",
                 ),
                 (
                     gettext("Armazenamento"),
