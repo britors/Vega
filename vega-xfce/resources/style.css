@@ -1,0 +1,359 @@
+@define-color lyra_blue #5b8cff;
+@define-color lyra_violet #9b6bff;
+@define-color lyra_danger #ff5b6e;
+@define-color lyra_warning #ffb84d;
+@define-color lyra_success #4dd68c;
+
+.app-frame {
+  background-color: @lyra_night;
+  color: @lyra_text;
+}
+
+.window-chrome {
+  min-height: 42px;
+  background-color: alpha(@lyra_night_alt, 0.96);
+  border-bottom: 1px solid @lyra_border;
+}
+
+.vega-sidebar {
+  min-width: 240px;
+  background-color: @lyra_night_alt;
+  border-right: 1px solid @lyra_border;
+  padding: 16px 8px;
+}
+
+.sidebar-brand {
+  padding: 8px 12px 20px 12px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.brand-mark {
+  min-width: 20px;
+  min-height: 20px;
+  border-radius: 6px;
+  background-image: linear-gradient(135deg, @lyra_blue, @lyra_violet);
+  color: transparent;
+}
+
+.sidebar-search {
+  margin: 0 4px 14px 4px;
+  border-radius: 8px;
+  background-color: @lyra_surface;
+  border: 1px solid @lyra_border;
+}
+
+.sidebar-expander {
+  margin-top: 6px;
+}
+
+.sidebar-expander > title {
+  min-height: 30px;
+  padding: 0 10px;
+  color: @lyra_muted;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sidebar-expander > title:hover {
+  color: @lyra_text;
+}
+
+button.sidebar-item {
+  min-height: 38px;
+  margin: 1px 0;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: @lyra_muted;
+}
+
+.sidebar-icon {
+  min-width: 18px;
+  min-height: 18px;
+  color: inherit;
+}
+
+button.sidebar-item:hover {
+  background-color: @lyra_surface;
+  color: @lyra_text;
+}
+
+button.sidebar-item:checked {
+  background-color: @lyra_surface_raised;
+  color: @lyra_text;
+  font-weight: 600;
+}
+
+.content-page {
+  background-color: @lyra_night;
+  padding: 28px 36px;
+}
+
+.content-page.compact-page {
+  padding: 20px 28px;
+}
+
+.compact-page row {
+  min-height: 36px;
+}
+
+.compact-page dropdown,
+.compact-page entry,
+.compact-page spinbutton,
+.compact-page button:not(.dashboard-card) {
+  min-height: 30px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.compact-page preferencesgroup {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.card {
+  background-color: @lyra_surface;
+  border: 1px solid @lyra_border;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+button.dashboard-card {
+  min-width: 125px;
+  min-height: 68px;
+  padding: 10px;
+}
+
+button.dashboard-card:hover {
+  background-color: @lyra_surface_raised;
+}
+
+.card-title {
+  font-size: 12px;
+}
+
+.module-tabs {
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid @lyra_border;
+  background-color: @lyra_surface;
+}
+
+button.module-tab {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 6px;
+  color: @lyra_muted;
+}
+
+button.module-tab:checked {
+  background-color: @lyra_surface_raised;
+  color: @lyra_text;
+  font-weight: 600;
+}
+
+button.view-switch {
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 6px;
+  color: @lyra_muted;
+}
+
+button.view-switch:checked {
+  background-color: @lyra_surface_raised;
+  color: @lyra_text;
+}
+
+.compact-page button.wifi-row-action {
+  min-width: 72px;
+  min-height: 24px;
+  padding: 1px 8px;
+  font-size: 11px;
+}
+
+.origin-pills {
+  margin: 0 8px;
+}
+
+.software-cards {
+  padding: 2px;
+}
+
+.software-results row {
+  min-width: 0;
+}
+
+.software-results .origin-pills {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
+.software-card {
+  min-width: 210px;
+  min-height: 100px;
+  padding: 12px;
+  background-color: @lyra_surface;
+  border: 1px solid @lyra_border;
+  border-radius: 12px;
+}
+
+.software-card .title-3 {
+  font-size: 14px;
+}
+
+.software-card .dim-label {
+  font-size: 11px;
+}
+
+.software-card .origin-pills {
+  margin: 0;
+}
+
+.software-card button.origin-pill {
+  min-height: 20px;
+  padding: 0 4px;
+  font-size: 9px;
+}
+
+.package-icon {
+  background-color: @lyra_surface_raised;
+  border: 1px solid @lyra_border;
+  border-radius: 8px;
+}
+
+.package-icon-fallback {
+  color: @lyra_muted;
+  font-weight: 700;
+}
+
+.firewall-services row:selected,
+.wifi-networks row:selected,
+.network-interfaces row:selected,
+.backup-selection row:selected,
+.snapshot-selection row:selected,
+.software-results row:selected,
+.bluetooth-devices row:selected,
+.kernel-list row:selected,
+.storage-volumes row:selected,
+.services-list row:selected {
+  background-color: alpha(@lyra_blue, 0.24);
+  box-shadow: inset 3px 0 @lyra_violet;
+}
+
+.firewall-services row:selected label,
+.wifi-networks row:selected label,
+.network-interfaces row:selected label,
+.backup-selection row:selected label,
+.snapshot-selection row:selected label,
+.software-results row:selected label,
+.bluetooth-devices row:selected label,
+.kernel-list row:selected label,
+.storage-volumes row:selected label,
+.services-list row:selected label {
+  color: @lyra_text;
+}
+
+.software-cards flowboxchild:selected .software-card {
+  background-color: alpha(@lyra_blue, 0.24);
+  box-shadow: inset 3px 0 @lyra_violet;
+}
+
+.software-cards flowboxchild:selected .software-card label {
+  color: @lyra_text;
+}
+
+.software-card:hover {
+  background-color: @lyra_surface_raised;
+}
+
+.package-detail-content {
+  padding: 28px;
+  background-color: @lyra_night;
+}
+
+.snapshot-paths {
+  padding: 12px;
+  background-color: @lyra_surface;
+  border: 1px solid @lyra_border;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.backup-config-form {
+  min-width: 520px;
+  padding-top: 8px;
+}
+
+switch.compact-switch {
+  min-width: 34px;
+  min-height: 18px;
+  padding: 1px;
+}
+
+switch.compact-switch slider {
+  min-width: 14px;
+  min-height: 14px;
+}
+
+button.origin-pill {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid @lyra_border;
+  border-radius: 999px;
+  color: @lyra_muted;
+}
+
+button.origin-pill:checked {
+  background-color: alpha(@lyra_blue, 0.2);
+  border-color: @lyra_blue;
+  color: @lyra_text;
+}
+
+button.dashboard-card label:not(.card-title) {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.card row,
+.boxed-list row {
+  background-color: transparent;
+}
+
+.boxed-list {
+  background-color: @lyra_surface;
+  border: 1px solid @lyra_border;
+  border-radius: 12px;
+}
+
+.pkgbuild-review {
+  background-color: @lyra_night;
+  border: 1px solid @lyra_border;
+  border-radius: 8px;
+}
+
+.pkgbuild-source {
+  background-color: @lyra_night;
+  color: @lyra_text;
+}
+
+.dim-label {
+  color: @lyra_muted;
+}
+
+.success {
+  color: @lyra_success;
+}
+
+.warning {
+  color: @lyra_warning;
+}
+
+.error {
+  color: @lyra_danger;
+}
+
+button.suggested-action {
+  background-image: linear-gradient(135deg, @lyra_blue, @lyra_violet);
+  color: white;
+}

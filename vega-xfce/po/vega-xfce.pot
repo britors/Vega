@@ -1,0 +1,22 @@
+# Catálogo de traduções do Vega (interface GTK4 sem libadwaita, para XFCE).
+# Copyright (C) 2026 Rodrigo Brito
+# This file is distributed under the same license as the lyra-vega-xfce package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: lyra-vega-xfce 0.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/britors/Vega/issues\n"
+"POT-Creation-Date: 2026-07-21 00:00-0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Extração automática (xtr) ainda não foi rodada nesta primeira fase — as
+# msgids do vega-gtk que se aplicam aqui (Software, Serviços, Usuários,
+# Painel, Sobre) são as mesmas strings em português já existentes em
+# vega-gtk/po/vega-gtk.pot. Rodar `xtr src/**/*.rs -o po/vega-xfce.pot`
+# (mesma ferramenta usada pelo vega-gtk) preenche este arquivo por completo.

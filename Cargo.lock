@@ -1138,9 +1138,15 @@ dependencies = [
 name = "lyra-vega-xfce"
 version = "0.1.0"
 dependencies = [
+ "async-channel",
+ "base64",
  "gettext-rs",
  "gtk4",
  "lyra-vega-dbus",
+ "reqwest",
+ "roxmltree",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
