@@ -69,120 +69,10 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
             }
         };
 
-        match dbus.system().status().await {
-            Ok(status) => {
-                shell.backend_status.set_label(
-                    &gettext("vegad {version} conectado • {distro}")
-                        .replace("{version}", &status.version)
-                        .replace("{distro}", &status.distro),
-                );
-                shell.dashboard_system.set_label(
-                    &gettext("{distro} • interface nativa ativa")
-                        .replace("{distro}", &status.distro),
-                );
-                shell.about_versions.set_label(&format!(
-                    "Vega GTK {} • vegad {}",
-                    ui_version, status.version
-                ));
-                shell.about_distro.set_label(&status.distro);
-                if !status.logo_path.is_empty() {
-                    shell.about_logo.set_from_file(Some(&status.logo_path));
-                    shell.about_logo.set_visible(true);
-                }
-            }
-            Err(error) => set_unavailable(&shell, &error.to_string()),
-        }
-
-        match dbus.hardware().inventory().await {
-            Ok(inventory) => {
-                shell.hardware_cpu.set_label(&inventory.cpu);
-                shell.hardware_gpu.set_label(&inventory.gpu);
-                shell.hardware_ram.set_label(&inventory.ram);
-            }
-            Err(error) => {
-                let message = error.to_string();
-                shell.hardware_cpu.set_label(&message);
-                shell.hardware_gpu.set_label("—");
-                shell.hardware_ram.set_label("—");
-            }
-        }
-
-        match dbus.hardware().firmware_status().await {
-            Ok(status) => shell.hardware_firmware.set_label(&status),
-            Err(error) => shell.hardware_firmware.set_label(&error.to_string()),
-        }
-
-        match dbus.software().community_layer_name().await {
-            Ok(channel) if channel.is_empty() => shell.about_channel.set_label(&gettext("Nenhuma")),
-            Ok(channel) => shell.about_channel.set_label(&channel),
-            Err(error) => shell.about_channel.set_label(&error.to_string()),
-        }
-
-        match dbus.software().list_updates().await {
-            Ok(updates) if updates.is_empty() => {
-                shell.dashboard_updates.set_label(&gettext("Tudo em dia"))
-            }
-            Ok(updates) => shell.dashboard_updates.set_label(
-                &gettext("{count} pacote(s) pendente(s)")
-                    .replace("{count}", &updates.len().to_string()),
-            ),
-            Err(error) => shell.dashboard_updates.set_label(&error.to_string()),
-        }
-
-        match dbus.backup().list_configs().await {
-            Ok(configs) if configs.is_empty() => shell
-                .dashboard_backup
-                .set_label(&gettext("Não configurado")),
-            Ok(configs) => shell.dashboard_backup.set_label(
-                &gettext("{count} destino(s) configurado(s)")
-                    .replace("{count}", &configs.len().to_string()),
-            ),
-            Err(error) => shell.dashboard_backup.set_label(&error.to_string()),
-        }
-
-        match dbus.snapshots().available().await {
-            Ok(false) => shell
-                .dashboard_snapshots
-                .set_label(&gettext("Não suportado neste sistema")),
-            Ok(true) => match dbus.snapshots().list().await {
-                Ok(snapshots) if snapshots.is_empty() => shell
-                    .dashboard_snapshots
-                    .set_label(&gettext("Nenhum snapshot")),
-                Ok(snapshots) => shell.dashboard_snapshots.set_label(
-                    &gettext("{count} snapshot(s)")
-                        .replace("{count}", &snapshots.len().to_string()),
-                ),
-                Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
-            },
-            Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
-        }
-
-        match dbus.services().list().await {
-            Ok(services) => {
-                let struggling = services
-                    .iter()
-                    .filter(|service| service.available && service.enabled && !service.active)
-                    .count();
-                shell.dashboard_services.set_label(&if struggling == 0 {
-                    gettext("Nenhum serviço com problema")
-                } else {
-                    gettext("{count} serviço(s) habilitado(s), mas parado(s)")
-                        .replace("{count}", &struggling.to_string())
-                });
-            }
-            Err(error) => shell.dashboard_services.set_label(&error.to_string()),
-        }
-
-        match dbus.system().disk_usage().await {
-            Ok((used, total, percent)) => shell.dashboard_disk.set_label(
-                &gettext("{percent}% • {used} de {total} usados")
-                    .replace("{percent}", &percent.to_string())
-                    .replace("{used}", &used)
-                    .replace("{total}", &total),
-            ),
-            Err(error) => shell.dashboard_disk.set_label(&error.to_string()),
-        }
-
+        // Cada página é configurada (e seu carregamento inicial disparado) de forma
+        // independente, sem esperar a cadeia sequencial do resumo do painel abaixo
+        // terminar — do contrário, navegar para outra página antes do painel concluir
+        // deixa essa página presa em "carregando" indefinidamente.
         configure_software(&shell, &window, dbus.clone());
         configure_backup(&shell, dbus.clone());
         configure_snapshots(&shell, dbus.clone());
@@ -196,8 +86,115 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
         configure_users(&shell, dbus.clone());
         configure_logs(&shell, dbus.clone());
         configure_assistant(&shell, &window, dbus.clone());
-        configure_driver_action(&shell, &window, dbus);
+        configure_driver_action(&shell, &window, dbus.clone());
+
+        refresh_dashboard_summary(&shell, &ui_version, &dbus).await;
     });
+}
+
+async fn refresh_dashboard_summary(shell: &VegaShell, ui_version: &str, dbus: &VegaDbus) {
+    match dbus.system().status().await {
+        Ok(status) => {
+            shell.backend_status.set_label(
+                &gettext("vegad {version} conectado • {distro}")
+                    .replace("{version}", &status.version)
+                    .replace("{distro}", &status.distro),
+            );
+            shell.dashboard_system.set_label(
+                &gettext("{distro} • interface nativa ativa").replace("{distro}", &status.distro),
+            );
+            shell.about_versions.set_label(&format!(
+                "Vega GTK {} • vegad {}",
+                ui_version, status.version
+            ));
+            shell.about_distro.set_label(&status.distro);
+            if !status.logo_path.is_empty() {
+                shell.about_logo.set_from_file(Some(&status.logo_path));
+                shell.about_logo.set_visible(true);
+            }
+        }
+        Err(error) => set_unavailable(shell, &error.to_string()),
+    }
+
+    match dbus.hardware().inventory().await {
+        Ok(inventory) => {
+            shell.hardware_cpu.set_label(&inventory.cpu);
+            shell.hardware_gpu.set_label(&inventory.gpu);
+            shell.hardware_ram.set_label(&inventory.ram);
+        }
+        Err(error) => {
+            let message = error.to_string();
+            shell.hardware_cpu.set_label(&message);
+            shell.hardware_gpu.set_label("—");
+            shell.hardware_ram.set_label("—");
+        }
+    }
+
+    match dbus.hardware().firmware_status().await {
+        Ok(status) => shell.hardware_firmware.set_label(&status),
+        Err(error) => shell.hardware_firmware.set_label(&error.to_string()),
+    }
+
+    match dbus.software().community_layer_name().await {
+        Ok(channel) if channel.is_empty() => shell.about_channel.set_label(&gettext("Nenhuma")),
+        Ok(channel) => shell.about_channel.set_label(&channel),
+        Err(error) => shell.about_channel.set_label(&error.to_string()),
+    }
+
+    refresh_dashboard_updates(&shell.dashboard_updates, &dbus.software()).await;
+
+    match dbus.backup().list_configs().await {
+        Ok(configs) if configs.is_empty() => shell
+            .dashboard_backup
+            .set_label(&gettext("Não configurado")),
+        Ok(configs) => shell.dashboard_backup.set_label(
+            &gettext("{count} destino(s) configurado(s)")
+                .replace("{count}", &configs.len().to_string()),
+        ),
+        Err(error) => shell.dashboard_backup.set_label(&error.to_string()),
+    }
+
+    match dbus.snapshots().available().await {
+        Ok(false) => shell
+            .dashboard_snapshots
+            .set_label(&gettext("Não suportado neste sistema")),
+        Ok(true) => match dbus.snapshots().list().await {
+            Ok(snapshots) if snapshots.is_empty() => shell
+                .dashboard_snapshots
+                .set_label(&gettext("Nenhum snapshot")),
+            Ok(snapshots) => shell.dashboard_snapshots.set_label(
+                &gettext("{count} snapshot(s)").replace("{count}", &snapshots.len().to_string()),
+            ),
+            Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
+        },
+        Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
+    }
+
+    match dbus.services().list().await {
+        Ok(services) => {
+            let struggling = services
+                .iter()
+                .filter(|service| service.available && service.enabled && !service.active)
+                .count();
+            shell.dashboard_services.set_label(&if struggling == 0 {
+                gettext("Nenhum serviço com problema")
+            } else {
+                gettext("{count} serviço(s) habilitado(s), mas parado(s)")
+                    .replace("{count}", &struggling.to_string())
+            });
+        }
+        Err(error) => shell.dashboard_services.set_label(&error.to_string()),
+    }
+
+    match dbus.system().disk_usage().await {
+        Ok((used, total, percent)) => shell.dashboard_disk.set_label(
+            &gettext("{percent}% • {used} de {total} usados")
+                .replace("{percent}", &percent.to_string())
+                .replace("{used}", &used)
+                .replace("{total}", &total),
+        ),
+        Err(error) => shell.dashboard_disk.set_label(&error.to_string()),
+    }
 }
 
 fn configure_assistant(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
@@ -2887,6 +2884,9 @@ async fn monitor_backup_transaction(
 }
 
 fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
+    let dashboard_updates = shell.dashboard_updates.clone();
+    watch_dashboard_updates(dashboard_updates.clone(), dbus.clone());
+
     let page = shell.software.clone();
     let button = page.search.clone();
     page.query.connect_activate(move |_| button.emit_clicked());
@@ -2961,6 +2961,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
 
     let mirrors_page = page.clone();
     let mirrors_dbus = dbus.clone();
+    let mirrors_dashboard_updates = dashboard_updates.clone();
     page.optimize_mirrors.connect_clicked(move |_| {
         let dialog = adw::AlertDialog::new(
             Some(&gettext("Otimizar mirrors?")),
@@ -2977,6 +2978,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         dialog.set_close_response("cancel");
         let page = mirrors_page.clone();
         let client = mirrors_dbus.software();
+        let dashboard_updates = mirrors_dashboard_updates.clone();
         glib::MainContext::default().spawn_local(async move {
             if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
                 return;
@@ -2992,7 +2994,10 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                 }
             };
             match client.optimize_mirrors().await {
-                Ok(id) => monitor_software_transaction(&page, &client, &mut events, id).await,
+                Ok(id) => {
+                    monitor_software_transaction(&page, &client, &mut events, id, &dashboard_updates)
+                        .await
+                }
                 Err(error) => page.finish_transaction(false, &error.to_string()),
             }
             page.optimize_mirrors.set_sensitive(true);
@@ -3001,6 +3006,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
 
     let global_page = page.clone();
     let global_dbus = dbus.clone();
+    let global_dashboard_updates = dashboard_updates.clone();
     page.global_action.connect_clicked(move |_| {
         let update_all = global_page.updates_tab.is_active();
         let (heading, body, confirm, starting) = if update_all {
@@ -3026,6 +3032,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
 
         let page = global_page.clone();
         let client = global_dbus.software();
+        let dashboard_updates = global_dashboard_updates.clone();
         glib::MainContext::default().spawn_local(async move {
             if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
                 return;
@@ -3046,7 +3053,16 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                 client.clear_cache().await
             };
             match transaction {
-                Ok(id) => monitor_software_transaction(&page, &client, &mut events, id).await,
+                Ok(id) => {
+                    monitor_software_transaction(
+                        &page,
+                        &client,
+                        &mut events,
+                        id,
+                        &dashboard_updates,
+                    )
+                    .await
+                }
                 Err(error) => page.finish_transaction(false, &error.to_string()),
             }
             page.global_action.set_sensitive(true);
@@ -3109,6 +3125,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         };
         let page = action_page.clone();
         let client = action_dbus.software();
+        let dashboard_updates = dashboard_updates.clone();
         glib::MainContext::default().spawn_local(async move {
             let verb = if package.installed {
                 gettext("Remover")
@@ -3186,7 +3203,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                         });
                         page.action.set_sensitive(!finished.success);
                         if finished.success {
-                            refresh_current_software_page(&page, &client).await;
+                            refresh_current_software_page(&page, &client, &dashboard_updates).await;
                         }
                         break;
                     }
@@ -3327,6 +3344,7 @@ async fn monitor_software_transaction(
     client: &impl SoftwareClient,
     events: &mut crate::dbus::SoftwareEventStream,
     transaction_id: u32,
+    dashboard_updates: &gtk::Label,
 ) {
     loop {
         match events.next().await {
@@ -3336,7 +3354,7 @@ async fn monitor_software_transaction(
             Ok(SoftwareEvent::Finished(finished)) if finished.transaction_id == transaction_id => {
                 page.finish_transaction(finished.success, &finished.message);
                 if finished.success {
-                    refresh_current_software_page(page, client).await;
+                    refresh_current_software_page(page, client, dashboard_updates).await;
                 }
                 break;
             }
@@ -3352,6 +3370,7 @@ async fn monitor_software_transaction(
 async fn refresh_current_software_page(
     page: &crate::ui::SoftwarePage,
     client: &impl SoftwareClient,
+    dashboard_updates: &gtk::Label,
 ) {
     page.set_busy(true);
     if page.installed_tab.is_active() {
@@ -3379,6 +3398,7 @@ async fn refresh_current_software_page(
         }
     }
     page.set_busy(false);
+    refresh_dashboard_updates(dashboard_updates, client).await;
 }
 
 fn configure_driver_action(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
@@ -3422,6 +3442,40 @@ fn configure_driver_action(shell: &VegaShell, window: &adw::ApplicationWindow, d
                 gettext("Falhou")
             });
         });
+    });
+}
+
+/// Limpa a contagem de pacotes pendentes e busca novamente junto ao vegad,
+/// exibindo o resultado apenas se houver atualizações disponíveis.
+async fn refresh_dashboard_updates(dashboard_updates: &gtk::Label, client: &impl SoftwareClient) {
+    dashboard_updates.set_label(&gettext("Verificando atualizações…"));
+    match client.list_updates().await {
+        Ok(updates) if updates.is_empty() => dashboard_updates.set_label(&gettext("Tudo em dia")),
+        Ok(updates) => dashboard_updates.set_label(
+            &gettext("{count} pacote(s) pendente(s)")
+                .replace("{count}", &updates.len().to_string()),
+        ),
+        Err(error) => dashboard_updates.set_label(&error.to_string()),
+    }
+}
+
+/// Escuta o sinal `UpdatesAvailable` emitido pela checagem periódica em segundo
+/// plano do vegad e atualiza o resumo do painel quando novos pacotes surgirem.
+fn watch_dashboard_updates(dashboard_updates: gtk::Label, dbus: VegaDbus) {
+    glib::MainContext::default().spawn_local(async move {
+        let client = dbus.software();
+        let Ok(mut events) = client.subscribe().await else {
+            return;
+        };
+        loop {
+            match events.next().await {
+                Ok(SoftwareEvent::UpdatesAvailable(_)) => {
+                    refresh_dashboard_updates(&dashboard_updates, &client).await;
+                }
+                Ok(_) => {}
+                Err(_) => break,
+            }
+        }
     });
 }
 
