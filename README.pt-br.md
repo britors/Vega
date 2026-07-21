@@ -32,10 +32,9 @@ Licenciado sob GPL-3.0. Código em [github.com/britors/Vega](https://github.com/
 - snapshots opcionais via Snapper ou Timeshift e backups via Restic;
 - hardware, drivers, kernel, bootloader, armazenamento, data e hora;
 - Wi-Fi, Bluetooth, firewall, VPN, proxy e IPv4;
-- usuários, serviços, logs e assistente com múltiplos provedores de IA.
-
-Wallpapers, monitores e monitor de processos ficam fora do escopo: as
-ferramentas nativas do desktop já atendem melhor a esses casos.
+- usuários, serviços, logs e assistente com múltiplos provedores de IA;
+- seletor de papel de parede, preferências de bloqueio de tela e monitor
+  de sistema e processos em tempo real.
 
 ## Instalação
 
@@ -66,8 +65,9 @@ privilegiadas devem ser validadas com cuidado antes de cada release.
 ## O que já funciona
 
 A interface gráfica cobre Painel, Software, Pontos de Restauração, Backup,
-Hardware, Kernel, Armazenamento, Data e Hora, Rede/Firewall, Wi-Fi,
-Bluetooth, Usuários, Serviços, Logs, Assistente e Sobre. Recursos que
+Hardware, Kernel, Armazenamento, Data e Hora, Tela (Papel de Parede,
+Bloqueio de Tela), Monitor do Sistema, Rede/Firewall, Wi-Fi, Bluetooth,
+Usuários, Serviços, Logs, Assistente e Sobre. Recursos que
 dependem de uma ferramenta não instalada (Snapper, firewalld, etc.)
 aparecem como indisponíveis em vez de travar a tela.
 

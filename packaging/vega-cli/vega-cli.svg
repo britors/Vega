@@ -1,18 +1,93 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Vega CLI">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Vega CLI">
   <defs>
-    <linearGradient id="vega-cli-gradient" x1="20" y1="12" x2="108" y2="116" gradientUnits="userSpaceOnUse">
+    <linearGradient id="pageGrad" x1="104" y1="80" x2="364" y2="432" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbfbff"/>
+      <stop offset="0.55" stop-color="#ece9f7"/>
+      <stop offset="1" stop-color="#d3cdec"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="288" y1="80" x2="364" y2="152" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e4e0f6"/>
+      <stop offset="1" stop-color="#bdb4de"/>
+    </linearGradient>
+    <linearGradient id="peel" x1="104" y1="358" x2="150" y2="432" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="starGrad" x1="-40" y1="-38" x2="40" y2="42" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#8b5cf6"/>
       <stop offset="0.52" stop-color="#4f46e5"/>
       <stop offset="1" stop-color="#06b6d4"/>
     </linearGradient>
+    <linearGradient id="starShine" x1="-40" y1="-38" x2="0" y2="2" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="promptGrad" x1="140" y1="180" x2="300" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <filter id="pageShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#241f3d" flood-opacity="0.28"/>
+    </filter>
+    <filter id="starGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#4f46e5" flood-opacity="0.45"/>
+    </filter>
   </defs>
-  <rect x="4" y="4" width="120" height="120" rx="28" fill="#1e1e2e"/>
-  <rect x="4" y="4" width="120" height="120" rx="28" fill="none" stroke="url(#vega-cli-gradient)" stroke-width="4"/>
-  <circle cx="22" cy="24" r="4" fill="#ff5f56"/>
-  <circle cx="36" cy="24" r="4" fill="#ffbd2e"/>
-  <circle cx="50" cy="24" r="4" fill="#27c93f"/>
-  <path
-    fill="url(#vega-cli-gradient)"
-    d="M64 40l7.4 23.4L96 71l-23.6 7.6L64 102l-7.4-23.4L32 71l24-7.6L64 40z"
-  />
+
+  <!-- Same folded/peeled-corner page as the main Vega icon (and the
+       Prosa/Calco/Pulso family) — CLI is the same product, just a
+       different front door, so it keeps the identical container. -->
+  <g filter="url(#pageShadow)">
+    <path
+      fill="url(#pageGrad)"
+      d="M104,100
+         A20,20 0 0,1 124,80
+         L288,80
+         L364,152
+         L364,412
+         A20,20 0 0,1 344,432
+         L124,432
+         A20,20 0 0,1 104,412
+         Z"
+    />
+    <path fill="url(#fold)" d="M288,80 L364,152 L316,152 Q288,152 288,124 Z"/>
+
+    <path
+      fill="url(#peel)"
+      d="M104,376
+         C132,390 142,410 122,432
+         C137,427 148,412 152,395
+         C156,378 147,363 134,353
+         Z"
+    />
+
+    <!-- Terminal prompt glyph in place of the GUI's settings sliders —
+         reads as "command line" while keeping the page/fold/peel family
+         silhouette and the brand gradient. -->
+    <path
+      fill="none"
+      stroke="url(#promptGrad)"
+      stroke-width="20"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      d="M150,192 L216,240 L150,288"
+    />
+    <rect x="234" y="222" width="76" height="26" rx="6" fill="url(#promptGrad)"/>
+  </g>
+
+  <!-- Vega mark: same brand sparkle as the main icon, overlapping the
+       page edge, so the CLI still reads as "Vega" at a glance. -->
+  <g filter="url(#starGlow)" transform="translate(384,300) rotate(-10) scale(2.75)">
+    <path
+      fill="url(#starGrad)"
+      d="M0,-38 L9.6,-7.6 L40,2 L9.6,11.6 L0,42 L-9.6,11.6 L-40,2 L-9.6,-7.6 Z"
+    />
+    <path
+      fill="none"
+      stroke="url(#starShine)"
+      stroke-width="3"
+      stroke-linejoin="round"
+      d="M0,-38 L-9.6,-7.6 L-40,2"
+    />
+  </g>
 </svg>

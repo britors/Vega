@@ -33,10 +33,8 @@ Licensed under GPL-3.0. Code at [github.com/britors/Vega](https://github.com/bri
 - optional snapshots via Snapper or Timeshift, and backups via Restic;
 - hardware, drivers, kernel, bootloader, storage, date and time;
 - Wi-Fi, Bluetooth, firewall, VPN, proxy, and IPv4;
-- users, services, logs, and an assistant with multiple AI providers.
-
-Wallpapers, monitors, and a process monitor are out of scope: the desktop's
-native tools already handle those cases better.
+- users, services, logs, and an assistant with multiple AI providers;
+- wallpaper picker, screen lock preferences, and a live system/process monitor.
 
 ## Installation
 
@@ -67,8 +65,9 @@ should be validated carefully before each release.
 ## What already works
 
 The graphical interface covers Dashboard, Software, Restore Points, Backup,
-Hardware, Kernel, Storage, Date and Time, Network/Firewall, Wi-Fi,
-Bluetooth, Users, Services, Logs, Assistant, and About. Features that
+Hardware, Kernel, Storage, Date and Time, Screen (Wallpaper, Screen Lock),
+System Monitor, Network/Firewall, Wi-Fi, Bluetooth, Users, Services, Logs,
+Assistant, and About. Features that
 depend on a tool that isn't installed (Snapper, firewalld, etc.) show up as
 unavailable instead of breaking the screen.
 

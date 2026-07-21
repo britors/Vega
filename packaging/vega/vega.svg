@@ -1,14 +1,91 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Vega">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Vega">
   <defs>
-    <linearGradient id="vega-gradient" x1="20" y1="12" x2="108" y2="116" gradientUnits="userSpaceOnUse">
+    <linearGradient id="pageGrad" x1="104" y1="80" x2="364" y2="432" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbfbff"/>
+      <stop offset="0.55" stop-color="#ece9f7"/>
+      <stop offset="1" stop-color="#d3cdec"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="288" y1="80" x2="364" y2="152" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e4e0f6"/>
+      <stop offset="1" stop-color="#bdb4de"/>
+    </linearGradient>
+    <linearGradient id="peel" x1="104" y1="358" x2="150" y2="432" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="starGrad" x1="-40" y1="-38" x2="40" y2="42" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#8b5cf6"/>
       <stop offset="0.52" stop-color="#4f46e5"/>
       <stop offset="1" stop-color="#06b6d4"/>
     </linearGradient>
+    <linearGradient id="starShine" x1="-40" y1="-38" x2="0" y2="2" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="pageShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#241f3d" flood-opacity="0.28"/>
+    </filter>
+    <filter id="starGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#4f46e5" flood-opacity="0.45"/>
+    </filter>
   </defs>
-  <rect x="4" y="4" width="120" height="120" rx="40" fill="url(#vega-gradient)"/>
-  <path
-    fill="#ffffff"
-    d="M64 26l9.6 30.4L104 66l-30.4 9.6L64 106l-9.6-30.4L24 66l30.4-9.6L64 26z"
-  />
+
+  <!-- Page: same folded/peeled-corner document silhouette as the Prosa,
+       Calco and Pulso icon marks, tinted lilac to read as "Vega" at a
+       glance while keeping the family language. -->
+  <g filter="url(#pageShadow)">
+    <path
+      fill="url(#pageGrad)"
+      d="M104,100
+         A20,20 0 0,1 124,80
+         L288,80
+         L364,152
+         L364,412
+         A20,20 0 0,1 344,432
+         L124,432
+         A20,20 0 0,1 104,412
+         Z"
+    />
+    <path fill="url(#fold)" d="M288,80 L364,152 L316,152 Q288,152 288,124 Z"/>
+
+    <!-- Peeling bottom-left corner, revealing the brand gradient underneath -->
+    <path
+      fill="url(#peel)"
+      d="M104,376
+         C132,390 142,410 122,432
+         C137,427 148,412 152,395
+         C156,378 147,363 134,353
+         Z"
+    />
+
+    <!-- Settings rows: sliders in varying positions, standing in for the
+         document lines / spreadsheet grid / pulse trace on the sibling
+         icons — reads as "control panel" rather than "content". -->
+    <g stroke="#9a90c2" stroke-width="7" stroke-linecap="round">
+      <line x1="140" y1="200" x2="300" y2="200"/>
+      <line x1="140" y1="240" x2="300" y2="240"/>
+      <line x1="140" y1="280" x2="300" y2="280"/>
+    </g>
+    <g fill="#7a6fb0">
+      <circle cx="188" cy="200" r="12"/>
+      <circle cx="252" cy="240" r="12"/>
+      <circle cx="216" cy="280" r="12"/>
+    </g>
+  </g>
+
+  <!-- Vega mark: the brand sparkle, enlarged and tilted like the
+       chart/pulse glyph on the sibling icons, overlapping the page edge. -->
+  <g filter="url(#starGlow)" transform="translate(384,300) rotate(-10) scale(2.75)">
+    <path
+      fill="url(#starGrad)"
+      d="M0,-38 L9.6,-7.6 L40,2 L9.6,11.6 L0,42 L-9.6,11.6 L-40,2 L-9.6,-7.6 Z"
+    />
+    <path
+      fill="none"
+      stroke="url(#starShine)"
+      stroke-width="3"
+      stroke-linejoin="round"
+      d="M0,-38 L-9.6,-7.6 L-40,2"
+    />
+  </g>
 </svg>
