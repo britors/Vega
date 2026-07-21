@@ -6,7 +6,7 @@ use std::{
 use adw::prelude::*;
 use gettextrs::gettext;
 
-use crate::dbus::ManagedService;
+use lyra_vega_dbus::ManagedService;
 
 struct ServiceRowActions {
     enable: gtk::Button,

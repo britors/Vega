@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use adw::prelude::*;
 use gettextrs::gettext;
 
-use crate::dbus::{BluetoothDevice, BluetoothStatus};
+use lyra_vega_dbus::{BluetoothDevice, BluetoothStatus};
 
 #[derive(Clone)]
 pub struct BluetoothPage {

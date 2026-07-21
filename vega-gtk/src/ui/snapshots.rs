@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use adw::prelude::*;
 use gettextrs::gettext;
 
-use crate::dbus::Snapshot;
+use lyra_vega_dbus::Snapshot;
 
 type SnapshotCallback = Rc<RefCell<Option<Box<dyn Fn(Snapshot, gtk::Button)>>>>;
 

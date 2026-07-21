@@ -98,7 +98,7 @@ impl VegaDbus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dbus::{ServicesClient, SnapshotsClient};
+    use crate::{ServicesClient, SnapshotsClient};
 
     #[test]
     #[ignore = "requer vegad instalado e acesso ao system bus"]

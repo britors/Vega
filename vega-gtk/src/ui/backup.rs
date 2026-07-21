@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use adw::prelude::*;
 use gettextrs::gettext;
 
-use crate::dbus::{BackupConfig, BackupSnapshot};
+use lyra_vega_dbus::{BackupConfig, BackupSnapshot};
 
 #[derive(Clone)]
 pub struct BackupPage {

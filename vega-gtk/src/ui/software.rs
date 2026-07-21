@@ -7,7 +7,7 @@ use std::{
 use adw::prelude::*;
 use gettextrs::gettext;
 
-use crate::dbus::{PackageRef, RepositoryRef};
+use lyra_vega_dbus::{PackageRef, RepositoryRef};
 
 type SelectionHandlers = Rc<RefCell<Vec<Rc<dyn Fn()>>>>;
 type RepositoryToggleHandlers = Rc<RefCell<Vec<Rc<dyn Fn(RepositoryRef)>>>>;
@@ -407,7 +407,7 @@ impl SoftwarePage {
         self.detail_dialog.present(Some(parent));
     }
 
-    pub fn show_details(&self, details: &crate::dbus::PackageDetails) {
+    pub fn show_details(&self, details: &lyra_vega_dbus::PackageDetails) {
         self.detail_title.set_label(&format!(
             "{} • {}",
             details.name,

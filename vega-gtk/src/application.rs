@@ -3,14 +3,14 @@ use gettextrs::gettext;
 use gtk::{gio, glib};
 use std::{cell::RefCell, rc::Rc, time::Instant};
 
-use crate::dbus::{
+use crate::model::AppIdentity;
+use crate::ui::VegaShell;
+use lyra_vega_dbus::{
     BackupClient, BackupConfig, BackupEvent, BluetoothClient, DateTimeClient, FirewallClient,
     HardwareClient, KernelClient, LogsClient, MonitorClient, NetworkClient, ServicesClient,
     SnapshotsClient, SoftwareClient, SoftwareEvent, StorageClient, SystemClient, UsersClient,
     VegaDbus,
 };
-use crate::model::AppIdentity;
-use crate::ui::VegaShell;
 
 pub const APPLICATION_ID: &str = "org.lyraos.Vega";
 
@@ -1891,7 +1891,7 @@ fn configure_screensaver_tab(page: &crate::ui::ScreensaverPage) {
 }
 
 fn configure_monitor_tab(page: &crate::ui::MonitorPage, dbus: VegaDbus) {
-    let last_metrics: Rc<RefCell<Option<(crate::dbus::SystemMetrics, std::time::Instant)>>> =
+    let last_metrics: Rc<RefCell<Option<(lyra_vega_dbus::SystemMetrics, std::time::Instant)>>> =
         Rc::new(RefCell::new(None));
     let timer_id: Rc<RefCell<Option<glib::SourceId>>> = Rc::new(RefCell::new(None));
 
@@ -1972,7 +1972,7 @@ fn configure_monitor_tab(page: &crate::ui::MonitorPage, dbus: VegaDbus) {
 async fn refresh_monitor_page(
     page: &crate::ui::MonitorPage,
     dbus: &VegaDbus,
-    last: &Rc<RefCell<Option<(crate::dbus::SystemMetrics, std::time::Instant)>>>,
+    last: &Rc<RefCell<Option<(lyra_vega_dbus::SystemMetrics, std::time::Instant)>>>,
 ) {
     let client = dbus.monitor();
     match client.metrics().await {
@@ -2819,7 +2819,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
 
 async fn monitor_restore_transaction(
     page: &crate::ui::BackupPage,
-    events: &mut crate::dbus::BackupEventStream,
+    events: &mut lyra_vega_dbus::BackupEventStream,
     transaction_id: u32,
 ) {
     loop {
@@ -2852,7 +2852,7 @@ async fn monitor_restore_transaction(
 
 async fn monitor_backup_transaction(
     page: &crate::ui::BackupPage,
-    events: &mut crate::dbus::BackupEventStream,
+    events: &mut lyra_vega_dbus::BackupEventStream,
     transaction_id: u32,
 ) {
     loop {
@@ -3342,7 +3342,7 @@ fn requires_pkgbuild_review(origin: &str, installed: bool) -> bool {
 async fn monitor_software_transaction(
     page: &crate::ui::SoftwarePage,
     client: &impl SoftwareClient,
-    events: &mut crate::dbus::SoftwareEventStream,
+    events: &mut lyra_vega_dbus::SoftwareEventStream,
     transaction_id: u32,
     dashboard_updates: &gtk::Label,
 ) {

@@ -4,7 +4,7 @@ use adw::prelude::*;
 use gettextrs::gettext;
 
 use super::sparkline::Sparkline;
-use crate::dbus::{ProcessInfo, SystemMetrics};
+use lyra_vega_dbus::{ProcessInfo, SystemMetrics};
 
 type KillHandlers = Rc<RefCell<Vec<Rc<dyn Fn(ProcessInfo)>>>>;
 
@@ -485,7 +485,7 @@ mod tests {
             ppid,
             name: format!("proc{pid}"),
             user: "root".into(),
-            cpu_percent: crate::dbus::NotNan::from(0.0),
+            cpu_percent: lyra_vega_dbus::NotNan::from(0.0),
             memory: 0,
             state: "S".into(),
         }

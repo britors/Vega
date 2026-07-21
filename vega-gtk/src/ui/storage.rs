@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use adw::prelude::*;
 use gettextrs::gettext;
 
-use crate::dbus::StorageVolume;
+use lyra_vega_dbus::StorageVolume;
 
 #[derive(Clone)]
 pub struct StoragePage {

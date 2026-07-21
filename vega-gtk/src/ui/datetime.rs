@@ -1,7 +1,7 @@
 use adw::prelude::*;
 use gettextrs::gettext;
 
-use crate::dbus::DateTimeStatus;
+use lyra_vega_dbus::DateTimeStatus;
 
 #[derive(Clone)]
 pub struct DateTimePage {

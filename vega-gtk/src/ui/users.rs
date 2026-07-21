@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use adw::prelude::*;
 use gettextrs::gettext;
 
-use crate::dbus::UserInfo;
+use lyra_vega_dbus::UserInfo;
 
 #[derive(Clone)]
 pub struct UsersPage {

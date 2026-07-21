@@ -19,6 +19,10 @@ vegad/vegad
 vegad/bin/
 *.exe
 
+# Rust
+/target/
+po/locale/
+
 # Arch packaging
 packaging/*/pkg/
 packaging/*/src/

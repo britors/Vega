@@ -1,5 +1,4 @@
 mod application;
-pub mod dbus;
 mod i18n;
 mod model;
 mod screensaver;

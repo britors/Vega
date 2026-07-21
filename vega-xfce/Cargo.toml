@@ -1,0 +1,18 @@
+[package]
+name = "lyra-vega-xfce"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+description = "Interface nativa GTK4 (sem libadwaita) do centro de controle Vega, para ambientes XFCE"
+
+[[bin]]
+name = "lyra-vega-xfce"
+path = "src/main.rs"
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.11.4", features = ["v4_10"] }
+gettext-rs = { version = "0.7.7", features = ["gettext-system"] }
+lyra-vega-dbus = { path = "../lyra-vega-dbus" }

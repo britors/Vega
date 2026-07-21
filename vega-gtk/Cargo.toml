@@ -1,29 +1,20 @@
 [package]
 name = "lyra-vega-gtk"
 version = "4.0.3"
-edition = "2024"
-license = "GPL-3.0"
-authors = ["Rodrigo Brito"]
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
 description = "Interface nativa GTK4 do centro de controle Vega"
-homepage = "https://github.com/britors/Vega"
-rust-version = "1.92"
 
 [dependencies]
 gtk = { package = "gtk4", version = "0.11.4", features = ["v4_10"] }
 adw = { package = "libadwaita", version = "0.9.2", features = ["v1_5"] }
-async-trait = "0.1.89"
 base64 = "0.22.1"
-futures-util = "0.3.32"
-futures-lite = "2.6.1"
 reqwest = { version = "0.12.24", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
-thiserror = "2.0.17"
-zbus = "5.17.0"
 gettext-rs = { version = "0.7.7", features = ["gettext-system"] }
 roxmltree = "0.21.1"
-
-[profile.release]
-lto = "thin"
-codegen-units = 1
-strip = "debuginfo"
+lyra-vega-dbus = { path = "../lyra-vega-dbus" }

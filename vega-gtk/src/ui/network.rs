@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::dbus::{FirewallService, FirewallStatus, NetworkInterface, ProxyConfig, WifiNetwork};
 use adw::prelude::*;
 use gettextrs::gettext;
+use lyra_vega_dbus::{FirewallService, FirewallStatus, NetworkInterface, ProxyConfig, WifiNetwork};
 
 type WifiActionHandler = Rc<dyn Fn(WifiNetwork)>;
 
