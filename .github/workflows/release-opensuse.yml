@@ -82,3 +82,42 @@ jobs:
           fi
           gh release upload "$tag" dist/*.rpm --repo "$GITHUB_REPOSITORY" --clobber
           gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false
+
+  # Além de publicar os RPMs pré-compilados acima, dispara o build "de
+  # verdade" no openSUSE Build Service (home:rodrigosbrito:vega), que tem
+  # seu próprio _service (tar_scm com match-tag: v*) buscando a mesma tag
+  # direto do GitHub — este job só avisa o OBS pra rebuscar e rebuildar,
+  # via https://openbuildservice.org/help/manuals/obs-user-guide/cha-obs-authorization-token
+  # Cada pacote (vega-gtk, vegad, vega-cli — nomes dos pacotes no OBS; o
+  # RPM de vega-gtk continua se chamando lyra-vega-gtk internamente, é o
+  # Name: de packaging/opensuse/vega.spec) tem seu próprio token de trigger, escopado
+  # só pra "runservice" naquele pacote (osc token --create <projeto>
+  # <pacote> runservice), guardado como secret. Depende só de `publish`
+  # (a release do GitHub já está no ar antes de avisar o OBS) e é
+  # best-effort: falha aqui não desfaz a release, e cada step é pulado sem
+  # erro enquanto o secret correspondente ainda não existir (setup do lado
+  # OBS ainda em andamento).
+  trigger-obs:
+    needs: publish
+    runs-on: ubuntu-latest
+    env:
+      OBS_API: https://api.opensuse.org
+      OBS_PROJECT: home:rodrigosbrito:vega
+    steps:
+      - name: Disparar rebuild no OBS (vega-gtk)
+        if: ${{ secrets.OBS_TOKEN_VEGA_GTK != '' }}
+        run: |
+          curl -fsS -H "Authorization: Token ${{ secrets.OBS_TOKEN_VEGA_GTK }}" \
+            -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vega-gtk"
+
+      - name: Disparar rebuild no OBS (vegad)
+        if: ${{ secrets.OBS_TOKEN_VEGAD != '' }}
+        run: |
+          curl -fsS -H "Authorization: Token ${{ secrets.OBS_TOKEN_VEGAD }}" \
+            -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vegad"
+
+      - name: Disparar rebuild no OBS (vega-cli)
+        if: ${{ secrets.OBS_TOKEN_VEGA_CLI != '' }}
+        run: |
+          curl -fsS -H "Authorization: Token ${{ secrets.OBS_TOKEN_VEGA_CLI }}" \
+            -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vega-cli"
