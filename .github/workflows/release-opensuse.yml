@@ -107,7 +107,13 @@ jobs:
       # step (erro do parser do Actions: "Unrecognized named-value:
       # 'secrets'") — passa o token por env: (isso sim é aceito) e faz o
       # "pular se não configurado" dentro do próprio shell.
+      #
+      # if: always() em cada step: por padrão, o Actions pula os steps
+      # seguintes assim que um falha — mas os 3 disparos são operações
+      # independentes por pacote (um pacote falhar/ter conflito de serviço
+      # no OBS não deve impedir os outros dois de disparar).
       - name: Disparar rebuild no OBS (vega-gtk)
+        if: always()
         env:
           OBS_TOKEN: ${{ secrets.OBS_TOKEN_VEGA_GTK }}
         run: |
@@ -119,6 +125,7 @@ jobs:
             -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vega-gtk"
 
       - name: Disparar rebuild no OBS (vegad)
+        if: always()
         env:
           OBS_TOKEN: ${{ secrets.OBS_TOKEN_VEGAD }}
         run: |
@@ -130,6 +137,7 @@ jobs:
             -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vegad"
 
       - name: Disparar rebuild no OBS (vega-cli)
+        if: always()
         env:
           OBS_TOKEN: ${{ secrets.OBS_TOKEN_VEGA_CLI }}
         run: |
