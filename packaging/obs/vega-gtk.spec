@@ -15,6 +15,11 @@ Summary:        Centro de controle para Linux
 License:        GPL-3.0-only
 URL:            https://github.com/britors/Vega
 Source0:        vega-src-%{version}.tar.gz
+# vendor.tar.gz gerado pelo _service cargo_vendor (rede exigida, que a VM
+# de build do OBS não tem — sem isso, "cargo build" trava tentando baixar
+# crates de index.crates.io e falha). Traz .cargo/config.toml + Cargo.lock
+# + vendor/ prontos pra extrair na raiz do workspace.
+Source1:        vendor.tar.gz
 
 BuildRequires:  cargo
 BuildRequires:  rust
@@ -33,10 +38,13 @@ Interface nativa do Vega, construída com Rust, GTK4 e libadwaita.
 
 %prep
 %setup -q -n vega-src-%{version}
+# .cargo/config.toml + Cargo.lock + vendor/ vão na raiz do workspace,
+# junto do Cargo.toml — é onde o cargo procura por padrão.
+tar xzf %{SOURCE1}
 
 %build
 cd vega-gtk
-cargo build --release --locked
+cargo build --release --locked --offline
 
 %install
 install -Dm755 target/release/lyra-vega-gtk \
