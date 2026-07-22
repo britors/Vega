@@ -11,6 +11,7 @@ use lyra_vega_dbus::{PackageRef, RepositoryRef};
 
 type SelectionHandlers = Rc<RefCell<Vec<Rc<dyn Fn()>>>>;
 type RepositoryToggleHandlers = Rc<RefCell<Vec<Rc<dyn Fn(RepositoryRef)>>>>;
+type AddRepoHandlers = Rc<RefCell<Vec<Rc<dyn Fn(String, String)>>>>;
 
 #[derive(Clone, Debug)]
 struct PackageGroup {
@@ -45,6 +46,9 @@ pub struct SoftwarePage {
     pub repository_panel: gtk::Box,
     pub repository_list: gtk::ListBox,
     pub optimize_mirrors: gtk::Button,
+    pub add_repo_name: gtk::Entry,
+    pub add_repo_url: gtk::Entry,
+    pub add_repo_button: gtk::Button,
     pub global_action: gtk::Button,
     pub transaction_panel: gtk::Box,
     pub transaction_label: gtk::Label,
@@ -53,6 +57,7 @@ pub struct SoftwarePage {
     selected_group: Rc<Cell<Option<usize>>>,
     selection_handlers: SelectionHandlers,
     repository_toggle_handlers: RepositoryToggleHandlers,
+    add_repo_handlers: AddRepoHandlers,
 }
 
 impl SoftwarePage {
@@ -181,6 +186,45 @@ impl SoftwarePage {
                 .css_classes(["dim-label"])
                 .build(),
         );
+
+        let add_repo_name = gtk::Entry::builder()
+            .placeholder_text(gettext("nome"))
+            .hexpand(true)
+            .build();
+        let add_repo_url = gtk::Entry::builder()
+            .placeholder_text(gettext("URL"))
+            .hexpand(true)
+            .build();
+        let add_repo_button = gtk::Button::builder()
+            .label(gettext("Adicionar repositório"))
+            .sensitive(false)
+            .css_classes(["suggested-action"])
+            .build();
+        let add_repo_row = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+        add_repo_row.append(&add_repo_name);
+        add_repo_row.append(&add_repo_url);
+        add_repo_row.append(&add_repo_button);
+        let add_repo_form = gtk::Box::new(gtk::Orientation::Vertical, 8);
+        add_repo_form.add_css_class("card");
+        add_repo_form.append(
+            &gtk::Label::builder()
+                .label(gettext("Novo repositório"))
+                .xalign(0.0)
+                .css_classes(["title-3"])
+                .build(),
+        );
+        add_repo_form.append(&add_repo_row);
+        add_repo_form.append(
+            &gtk::Label::builder()
+                .label(gettext(
+                    "Se o repositório for assinado, a chave é baixada e mostrada pra você aprovar antes de confiar nela.",
+                ))
+                .xalign(0.0)
+                .wrap(true)
+                .css_classes(["dim-label", "caption"])
+                .build(),
+        );
+        repository_panel.append(&add_repo_form);
         repository_panel.append(&repository_list);
         let repository_toggle_handlers = RepositoryToggleHandlers::default();
         let list_stack = result_stack.clone();
@@ -277,6 +321,35 @@ impl SoftwarePage {
             emit_selection(&card_handlers);
         });
 
+        let add_repo_handlers: AddRepoHandlers = Rc::new(RefCell::new(Vec::new()));
+        let sensitivity_button = add_repo_button.clone();
+        let sensitivity_url = add_repo_url.clone();
+        add_repo_name.connect_changed(move |entry| {
+            sensitivity_button.set_sensitive(
+                !entry.text().trim().is_empty() && !sensitivity_url.text().trim().is_empty(),
+            );
+        });
+        let sensitivity_button = add_repo_button.clone();
+        let sensitivity_name = add_repo_name.clone();
+        add_repo_url.connect_changed(move |entry| {
+            sensitivity_button.set_sensitive(
+                !entry.text().trim().is_empty() && !sensitivity_name.text().trim().is_empty(),
+            );
+        });
+        let click_name = add_repo_name.clone();
+        let click_url = add_repo_url.clone();
+        let click_handlers = add_repo_handlers.clone();
+        add_repo_button.connect_clicked(move |_| {
+            let name = click_name.text().trim().to_string();
+            let url = click_url.text().trim().to_string();
+            if name.is_empty() || url.is_empty() {
+                return;
+            }
+            for handler in click_handlers.borrow().iter() {
+                handler(name.clone(), url.clone());
+            }
+        });
+
         Self {
             root,
             query,
@@ -297,6 +370,9 @@ impl SoftwarePage {
             repository_panel,
             repository_list,
             optimize_mirrors,
+            add_repo_name,
+            add_repo_url,
+            add_repo_button,
             global_action,
             transaction_panel,
             transaction_label,
@@ -305,6 +381,7 @@ impl SoftwarePage {
             selected_group,
             selection_handlers,
             repository_toggle_handlers,
+            add_repo_handlers,
         }
     }
 
@@ -561,6 +638,20 @@ impl SoftwarePage {
         self.repository_toggle_handlers
             .borrow_mut()
             .push(Rc::new(callback));
+    }
+
+    /// callback receives (name, url) from the "Novo repositório" form.
+    pub fn connect_add_repo(&self, callback: impl Fn(String, String) + 'static) {
+        self.add_repo_handlers.borrow_mut().push(Rc::new(callback));
+    }
+
+    /// Clears the "Novo repositório" form — called after AddRepo starts (a
+    /// successful transaction shouldn't leave stale text behind, and a
+    /// failed one is cheap enough for the user to just retype).
+    pub fn clear_add_repo_form(&self) {
+        self.add_repo_name.set_text("");
+        self.add_repo_url.set_text("");
+        self.add_repo_button.set_sensitive(false);
     }
 
     fn clear_results(&self) {

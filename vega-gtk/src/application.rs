@@ -7,9 +7,9 @@ use crate::model::AppIdentity;
 use crate::ui::VegaShell;
 use lyra_vega_dbus::{
     BackupClient, BackupConfig, BackupEvent, BluetoothClient, DateTimeClient, FirewallClient,
-    HardwareClient, KernelClient, LogsClient, MonitorClient, NetworkClient, ServicesClient,
-    SnapshotsClient, SoftwareClient, SoftwareEvent, StorageClient, SystemClient, UsersClient,
-    VegaDbus,
+    HardwareClient, KernelClient, LogsClient, MonitorClient, NetworkClient, RepositoryKeyInfo,
+    ServicesClient, SnapshotsClient, SoftwareClient, SoftwareEvent, StorageClient, SystemClient,
+    UsersClient, VegaDbus,
 };
 
 pub const APPLICATION_ID: &str = "org.lyraos.Vega";
@@ -2958,6 +2958,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
     });
 
     connect_repository_toggle(&page, &dbus);
+    connect_add_repo(&page, &dbus, &dashboard_updates);
 
     let mirrors_page = page.clone();
     let mirrors_dbus = dbus.clone();
@@ -3268,6 +3269,154 @@ fn connect_repository_toggle(page: &crate::ui::SoftwarePage, dbus: &VegaDbus) {
             page.repository_list.set_sensitive(true);
         });
     });
+}
+
+fn connect_add_repo(
+    page: &crate::ui::SoftwarePage,
+    dbus: &VegaDbus,
+    dashboard_updates: &gtk::Label,
+) {
+    let page = page.clone();
+    let dbus = dbus.clone();
+    let dashboard_updates = dashboard_updates.clone();
+    page.clone().connect_add_repo(move |name, url| {
+        let page = page.clone();
+        let client = dbus.software();
+        let dashboard_updates = dashboard_updates.clone();
+        glib::MainContext::default().spawn_local(async move {
+            page.clear_add_repo_form();
+            page.add_repo_button.set_sensitive(false);
+            page.begin_transaction(&gettext("Adicionando {name}…").replace("{name}", &name));
+            let mut events = match client.subscribe().await {
+                Ok(events) => events,
+                Err(error) => {
+                    page.finish_transaction(false, &error.to_string());
+                    page.add_repo_button.set_sensitive(true);
+                    return;
+                }
+            };
+            match client.add_repo(&name, &url).await {
+                Ok(id) => {
+                    monitor_add_repo_transaction(
+                        &page,
+                        &client,
+                        &mut events,
+                        id,
+                        &dashboard_updates,
+                    )
+                    .await
+                }
+                Err(error) => page.finish_transaction(false, &error.to_string()),
+            }
+            page.add_repo_button.set_sensitive(true);
+        });
+    });
+}
+
+/// Like monitor_software_transaction, but AddRepo's transaction can also
+/// emit RepoKeyPending before finishing (unsuccessfully) — when that
+/// happens, this asks the user whether to trust the discovered key instead
+/// of just reporting the failure.
+async fn monitor_add_repo_transaction(
+    page: &crate::ui::SoftwarePage,
+    client: &lyra_vega_dbus::ZbusSoftwareClient,
+    events: &mut lyra_vega_dbus::SoftwareEventStream,
+    transaction_id: u32,
+    dashboard_updates: &gtk::Label,
+) {
+    let mut pending_key: Option<RepositoryKeyInfo> = None;
+    loop {
+        match events.next().await {
+            Ok(SoftwareEvent::Progress(progress)) if progress.transaction_id == transaction_id => {
+                page.update_transaction(progress.percent, &progress.message);
+            }
+            Ok(SoftwareEvent::KeyPending(info)) if info.transaction_id == transaction_id => {
+                pending_key = Some(info);
+            }
+            Ok(SoftwareEvent::Finished(finished)) if finished.transaction_id == transaction_id => {
+                if finished.success {
+                    page.finish_transaction(true, &finished.message);
+                    refresh_current_software_page(page, client, dashboard_updates).await;
+                } else if let Some(key_info) = pending_key {
+                    page.finish_transaction(
+                        false,
+                        &gettext("Repositório adicionado — assinatura pendente de aprovação"),
+                    );
+                    confirm_and_trust_repo_key(page, client, key_info, dashboard_updates).await;
+                } else {
+                    page.finish_transaction(false, &finished.message);
+                }
+                break;
+            }
+            Ok(_) => {}
+            Err(error) => {
+                page.finish_transaction(false, &error.to_string());
+                break;
+            }
+        }
+    }
+}
+
+/// Shows the fingerprint/userId of a repo's signing key and, if approved,
+/// calls TrustRepoKey — trust-on-first-use, the same level of verification
+/// pacman/zypper/dnf already give when a human approves the equivalent
+/// prompt at the terminal. keyId can be empty (pacman has no way to
+/// discover an importable key — see distro.UntrustedKeyError in vegad), in
+/// which case trusting means disabling signature verification for this one
+/// repo instead of importing a real key, so the wording differs.
+async fn confirm_and_trust_repo_key(
+    page: &crate::ui::SoftwarePage,
+    client: &lyra_vega_dbus::ZbusSoftwareClient,
+    key_info: RepositoryKeyInfo,
+    dashboard_updates: &gtk::Label,
+) {
+    let body = if key_info.key_id.is_empty() {
+        gettext(
+            "Não foi possível obter uma chave verificável para \"{repo}\" (assinado por: {user}). \
+             Deseja continuar mesmo assim, sem verificação de assinatura?",
+        )
+        .replace("{repo}", &key_info.repo)
+        .replace("{user}", &key_info.user_id)
+    } else {
+        gettext(
+            "\"{repo}\" está assinado por:\n{user}\nImpressão digital: {fingerprint}\n\nConfiar nessa chave e continuar?",
+        )
+        .replace("{repo}", &key_info.repo)
+        .replace("{user}", &key_info.user_id)
+        .replace("{fingerprint}", &key_info.fingerprint)
+    };
+    let dialog = adw::AlertDialog::new(
+        Some(&gettext("Confiar na chave do repositório?")),
+        Some(&body),
+    );
+    dialog.add_responses(&[
+        ("cancel", &gettext("Cancelar")),
+        ("confirm", &gettext("Confiar")),
+    ]);
+    dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
+    dialog.set_default_response(Some("cancel"));
+    dialog.set_close_response("cancel");
+    if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+        return;
+    }
+
+    page.begin_transaction(&gettext("Confiando na chave…"));
+    let mut events = match client.subscribe().await {
+        Ok(events) => events,
+        Err(error) => {
+            page.finish_transaction(false, &error.to_string());
+            return;
+        }
+    };
+    match client
+        .trust_repo_key(&key_info.repo, &key_info.key_id)
+        .await
+    {
+        Ok(id) => {
+            monitor_software_transaction(page, client, &mut events, id, dashboard_updates).await
+        }
+        Err(error) => page.finish_transaction(false, &error.to_string()),
+    }
 }
 
 async fn confirm_package_action(name: &str, verb: &str, destructive: bool) -> bool {
