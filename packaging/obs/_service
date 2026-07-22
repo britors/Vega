@@ -1,0 +1,46 @@
+<services>
+  <!-- Fonte de verdade pro build no OBS (home:rodrigosbrito:vega). Igual
+       nos 3 pacotes (vega-gtk, vegad, vega-cli) — todos puxam do mesmo
+       repositório, só o .spec varia.
+
+       mode="manual" nos dois serviços: só rodam quando explicitamente
+       disparados (osc service manualrun local, ou o
+       /trigger/runservice?... que .github/workflows/release-opensuse.yml
+       chama depois de cada release), nunca sozinhos num "osc checkout"
+       de outra pessoa. ("disabled" é o modo antigo/obsoleto pra isso,
+       osc reclama e pede "manual" na versão atual.) -->
+  <service name="tar_scm" mode="manual">
+    <param name="scm">git</param>
+    <param name="url">https://github.com/britors/Vega.git</param>
+    <!-- master não existe neste repo (o branch padrão é main) — sem
+         "revision" o tar_scm tenta master por default e falha com
+         "master: No such revision". match-tag procura a tag mais nova
+         alcançável a partir daqui. -->
+    <param name="revision">main</param>
+    <!-- Sempre pega a tag vX.Y.Z mais recente, não uma revisão fixa —
+         é o que faz o trigger (sem parâmetro nenhum) buscar a release
+         que acabou de sair. -->
+    <param name="match-tag">v*</param>
+    <param name="versionformat">@PARENT_TAG@</param>
+    <!-- Tag vem como "v4.0.17"; %{version} no .spec não deve levar o "v". -->
+    <param name="versionrewrite-pattern">v(.*)</param>
+    <param name="versionrewrite-replacement">\1</param>
+    <!-- Mesmos excludes do tar czf em .github/workflows/release-opensuse.yml
+         e release-fedora.yml — sem histórico do git nem build artifacts
+         do Rust no tarball de fontes. -->
+    <param name="exclude">.git</param>
+    <param name="exclude">vega-gtk/target</param>
+    <param name="filename">vega-src</param>
+  </service>
+  <!-- tar_scm sozinho gera .tar sem compressão — o Source0 dos .spec
+       aqui espera .tar.gz. -->
+  <service name="recompress" mode="manual">
+    <param name="file">vega-src-*.tar</param>
+    <param name="compression">gz</param>
+  </service>
+  <!-- Reescreve a linha "Version:" do .spec no working copy do pacote
+       com a versão que o tar_scm acabou de extrair da tag. Só funciona
+       porque o .spec usa "Version:        0" literal (não %{version}) —
+       set_version faz substituição textual simples e não entende macro. -->
+  <service name="set_version" mode="manual" />
+</services>
