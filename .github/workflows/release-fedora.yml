@@ -51,7 +51,7 @@ jobs:
       - name: Validar instalação
         run: |
           dnf install -y dist/*.rpm
-          test -x /usr/bin/lyra-vega-gtk
+          test -x /usr/bin/vega-gtk
           test -x /usr/lib/vega/vegad
           test -f /usr/share/applications/vega.desktop
           test -x /usr/bin/vega

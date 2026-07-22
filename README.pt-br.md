@@ -86,12 +86,12 @@ sudo bash scripts/uninstall.sh
 ```
 
 Detecta a distro do mesmo jeito que o `install.sh` e remove os pacotes
-`lyra-vega-gtk`, `vegad` e `vega-cli` (os que estiverem instalados) pelo
+`vega-gtk`, `vegad` e `vega-cli` (os que estiverem instalados) pelo
 gerenciador nativo. Com `VEGA_PURGE=1` também apaga estado que nenhum
 pacote rastreia: configs/senhas do módulo Backup em `/etc/vega`, a
 exportação do journal em `/var/log/vega` e, só no Arch, o usuário
 `vega-build` usado para builds AUR. Preferências por usuário do assistente
-de IA na interface GTK (`~/.local/share/lyra-vega-gtk/ai-settings.json`)
+de IA na interface GTK (`~/.local/share/vega-gtk/ai-settings.json`)
 não são tocadas — remova manualmente se quiser.
 
 ## O que já funciona

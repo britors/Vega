@@ -6,12 +6,12 @@ Build-Depends: debhelper-compat (= 13), cargo, rustc, golang-go, pkg-config, lib
 Standards-Version: 4.6.2
 Homepage: https://github.com/britors/Vega
 
-Package: lyra-vega-gtk
+Package: vega-gtk
 Architecture: amd64
 Depends: ${misc:Depends}, ${shlibs:Depends}, libsecret-tools, vegad (= ${binary:Version})
-Provides: vega
-Conflicts: vega
-Replaces: vega
+Provides: vega, lyra-vega-gtk
+Conflicts: vega, lyra-vega-gtk
+Replaces: vega, lyra-vega-gtk
 Recommends: flatpak, restic
 Description: Centro de controle para Linux
  Interface nativa do Vega, construída com Rust, GTK4 e libadwaita.

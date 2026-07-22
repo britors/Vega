@@ -40,7 +40,7 @@ echo "==> Compilando vegad"
     -o vegad ./cmd/vegad
 )
 
-echo "==> Compilando lyra-vega-gtk"
+echo "==> Compilando vega-gtk"
 (
   cd "$REPO_ROOT/vega-gtk"
   cargo build --release --locked
@@ -55,9 +55,9 @@ install -Dm644 "$REPO_ROOT/packaging/vegad/org.lyraos.Vega1.conf" /usr/share/dbu
 install -Dm644 "$REPO_ROOT/packaging/vegad/org.lyraos.Vega1.service" /usr/share/dbus-1/system-services/org.lyraos.Vega1.service
 install -Dm644 "$REPO_ROOT/packaging/vegad/org.lyraos.vega.policy" /usr/share/polkit-1/actions/org.lyraos.vega.policy
 
-echo "==> Instalando lyra-vega-gtk (app)"
-install -Dm755 "$REPO_ROOT/target/release/lyra-vega-gtk" /usr/bin/lyra-vega-gtk
-ln -sfn lyra-vega-gtk /usr/bin/vega-gtk
+echo "==> Instalando vega-gtk (app)"
+install -Dm755 "$REPO_ROOT/target/release/vega-gtk" /usr/bin/vega-gtk
+ln -sfn vega-gtk /usr/bin/lyra-vega-gtk
 
 install -Dm644 "$REPO_ROOT/packaging/vega/vega.desktop" /usr/share/applications/vega.desktop
 install -Dm644 "$REPO_ROOT/packaging/vega/vega.svg" /usr/share/icons/hicolor/scalable/apps/vega.svg
@@ -71,7 +71,7 @@ cat <<EOF
 
 Instalação concluída.
 - Daemon: /usr/lib/vega/vegad (ativado sob demanda via D-Bus, org.lyraos.Vega1)
-- App: /usr/bin/lyra-vega-gtk (ou pelo atalho "Vega" no menu)
+- App: /usr/bin/vega-gtk (ou pelo atalho "Vega" no menu)
 
 Aviso: o backend Zypper/hardware NVIDIA do vegad para openSUSE (vegad/internal/distro/zypper.go,
 hardware_opensuse.go) ainda não foi validado ponta a ponta num Leap real — teste os módulos de

@@ -5,7 +5,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 samples="${1:-10}"
 settle_seconds="${VEGA_BENCHMARK_SETTLE_SECONDS:-5}"
 output="${VEGA_BENCHMARK_OUTPUT:-$repo_root/docs/migration/rust-gtk-benchmark.csv}"
-binary="$repo_root/vega-gtk/target/release/lyra-vega-gtk"
+binary="$repo_root/vega-gtk/target/release/vega-gtk"
 cargo_bin="${CARGO:-cargo}"
 
 [[ "$samples" =~ ^[1-9][0-9]*$ ]] || { echo "Amostras deve ser inteiro positivo" >&2; exit 2; }

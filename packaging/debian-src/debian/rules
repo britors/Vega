@@ -23,13 +23,13 @@ override_dh_auto_build:
 # Both binary packages are populated directly here rather than via
 # debian/tmp + per-package .install files.
 override_dh_auto_install:
-	install -Dm755 target/release/lyra-vega-gtk \
-		debian/lyra-vega-gtk/usr/bin/lyra-vega-gtk
-	ln -s lyra-vega-gtk debian/lyra-vega-gtk/usr/bin/vega-gtk
+	install -Dm755 target/release/vega-gtk \
+		debian/vega-gtk/usr/bin/vega-gtk
+	ln -s vega-gtk debian/vega-gtk/usr/bin/lyra-vega-gtk
 	install -Dm644 packaging/vega/vega.desktop \
-		debian/lyra-vega-gtk/usr/share/applications/vega.desktop
+		debian/vega-gtk/usr/share/applications/vega.desktop
 	install -Dm644 packaging/vega/vega.svg \
-		debian/lyra-vega-gtk/usr/share/icons/hicolor/scalable/apps/vega.svg
+		debian/vega-gtk/usr/share/icons/hicolor/scalable/apps/vega.svg
 
 	install -Dm755 vegad/vegad debian/vegad/usr/lib/vega/vegad
 	install -Dm644 packaging/vegad/vegad.service \

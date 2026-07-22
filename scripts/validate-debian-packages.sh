@@ -24,8 +24,8 @@ cd /work
 cp -r packaging/debian-src/debian .
 dpkg-buildpackage -us -uc -b
 
-apt-get install -y /vegad_*.deb /lyra-vega-gtk_*.deb
-test -x /usr/bin/lyra-vega-gtk
+apt-get install -y /vegad_*.deb /vega-gtk_*.deb
+test -x /usr/bin/vega-gtk
 test -x /usr/lib/vega/vegad
 '
 

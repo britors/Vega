@@ -10,7 +10,7 @@ mas cobre automaticamente a checagem mais objetiva e mais comum de pegar:
 nome acessível ausente em elemento focável.
 
 Uso:
-  ./vega-gtk/target/release/lyra-vega-gtk &
+  ./vega-gtk/target/release/vega-gtk &
   sleep 2
   python3 scripts/a11y-audit.py
 

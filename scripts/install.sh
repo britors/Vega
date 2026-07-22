@@ -72,15 +72,15 @@ download_release_assets() {
 }
 
 # skip_gtk_package_if_cli_only remove do $workdir o(s) pacote(s) da
-# interface GTK (lyra-vega-gtk) quando VEGA_CLI_ONLY=1 — feito depois do
+# interface GTK (vega-gtk) quando VEGA_CLI_ONLY=1 — feito depois do
 # download e antes de instalar, pra nenhum gerenciador de pacotes puxar
 # gtk4/libadwaita como dependência dela num servidor headless. O nome do
 # pacote vira prefixo do arquivo com "-" (Arch/RPM) ou "_" (Debian), daí os
 # dois padrões de glob.
 skip_gtk_package_if_cli_only() {
   [ "$VEGA_CLI_ONLY" = "1" ] || return 0
-  echo "==> VEGA_CLI_ONLY=1: pulando a interface GTK (lyra-vega-gtk)" >&2
-  rm -f "$workdir"/lyra-vega-gtk-* "$workdir"/lyra-vega-gtk_*
+  echo "==> VEGA_CLI_ONLY=1: pulando a interface GTK (vega-gtk)" >&2
+  rm -f "$workdir"/vega-gtk-* "$workdir"/vega-gtk_*
 }
 
 workdir="$(mktemp -d)"
@@ -175,7 +175,7 @@ else
 
 Instalação concluída.
 - Daemon: vegad, ativado sob demanda via D-Bus (org.lyraos.Vega1)
-- Interface gráfica: /usr/bin/lyra-vega-gtk
+- Interface gráfica: /usr/bin/vega-gtk
 - Interface de terminal: /usr/bin/vega (rode via SSH, sem precisar do ambiente gráfico)
 
 Empacotamento ainda é considerado de teste — reporte problemas em

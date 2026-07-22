@@ -1,10 +1,10 @@
 # Catálogo de traduções do Vega (interface GTK).
 # Copyright (C) 2026 Rodrigo Brito
-# This file is distributed under the same license as the lyra-vega-gtk package.
+# This file is distributed under the same license as the vega-gtk package.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: lyra-vega-gtk 2.0.3\n"
+"Project-Id-Version: vega-gtk 2.0.3\n"
 "Report-Msgid-Bugs-To: https://github.com/britors/Vega/issues\n"
 "POT-Creation-Date: 2026-07-17 08:57-0300\n"
 "PO-Revision-Date: 2026-07-17 08:57-0300\n"

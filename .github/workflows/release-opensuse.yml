@@ -50,7 +50,7 @@ jobs:
       - name: Validar instalação
         run: |
           zypper --non-interactive --no-gpg-checks install -y dist/*.rpm
-          test -x /usr/bin/lyra-vega-gtk
+          test -x /usr/bin/vega-gtk
           test -x /usr/lib/vega/vegad
           test -f /usr/share/applications/vega.desktop
           test -x /usr/bin/vega
@@ -88,9 +88,8 @@ jobs:
   # seu próprio _service (tar_scm com match-tag: v*) buscando a mesma tag
   # direto do GitHub — este job só avisa o OBS pra rebuscar e rebuildar,
   # via https://openbuildservice.org/help/manuals/obs-user-guide/cha-obs-authorization-token
-  # Cada pacote (vega-gtk, vegad, vega-cli — nomes dos pacotes no OBS; o
-  # RPM de vega-gtk continua se chamando lyra-vega-gtk internamente, é o
-  # Name: de packaging/opensuse/vega.spec) tem seu próprio token de trigger, escopado
+  # Cada pacote (vega-gtk, vegad, vega-cli — mesmo trio de
+  # packaging/opensuse/*.spec) tem seu próprio token de trigger, escopado
   # só pra "runservice" naquele pacote (osc token --create <projeto>
   # <pacote> runservice), guardado como secret. Depende só de `publish`
   # (a release do GitHub já está no ar antes de avisar o OBS) e é

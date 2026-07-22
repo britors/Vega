@@ -2,7 +2,7 @@
 
 Interface oficial do Vega, implementada em Rust, GTK4 e libadwaita. O `vegad`
 e o contrato em `../dbus/` formam a fronteira privilegiada do aplicativo. O
-pacote e o binário usam o nome `lyra-vega-gtk`.
+pacote e o binário usam o nome `vega-gtk`.
 
 ## Dependências no Fedora
 

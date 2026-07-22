@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Desinstalador de conveniência: reverte scripts/install.sh removendo os
-# pacotes do Vega (lyra-vega-gtk, vegad, vega-cli — o mesmo trio em todas
+# pacotes do Vega (vega-gtk, vegad, vega-cli — o mesmo trio em todas
 # as distros, ver packaging/{arch,debian-src,fedora,opensuse}/*) com o
 # gerenciador de pacotes da distro. Os scriptlets de cada pacote (postrm/
 # prerm no .deb, vegad.install no Arch, %preun/%postun nos .spec) já cuidam
@@ -24,7 +24,7 @@
 set -euo pipefail
 
 VEGA_PURGE="${VEGA_PURGE:-0}"
-PACKAGES=(lyra-vega-gtk vegad vega-cli)
+PACKAGES=(vega-gtk vegad vega-cli)
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Rode como root (sudo bash scripts/uninstall.sh)." >&2
@@ -183,7 +183,7 @@ EOF
 fi
 
 cat <<EOF
-Nota: dados por usuário em ~/.local/share/lyra-vega-gtk/ai-settings.json e
+Nota: dados por usuário em ~/.local/share/vega-gtk/ai-settings.json e
 ~/.local/share/lyra-vega-xfce/ai-settings.json (config do assistente de IA
 da interface gráfica, possivelmente com chave de API, um diretório por
 usuário que já usou o Vega) não são tocados por este script — remova

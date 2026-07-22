@@ -55,6 +55,6 @@ for workflow in release-fedora.yml release-debian.yml; do
 done
 
 echo "[7/7] Identidade GTK"
-grep -q 'lyra-vega-gtk' "$repo_root/vega-gtk/Cargo.toml"
+grep -q 'vega-gtk' "$repo_root/vega-gtk/Cargo.toml"
 
 echo "Smoke local concluído"

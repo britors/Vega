@@ -3,7 +3,7 @@
 # status do empacotamento).
 %{!?version: %define version 0.0.0}
 
-Name:           lyra-vega-gtk
+Name:           vega-gtk
 Version:        %{version}
 Release:        1%{?dist}
 Summary:        Centro de controle para Linux
@@ -19,6 +19,11 @@ Requires:       vegad
 Requires:       libsecret
 Provides:       vega = %{version}-%{release}
 Obsoletes:      vega < %{version}-%{release}
+# vega-gtk se chamava lyra-vega-gtk antes do projeto deixar de ser
+# exclusivo do LyraOS — Provides/Obsoletes garante upgrade sem conflito
+# pra quem já tinha o pacote com o nome antigo instalado.
+Provides:       lyra-vega-gtk = %{version}-%{release}
+Obsoletes:      lyra-vega-gtk < %{version}-%{release}
 
 Recommends:     flatpak
 Recommends:     restic
@@ -34,9 +39,9 @@ cd vega-gtk
 cargo build --release --locked
 
 %install
-install -Dm755 target/release/lyra-vega-gtk \
-  %{buildroot}%{_bindir}/lyra-vega-gtk
-ln -s lyra-vega-gtk %{buildroot}%{_bindir}/vega-gtk
+install -Dm755 target/release/vega-gtk \
+  %{buildroot}%{_bindir}/vega-gtk
+ln -s vega-gtk %{buildroot}%{_bindir}/lyra-vega-gtk
 
 install -Dm644 packaging/vega/vega.desktop \
   %{buildroot}%{_datadir}/applications/vega.desktop
@@ -44,8 +49,8 @@ install -Dm644 packaging/vega/vega.svg \
   %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/vega.svg
 
 %files
-%{_bindir}/lyra-vega-gtk
 %{_bindir}/vega-gtk
+%{_bindir}/lyra-vega-gtk
 %{_datadir}/applications/vega.desktop
 %{_datadir}/icons/hicolor/scalable/apps/vega.svg
 

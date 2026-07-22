@@ -51,8 +51,8 @@ if [ "$VEGA_CLI_ONLY" = "1" ]; then
   echo "==> VEGA_CLI_ONLY=1: instalando só vegad + vega-cli"
   zypper --non-interactive install vegad vega-cli
 else
-  echo "==> Instalando vegad + lyra-vega-gtk + vega-cli"
-  zypper --non-interactive install lyra-vega-gtk vegad vega-cli
+  echo "==> Instalando vegad + vega-gtk + vega-cli"
+  zypper --non-interactive install vega-gtk vegad vega-cli
 fi
 
 if [ "$VEGA_CLI_ONLY" = "1" ]; then
@@ -70,7 +70,7 @@ else
 
 Instalação concluída via OBS ($VEGA_OBS_PROJECT).
 - Daemon: vegad, ativado sob demanda via D-Bus (org.lyraos.Vega1)
-- Interface gráfica: /usr/bin/lyra-vega-gtk
+- Interface gráfica: /usr/bin/vega-gtk
 - Interface de terminal: /usr/bin/vega (rode via SSH, sem precisar do ambiente gráfico)
 
 O repositório '$VEGA_OBS_ALIAS' já fica configurado — 'sudo zypper update'

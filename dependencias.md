@@ -10,7 +10,7 @@ o mesmo.
 
 ### Pacotes obrigatórios
 
-Instalados automaticamente por `depends=()` ao rodar `yay -S lyra-vega-gtk`:
+Instalados automaticamente por `depends=()` ao rodar `yay -S vega-gtk`:
 
 - `gtk4` e `libadwaita` — toolkit da interface nativa
 - `vegad` — daemon privilegiado, que por sua vez exige:
@@ -38,7 +38,7 @@ Instalados automaticamente por `depends=()` ao rodar `yay -S lyra-vega-gtk`:
 
 ```sh
 # obrigatório
-yay -S lyra-vega-gtk
+yay -S vega-gtk
 
 # opcionais (conforme os módulos desejados)
 sudo pacman -S snapper flatpak networkmanager restic firewalld fwupd reflector

@@ -254,7 +254,7 @@ impl From<serde_json::Error> for AssistantError {
 }
 
 fn data_dir() -> PathBuf {
-    glib::user_data_dir().join("lyra-vega-gtk")
+    glib::user_data_dir().join("vega-gtk")
 }
 
 fn private_file(name: &str) -> Result<PathBuf, AssistantError> {
@@ -330,7 +330,7 @@ pub fn save_key(provider: Provider, key: &str) -> Result<(), AssistantError> {
             "store",
             "--label=Lyra Vega Assistente de IA",
             "application",
-            "lyra-vega-gtk",
+            "vega-gtk",
             "provider",
             provider.id(),
         ])
@@ -361,7 +361,7 @@ pub fn load_key(provider: Provider) -> Result<String, AssistantError> {
         .args([
             "lookup",
             "application",
-            "lyra-vega-gtk",
+            "vega-gtk",
             "provider",
             provider.id(),
         ])
@@ -383,7 +383,7 @@ pub fn clear_key(provider: Provider) -> Result<(), AssistantError> {
         .args([
             "clear",
             "application",
-            "lyra-vega-gtk",
+            "vega-gtk",
             "provider",
             provider.id(),
         ])
