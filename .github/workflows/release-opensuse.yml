@@ -103,20 +103,39 @@ jobs:
       OBS_API: https://api.opensuse.org
       OBS_PROJECT: home:rodrigosbrito:vega
     steps:
+      # O contexto `secrets` não pode ser referenciado direto num `if:` de
+      # step (erro do parser do Actions: "Unrecognized named-value:
+      # 'secrets'") — passa o token por env: (isso sim é aceito) e faz o
+      # "pular se não configurado" dentro do próprio shell.
       - name: Disparar rebuild no OBS (vega-gtk)
-        if: ${{ secrets.OBS_TOKEN_VEGA_GTK != '' }}
+        env:
+          OBS_TOKEN: ${{ secrets.OBS_TOKEN_VEGA_GTK }}
         run: |
-          curl -fsS -H "Authorization: Token ${{ secrets.OBS_TOKEN_VEGA_GTK }}" \
+          if [ -z "$OBS_TOKEN" ]; then
+            echo "OBS_TOKEN_VEGA_GTK não configurado, pulando." >&2
+            exit 0
+          fi
+          curl -fsS -H "Authorization: Token $OBS_TOKEN" \
             -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vega-gtk"
 
       - name: Disparar rebuild no OBS (vegad)
-        if: ${{ secrets.OBS_TOKEN_VEGAD != '' }}
+        env:
+          OBS_TOKEN: ${{ secrets.OBS_TOKEN_VEGAD }}
         run: |
-          curl -fsS -H "Authorization: Token ${{ secrets.OBS_TOKEN_VEGAD }}" \
+          if [ -z "$OBS_TOKEN" ]; then
+            echo "OBS_TOKEN_VEGAD não configurado, pulando." >&2
+            exit 0
+          fi
+          curl -fsS -H "Authorization: Token $OBS_TOKEN" \
             -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vegad"
 
       - name: Disparar rebuild no OBS (vega-cli)
-        if: ${{ secrets.OBS_TOKEN_VEGA_CLI != '' }}
+        env:
+          OBS_TOKEN: ${{ secrets.OBS_TOKEN_VEGA_CLI }}
         run: |
-          curl -fsS -H "Authorization: Token ${{ secrets.OBS_TOKEN_VEGA_CLI }}" \
+          if [ -z "$OBS_TOKEN" ]; then
+            echo "OBS_TOKEN_VEGA_CLI não configurado, pulando." >&2
+            exit 0
+          fi
+          curl -fsS -H "Authorization: Token $OBS_TOKEN" \
             -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vega-cli"
