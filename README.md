@@ -64,6 +64,21 @@ None of the four distributions are in an official repository yet (no AUR,
 OBS, Copr, or PPA), and packages aren't signed yet — privileged operations
 should be validated carefully before each release.
 
+## Uninstallation
+
+```sh
+sudo bash scripts/uninstall.sh
+```
+
+Detects the distro the same way `install.sh` does and removes whichever of
+`lyra-vega-gtk`, `vegad`, and `vega-cli` are installed through the native
+package manager. Add `VEGA_PURGE=1` to also wipe state no package tracks:
+Backup module configs/passwords under `/etc/vega`, the journal export at
+`/var/log/vega`, and — Arch only — the `vega-build` user used for AUR
+builds. Per-user GTK assistant settings
+(`~/.local/share/lyra-vega-gtk/ai-settings.json`) are left alone; remove
+them by hand if needed.
+
 ## What already works
 
 The graphical interface covers Dashboard, Software, Restore Points, Backup,
