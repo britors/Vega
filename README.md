@@ -60,9 +60,23 @@ After installation, open Vega CLI in a terminal with `vega` — it has no
 application-menu launcher and re-executes itself via `sudo` if not already
 running as root.
 
-None of the four distributions are in an official repository yet (no AUR,
-OBS, Copr, or PPA), and packages aren't signed yet — privileged operations
-should be validated carefully before each release.
+Arch, Fedora, and Ubuntu/Debian aren't in an official repository yet (no
+AUR, Copr, or PPA), and their packages aren't signed — privileged
+operations should be validated carefully before each release.
+
+openSUSE Leap is the exception: it's built and published for real on the
+openSUSE Build Service, at
+[`home:rodrigosbrito:vega`](https://build.opensuse.org/project/show/home:rodrigosbrito:vega),
+rebuilt automatically from this repo on every tagged release. To install
+from there instead of a one-off binary download (and keep the repo
+configured for future `zypper update`s):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install-obs.sh | sudo bash
+```
+
+Same `VEGA_CLI_ONLY=1` env var as `install.sh` works here too, to skip the
+GTK interface on a headless server.
 
 ## Uninstallation
 

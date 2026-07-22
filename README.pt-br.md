@@ -60,9 +60,24 @@ Depois da instalação, abra o Vega CLI num terminal com `vega` — ele não tem
 lançador no menu de aplicativos e se reexecuta via `sudo` caso ainda não
 esteja rodando como root.
 
-Nenhuma das quatro distribuições está em repositório oficial ainda (nem AUR,
-nem OBS, nem Copr, nem PPA) e os pacotes ainda não são assinados — operações
-privilegiadas devem ser validadas com cuidado antes de cada release.
+Arch, Fedora e Ubuntu/Debian ainda não estão em repositório oficial (nem
+AUR, nem Copr, nem PPA), e os pacotes dessas três não são assinados —
+operações privilegiadas devem ser validadas com cuidado antes de cada
+release.
+
+openSUSE Leap é a exceção: é buildado e publicado de verdade no openSUSE
+Build Service, em
+[`home:rodrigosbrito:vega`](https://build.opensuse.org/project/show/home:rodrigosbrito:vega),
+rebuilado automaticamente a partir deste repositório a cada release. Pra
+instalar de lá em vez de um download avulso do binário (e manter o
+repositório configurado pras próximas atualizações via `zypper update`):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install-obs.sh | sudo bash
+```
+
+Mesma variável `VEGA_CLI_ONLY=1` do `install.sh` funciona aqui também, pra
+pular a interface GTK num servidor headless.
 
 ## Desinstalação
 
