@@ -20,8 +20,10 @@ bem definido. Em cima desse backend compartilhado existem duas interfaces,
 pra dois contextos diferentes: o `vega-gtk` (Rust + GTK4/libadwaita),
 interface gráfica que roda com o seu usuário normal, sem privilégios; e o
 `vega-cli` (bash + `dialog`), interface de terminal pra administrar um
-servidor via SSH sem ambiente gráfico nenhum. Ao abrir o Vega CLI pelo ícone
-do menu, o lançador usa `pkexec` e solicita a senha administrativa via polkit.
+servidor via SSH sem ambiente gráfico nenhum. O Vega CLI não tem lançador
+no menu de aplicativos — só roda pelo terminal, via `vega` — e sempre
+precisa de privilégio de administrador: se iniciado sem, ele se
+reexecuta via `sudo`, que pede a senha do usuário.
 
 Licenciado sob GPL-3.0. Código em [github.com/britors/Vega](https://github.com/britors/Vega).
 
@@ -54,9 +56,9 @@ gráfica (e a dependência de GTK4/libadwaita) e instalar só `vegad` +
 `vega-cli`: `VEGA_CLI_ONLY=1 sudo -E bash install.sh` (ou
 `sudo -E bash install.sh` já com o script baixado antes).
 
-Depois da instalação, o Vega CLI pode ser aberto pelo ícone do menu — que
-executa `/usr/bin/vega` via `pkexec` — ou diretamente em um terminal com
-`sudo vega`.
+Depois da instalação, abra o Vega CLI num terminal com `vega` — ele não tem
+lançador no menu de aplicativos e se reexecuta via `sudo` caso ainda não
+esteja rodando como root.
 
 Nenhuma das quatro distribuições está em repositório oficial ainda (nem AUR,
 nem OBS, nem Copr, nem PPA) e os pacotes ainda não são assinados — operações

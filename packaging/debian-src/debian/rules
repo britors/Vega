@@ -73,10 +73,6 @@ override_dh_auto_install:
 	# caminho real, achando lib/ como irmã de bin/.
 	install -d debian/vega-cli/usr/bin
 	ln -s /usr/lib/vega-cli/bin/vega debian/vega-cli/usr/bin/vega
-	install -Dm644 packaging/vega-cli/vega-cli.desktop \
-		debian/vega-cli/usr/share/applications/vega-cli.desktop
-	install -Dm644 packaging/vega-cli/vega-cli.svg \
-		debian/vega-cli/usr/share/icons/hicolor/scalable/apps/vega-cli.svg
 
 # Units are installed by hand above (not via the debian/<pkg>.<unit> naming
 # dh_installsystemd expects), and enabling only the update-check timer

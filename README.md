@@ -21,8 +21,10 @@ interfaces, for two different contexts: `vega-gtk` (Rust +
 GTK4/libadwaita), a graphical interface that runs as your regular user,
 with no privileges; and `vega-cli` (bash + `dialog`), a terminal interface
 for administering a server over SSH with no graphical environment at all.
-When Vega CLI is opened from its application-menu icon, the launcher uses
-`pkexec` and prompts for the administrator password via polkit.
+Vega CLI has no application-menu launcher — it only runs from a terminal,
+via `vega` — and always needs administrator privileges: if started without
+them, it re-executes itself through `sudo`, which prompts for the user's
+password.
 
 Licensed under GPL-3.0. Code at [github.com/britors/Vega](https://github.com/britors/Vega).
 
@@ -54,9 +56,9 @@ On a headless server managed only over SSH, skip the graphical interface
 `VEGA_CLI_ONLY=1 sudo -E bash install.sh` (or `sudo -E bash install.sh` if
 downloaded first).
 
-After installation, Vega CLI can be opened from its application-menu icon —
-which runs `/usr/bin/vega` through `pkexec` — or directly in a terminal with
-`sudo vega`.
+After installation, open Vega CLI in a terminal with `vega` — it has no
+application-menu launcher and re-executes itself via `sudo` if not already
+running as root.
 
 None of the four distributions are in an official repository yet (no AUR,
 OBS, Copr, or PPA), and packages aren't signed yet — privileged operations

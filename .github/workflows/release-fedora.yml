@@ -56,7 +56,6 @@ jobs:
           test -f /usr/share/applications/vega.desktop
           test -x /usr/bin/vega
           test -x /usr/lib/vega-cli/bin/vega
-          test -f /usr/share/applications/vega-cli.desktop
       - uses: actions/upload-artifact@v4
         with:
           name: fedora-rpms

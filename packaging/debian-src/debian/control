@@ -29,7 +29,7 @@ Description: Daemon privilegiado do Vega, centro de controle para Linux
 
 Package: vega-cli
 Architecture: all
-Depends: ${misc:Depends}, dialog, jq, systemd, polkitd | policykit-1
+Depends: ${misc:Depends}, dialog, jq, systemd, polkitd | policykit-1, sudo
 Description: Interface de terminal do Vega (dialog) para administração via SSH
  Interface de terminal (shell + dialog) do Vega, para administrar
  servidores via SSH sem ambiente gráfico. Reaproveita o vegad e o mesmo
