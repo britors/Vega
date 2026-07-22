@@ -23,7 +23,7 @@ override_dh_auto_build:
 # Both binary packages are populated directly here rather than via
 # debian/tmp + per-package .install files.
 override_dh_auto_install:
-	install -Dm755 vega-gtk/target/release/lyra-vega-gtk \
+	install -Dm755 target/release/lyra-vega-gtk \
 		debian/lyra-vega-gtk/usr/bin/lyra-vega-gtk
 	ln -s lyra-vega-gtk debian/lyra-vega-gtk/usr/bin/vega-gtk
 	install -Dm644 packaging/vega/vega.desktop \

@@ -33,7 +33,7 @@ cd vega-gtk
 cargo build --release --locked
 
 %install
-install -Dm755 vega-gtk/target/release/lyra-vega-gtk \
+install -Dm755 target/release/lyra-vega-gtk \
   %{buildroot}%{_bindir}/lyra-vega-gtk
 ln -s lyra-vega-gtk %{buildroot}%{_bindir}/vega-gtk
 

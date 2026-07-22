@@ -56,7 +56,7 @@ install -Dm644 "$REPO_ROOT/packaging/vegad/org.lyraos.Vega1.service" /usr/share/
 install -Dm644 "$REPO_ROOT/packaging/vegad/org.lyraos.vega.policy" /usr/share/polkit-1/actions/org.lyraos.vega.policy
 
 echo "==> Instalando lyra-vega-gtk (app)"
-install -Dm755 "$REPO_ROOT/vega-gtk/target/release/lyra-vega-gtk" /usr/bin/lyra-vega-gtk
+install -Dm755 "$REPO_ROOT/target/release/lyra-vega-gtk" /usr/bin/lyra-vega-gtk
 ln -sfn lyra-vega-gtk /usr/bin/vega-gtk
 
 install -Dm644 "$REPO_ROOT/packaging/vega/vega.desktop" /usr/share/applications/vega.desktop
