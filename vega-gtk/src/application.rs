@@ -3503,6 +3503,9 @@ async fn monitor_software_transaction(
             Ok(SoftwareEvent::Finished(finished)) if finished.transaction_id == transaction_id => {
                 page.finish_transaction(finished.success, &finished.message);
                 if finished.success {
+                    if page.updates_tab.is_active() {
+                        page.clear_results();
+                    }
                     refresh_current_software_page(page, client, dashboard_updates).await;
                 }
                 break;

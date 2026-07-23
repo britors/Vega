@@ -564,7 +564,7 @@ impl SoftwarePage {
             .push(Rc::new(callback));
     }
 
-    fn clear_results(&self) {
+    pub fn clear_results(&self) {
         while let Some(child) = self.results.first_child() {
             self.results.remove(&child);
         }

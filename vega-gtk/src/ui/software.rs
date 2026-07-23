@@ -654,7 +654,7 @@ impl SoftwarePage {
         self.add_repo_button.set_sensitive(false);
     }
 
-    fn clear_results(&self) {
+    pub fn clear_results(&self) {
         while let Some(child) = self.results.first_child() {
             self.results.remove(&child);
         }
