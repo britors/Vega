@@ -5,6 +5,8 @@ use gettextrs::gettext;
 
 use lyra_vega_dbus::UserInfo;
 
+type UserRowActions = (gtk::Button, gtk::Button, gtk::Button, bool);
+
 #[derive(Clone)]
 pub struct UsersPage {
     pub root: gtk::Widget,
@@ -27,7 +29,7 @@ pub struct UsersPage {
     pub remove: gtk::Button,
     pub editing: Rc<RefCell<Option<String>>>,
     items: Rc<RefCell<Vec<UserInfo>>>,
-    row_actions: Rc<RefCell<Vec<(gtk::Button, gtk::Button, gtk::Button, bool)>>>,
+    row_actions: Rc<RefCell<Vec<UserRowActions>>>,
 }
 
 impl UsersPage {

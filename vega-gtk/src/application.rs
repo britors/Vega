@@ -810,45 +810,44 @@ fn configure_users(shell: &VegaShell, dbus: VegaDbus) {
 
     let photo_page = page.clone();
     page.photo.connect_clicked(move |_| {
-        let chooser = gtk::FileChooserNative::new(
-            Some(&gettext("Selecionar foto")),
-            gtk::Window::NONE,
-            gtk::FileChooserAction::Open,
-            Some(&gettext("Selecionar")),
-            Some(&gettext("Cancelar")),
-        );
         let filter = gtk::FileFilter::new();
         filter.set_name(Some(&gettext("Imagens PNG ou JPEG")));
         filter.add_mime_type("image/png");
         filter.add_mime_type("image/jpeg");
-        chooser.add_filter(&filter);
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&filter);
+        let chooser = gtk::FileDialog::builder()
+            .title(gettext("Selecionar foto"))
+            .accept_label(gettext("Selecionar"))
+            .filters(&filters)
+            .default_filter(&filter)
+            .modal(true)
+            .build();
         let page = photo_page.clone();
-        chooser.connect_response(move |chooser, response| {
-            if response == gtk::ResponseType::Accept {
-                if let Some(path) = chooser.file().and_then(|file| file.path()) {
-                    match std::fs::read(&path) {
-                        Ok(bytes) if bytes.len() <= 5 * 1024 * 1024 => {
-                            *page.photo_data.borrow_mut() = bytes;
-                            page.photo.set_label(
-                                &path
-                                    .file_name()
-                                    .map(|name| name.to_string_lossy().into_owned())
-                                    .unwrap_or_else(|| gettext("Foto selecionada")),
-                            );
-                        }
-                        Ok(_) => page
-                            .status
-                            .set_label(&gettext("A foto deve ter no máximo 5 MB.")),
-                        Err(error) => page.status.set_label(
-                            &gettext("Não foi possível ler a foto: {error}")
-                                .replace("{error}", &error.to_string()),
-                        ),
+        glib::MainContext::default().spawn_local(async move {
+            if let Ok(file) = chooser.open_future(gtk::Window::NONE).await
+                && let Some(path) = file.path()
+            {
+                match std::fs::read(&path) {
+                    Ok(bytes) if bytes.len() <= 5 * 1024 * 1024 => {
+                        *page.photo_data.borrow_mut() = bytes;
+                        page.photo.set_label(
+                            &path
+                                .file_name()
+                                .map(|name| name.to_string_lossy().into_owned())
+                                .unwrap_or_else(|| gettext("Foto selecionada")),
+                        );
                     }
+                    Ok(_) => page
+                        .status
+                        .set_label(&gettext("A foto deve ter no máximo 5 MB.")),
+                    Err(error) => page.status.set_label(
+                        &gettext("Não foi possível ler a foto: {error}")
+                            .replace("{error}", &error.to_string()),
+                    ),
                 }
             }
-            chooser.destroy();
         });
-        chooser.show();
     });
 
     let create_page = page.clone();

@@ -1,5 +1,7 @@
 use async_trait::async_trait;
 
+type UserInfoRow = (String, String, Vec<String>, bool);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserInfo {
     pub username: String,
@@ -8,8 +10,8 @@ pub struct UserInfo {
     pub is_admin: bool,
 }
 
-impl From<(String, String, Vec<String>, bool)> for UserInfo {
-    fn from(row: (String, String, Vec<String>, bool)) -> Self {
+impl From<UserInfoRow> for UserInfo {
+    fn from(row: UserInfoRow) -> Self {
         Self {
             username: row.0,
             full_name: row.1,
@@ -73,7 +75,7 @@ pub trait UsersClient: Send + Sync {
     default_path = "/org/lyraos/Vega1"
 )]
 trait Users {
-    async fn list_users(&self) -> zbus::Result<Vec<(String, String, Vec<String>, bool)>>;
+    async fn list_users(&self) -> zbus::Result<Vec<UserInfoRow>>;
     async fn list_groups(&self) -> zbus::Result<Vec<String>>;
     async fn create_user(
         &self,
