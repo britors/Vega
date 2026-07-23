@@ -3,13 +3,15 @@
        nos 3 pacotes (vega-gtk, vegad, vega-cli) — todos puxam do mesmo
        repositório, só o .spec varia.
 
-       mode="manual" nos dois serviços: só rodam quando explicitamente
-       disparados (osc service manualrun local, ou o
-       /trigger/runservice?... que .github/workflows/release-opensuse.yml
-       chama depois de cada release), nunca sozinhos num "osc checkout"
-       de outra pessoa. ("disabled" é o modo antigo/obsoleto pra isso,
-       osc reclama e pede "manual" na versão atual.) -->
-  <service name="tar_scm" mode="manual">
+       mode="serveronly": não roda em "osc build" local (nenhum checkout de
+       terceiros dispara fetch de rede), mas conta como serviço "ativo" pro
+       runservice do OBS — mode="manual" NÃO conta (o backend do OBS só
+       considera ativos os modos default/trylocal/serveronly; manual e
+       disabled ficam de fora), então com "manual" o /trigger/runservice
+       que .github/workflows/release-opensuse.yml chama depois de cada
+       release sempre respondia 404 "no source service defined!". Ainda dá
+       pra rodar manualmente com "osc service manualrun" quando necessário. -->
+  <service name="tar_scm" mode="serveronly">
     <param name="scm">git</param>
     <param name="url">https://github.com/britors/Vega.git</param>
     <!-- master não existe neste repo (o branch padrão é main) — sem
@@ -34,7 +36,7 @@
   </service>
   <!-- tar_scm sozinho gera .tar sem compressão — o Source0 dos .spec
        aqui espera .tar.gz. -->
-  <service name="recompress" mode="manual">
+  <service name="recompress" mode="serveronly">
     <param name="file">vega-src-*.tar</param>
     <param name="compression">gz</param>
   </service>
@@ -42,5 +44,5 @@
        com a versão que o tar_scm acabou de extrair da tag. Só funciona
        porque o .spec usa "Version:        0" literal (não %{version}) —
        set_version faz substituição textual simples e não entende macro. -->
-  <service name="set_version" mode="manual" />
+  <service name="set_version" mode="serveronly" />
 </services>

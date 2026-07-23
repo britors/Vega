@@ -92,109 +92,145 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
     });
 }
 
+// Cada bloco abaixo é independente dos outros (nenhum lê o resultado de
+// outro), então são todos disparados de uma vez com join! em vez de
+// aguardados um atrás do outro — o tempo total do painel passa a ser o da
+// chamada mais lenta (tipicamente list_updates, que shella pro zypper) em
+// vez da soma de todas elas.
 async fn refresh_dashboard_summary(shell: &VegaShell, ui_version: &str, dbus: &VegaDbus) {
-    match dbus.system().status().await {
-        Ok(status) => {
-            shell.backend_status.set_label(
-                &gettext("vegad {version} conectado • {distro}")
-                    .replace("{version}", &status.version)
-                    .replace("{distro}", &status.distro),
-            );
-            shell.dashboard_system.set_label(
-                &gettext("{distro} • interface nativa ativa").replace("{distro}", &status.distro),
-            );
-            shell.about_versions.set_label(&format!(
-                "Vega GTK {} • vegad {}",
-                ui_version, status.version
-            ));
-            shell.about_distro.set_label(&status.distro);
-            if !status.logo_path.is_empty() {
-                shell.about_logo.set_from_file(Some(&status.logo_path));
-                shell.about_logo.set_visible(true);
+    let status_task = async {
+        match dbus.system().status().await {
+            Ok(status) => {
+                shell.backend_status.set_label(
+                    &gettext("vegad {version} conectado • {distro}")
+                        .replace("{version}", &status.version)
+                        .replace("{distro}", &status.distro),
+                );
+                shell.dashboard_system.set_label(
+                    &gettext("{distro} • interface nativa ativa")
+                        .replace("{distro}", &status.distro),
+                );
+                shell.about_versions.set_label(&format!(
+                    "Vega GTK {} • vegad {}",
+                    ui_version, status.version
+                ));
+                shell.about_distro.set_label(&status.distro);
+                if !status.logo_path.is_empty() {
+                    shell.about_logo.set_from_file(Some(&status.logo_path));
+                    shell.about_logo.set_visible(true);
+                }
+            }
+            Err(error) => set_unavailable(shell, &error.to_string()),
+        }
+    };
+
+    let hardware_task = async {
+        match dbus.hardware().inventory().await {
+            Ok(inventory) => {
+                shell.hardware_cpu.set_label(&inventory.cpu);
+                shell.hardware_gpu.set_label(&inventory.gpu);
+                shell.hardware_ram.set_label(&inventory.ram);
+            }
+            Err(error) => {
+                let message = error.to_string();
+                shell.hardware_cpu.set_label(&message);
+                shell.hardware_gpu.set_label("—");
+                shell.hardware_ram.set_label("—");
             }
         }
-        Err(error) => set_unavailable(shell, &error.to_string()),
-    }
+    };
 
-    match dbus.hardware().inventory().await {
-        Ok(inventory) => {
-            shell.hardware_cpu.set_label(&inventory.cpu);
-            shell.hardware_gpu.set_label(&inventory.gpu);
-            shell.hardware_ram.set_label(&inventory.ram);
+    let firmware_task = async {
+        match dbus.hardware().firmware_status().await {
+            Ok(status) => shell.hardware_firmware.set_label(&status),
+            Err(error) => shell.hardware_firmware.set_label(&error.to_string()),
         }
-        Err(error) => {
-            let message = error.to_string();
-            shell.hardware_cpu.set_label(&message);
-            shell.hardware_gpu.set_label("—");
-            shell.hardware_ram.set_label("—");
+    };
+
+    let channel_task = async {
+        match dbus.software().community_layer_name().await {
+            Ok(channel) if channel.is_empty() => shell.about_channel.set_label(&gettext("Nenhuma")),
+            Ok(channel) => shell.about_channel.set_label(&channel),
+            Err(error) => shell.about_channel.set_label(&error.to_string()),
         }
-    }
+    };
 
-    match dbus.hardware().firmware_status().await {
-        Ok(status) => shell.hardware_firmware.set_label(&status),
-        Err(error) => shell.hardware_firmware.set_label(&error.to_string()),
-    }
+    let software_client = dbus.software();
+    let updates_task = refresh_dashboard_updates(&shell.dashboard_updates, &software_client);
 
-    match dbus.software().community_layer_name().await {
-        Ok(channel) if channel.is_empty() => shell.about_channel.set_label(&gettext("Nenhuma")),
-        Ok(channel) => shell.about_channel.set_label(&channel),
-        Err(error) => shell.about_channel.set_label(&error.to_string()),
-    }
-
-    refresh_dashboard_updates(&shell.dashboard_updates, &dbus.software()).await;
-
-    match dbus.backup().list_configs().await {
-        Ok(configs) if configs.is_empty() => shell
-            .dashboard_backup
-            .set_label(&gettext("Não configurado")),
-        Ok(configs) => shell.dashboard_backup.set_label(
-            &gettext("{count} destino(s) configurado(s)")
-                .replace("{count}", &configs.len().to_string()),
-        ),
-        Err(error) => shell.dashboard_backup.set_label(&error.to_string()),
-    }
-
-    match dbus.snapshots().available().await {
-        Ok(false) => shell
-            .dashboard_snapshots
-            .set_label(&gettext("Não suportado neste sistema")),
-        Ok(true) => match dbus.snapshots().list().await {
-            Ok(snapshots) if snapshots.is_empty() => shell
-                .dashboard_snapshots
-                .set_label(&gettext("Nenhum snapshot")),
-            Ok(snapshots) => shell.dashboard_snapshots.set_label(
-                &gettext("{count} snapshot(s)").replace("{count}", &snapshots.len().to_string()),
+    let backup_task = async {
+        match dbus.backup().list_configs().await {
+            Ok(configs) if configs.is_empty() => shell
+                .dashboard_backup
+                .set_label(&gettext("Não configurado")),
+            Ok(configs) => shell.dashboard_backup.set_label(
+                &gettext("{count} destino(s) configurado(s)")
+                    .replace("{count}", &configs.len().to_string()),
             ),
-            Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
-        },
-        Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
-    }
-
-    match dbus.services().list().await {
-        Ok(services) => {
-            let struggling = services
-                .iter()
-                .filter(|service| service.available && service.enabled && !service.active)
-                .count();
-            shell.dashboard_services.set_label(&if struggling == 0 {
-                gettext("Nenhum serviço com problema")
-            } else {
-                gettext("{count} serviço(s) habilitado(s), mas parado(s)")
-                    .replace("{count}", &struggling.to_string())
-            });
+            Err(error) => shell.dashboard_backup.set_label(&error.to_string()),
         }
-        Err(error) => shell.dashboard_services.set_label(&error.to_string()),
-    }
+    };
 
-    match dbus.system().disk_usage().await {
-        Ok((used, total, percent)) => shell.dashboard_disk.set_label(
-            &gettext("{percent}% • {used} de {total} usados")
-                .replace("{percent}", &percent.to_string())
-                .replace("{used}", &used)
-                .replace("{total}", &total),
-        ),
-        Err(error) => shell.dashboard_disk.set_label(&error.to_string()),
-    }
+    let snapshots_task = async {
+        match dbus.snapshots().available().await {
+            Ok(false) => shell
+                .dashboard_snapshots
+                .set_label(&gettext("Não suportado neste sistema")),
+            Ok(true) => match dbus.snapshots().list().await {
+                Ok(snapshots) if snapshots.is_empty() => shell
+                    .dashboard_snapshots
+                    .set_label(&gettext("Nenhum snapshot")),
+                Ok(snapshots) => shell.dashboard_snapshots.set_label(
+                    &gettext("{count} snapshot(s)")
+                        .replace("{count}", &snapshots.len().to_string()),
+                ),
+                Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
+            },
+            Err(error) => shell.dashboard_snapshots.set_label(&error.to_string()),
+        }
+    };
+
+    let services_task = async {
+        match dbus.services().list().await {
+            Ok(services) => {
+                let struggling = services
+                    .iter()
+                    .filter(|service| service.available && service.enabled && !service.active)
+                    .count();
+                shell.dashboard_services.set_label(&if struggling == 0 {
+                    gettext("Nenhum serviço com problema")
+                } else {
+                    gettext("{count} serviço(s) habilitado(s), mas parado(s)")
+                        .replace("{count}", &struggling.to_string())
+                });
+            }
+            Err(error) => shell.dashboard_services.set_label(&error.to_string()),
+        }
+    };
+
+    let disk_task = async {
+        match dbus.system().disk_usage().await {
+            Ok((used, total, percent)) => shell.dashboard_disk.set_label(
+                &gettext("{percent}% • {used} de {total} usados")
+                    .replace("{percent}", &percent.to_string())
+                    .replace("{used}", &used)
+                    .replace("{total}", &total),
+            ),
+            Err(error) => shell.dashboard_disk.set_label(&error.to_string()),
+        }
+    };
+
+    futures_util::join!(
+        status_task,
+        hardware_task,
+        firmware_task,
+        channel_task,
+        updates_task,
+        backup_task,
+        snapshots_task,
+        services_task,
+        disk_task,
+    );
 }
 
 fn configure_assistant(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
