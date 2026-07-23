@@ -3,15 +3,9 @@
        nos 3 pacotes (vega-gtk, vegad, vega-cli) — todos puxam do mesmo
        repositório, só o .spec varia.
 
-       mode="serveronly": não roda em "osc build" local (nenhum checkout de
-       terceiros dispara fetch de rede), mas conta como serviço "ativo" pro
-       runservice do OBS — mode="manual" NÃO conta (o backend do OBS só
-       considera ativos os modos default/trylocal/serveronly; manual e
-       disabled ficam de fora), então com "manual" o /trigger/runservice
-       que .github/workflows/release-opensuse.yml chama depois de cada
-       release sempre respondia 404 "no source service defined!". Ainda dá
-       pra rodar manualmente com "osc service manualrun" quando necessário. -->
-  <service name="tar_scm" mode="serveronly">
+       Os serviços ficam ativos para que /trigger/runservice atualize os
+       fontes após cada tag. A cadeia usa diretamente o .tar do tar_scm. -->
+  <service name="tar_scm">
     <param name="scm">git</param>
     <param name="url">https://github.com/britors/Vega.git</param>
     <!-- master não existe neste repo (o branch padrão é main) — sem
@@ -34,15 +28,11 @@
     <param name="exclude">vega-gtk/target</param>
     <param name="filename">vega-src</param>
   </service>
-  <!-- tar_scm sozinho gera .tar sem compressão — o Source0 dos .spec
-       aqui espera .tar.gz. -->
-  <service name="recompress" mode="serveronly">
-    <param name="file">vega-src-*.tar</param>
-    <param name="compression">gz</param>
-  </service>
+  <!-- O .tar versionado é consumido diretamente. recompress não aceita glob
+       nesta versão do serviço e quebrava antes de executar set_version. -->
   <!-- Reescreve a linha "Version:" do .spec no working copy do pacote
        com a versão que o tar_scm acabou de extrair da tag. Só funciona
        porque o .spec usa "Version:        0" literal (não %{version}) —
        set_version faz substituição textual simples e não entende macro. -->
-  <service name="set_version" mode="serveronly" />
+  <service name="set_version" />
 </services>
