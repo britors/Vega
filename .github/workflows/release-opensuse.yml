@@ -101,8 +101,36 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OBS_API: https://api.opensuse.org
-      OBS_PROJECT: home:rodrigosbrito:vega
     steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detectar pacotes alterados desde a tag anterior
+        id: changes
+        shell: bash
+        run: |
+          previous_tag="$(git describe --tags --abbrev=0 "$GITHUB_SHA^" 2>/dev/null || true)"
+
+          changed() {
+            local output="$1"
+            shift
+            if [ -z "$previous_tag" ] || ! git diff --quiet "$previous_tag" "$GITHUB_SHA" -- "$@"; then
+              echo "$output=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$output=false" >> "$GITHUB_OUTPUT"
+            fi
+          }
+
+          changed vega_gtk \
+            vega-gtk lyra-vega-dbus dbus Cargo.toml Cargo.lock \
+            packaging/vega packaging/opensuse/vega.spec packaging/obs/vega-gtk.spec
+          changed vegad \
+            vegad dbus packaging/vegad \
+            packaging/opensuse/vegad.spec packaging/obs/vegad.spec
+          changed vega_cli \
+            vega-cli dbus packaging/opensuse/vega-cli.spec packaging/obs/vega-cli.spec
+
       # O contexto `secrets` não pode ser referenciado direto num `if:` de
       # step (erro do parser do Actions: "Unrecognized named-value:
       # 'secrets'") — passa o token por env: (isso sim é aceito) e faz o
@@ -113,7 +141,7 @@ jobs:
       # independentes por pacote (um pacote falhar/ter conflito de serviço
       # no OBS não deve impedir os outros dois de disparar).
       - name: Disparar rebuild no OBS (vega-gtk)
-        if: always()
+        if: always() && steps.changes.outputs.vega_gtk == 'true'
         env:
           OBS_TOKEN: ${{ secrets.OBS_TOKEN_VEGA_GTK }}
         run: |
@@ -122,10 +150,10 @@ jobs:
             exit 0
           fi
           curl -fsS -H "Authorization: Token $OBS_TOKEN" \
-            -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vega-gtk"
+            -X POST "$OBS_API/trigger/runservice"
 
       - name: Disparar rebuild no OBS (vegad)
-        if: always()
+        if: always() && steps.changes.outputs.vegad == 'true'
         env:
           OBS_TOKEN: ${{ secrets.OBS_TOKEN_VEGAD }}
         run: |
@@ -134,10 +162,10 @@ jobs:
             exit 0
           fi
           curl -fsS -H "Authorization: Token $OBS_TOKEN" \
-            -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vegad"
+            -X POST "$OBS_API/trigger/runservice"
 
       - name: Disparar rebuild no OBS (vega-cli)
-        if: always()
+        if: always() && steps.changes.outputs.vega_cli == 'true'
         env:
           OBS_TOKEN: ${{ secrets.OBS_TOKEN_VEGA_CLI }}
         run: |
@@ -146,4 +174,4 @@ jobs:
             exit 0
           fi
           curl -fsS -H "Authorization: Token $OBS_TOKEN" \
-            -X POST "$OBS_API/trigger/runservice?project=$OBS_PROJECT&package=vega-cli"
+            -X POST "$OBS_API/trigger/runservice"
