@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["lyra-vega-dbus", "vega-gtk", "vega-xfce"]
+members = ["lyra-vega-dbus", "vega-gtk"]
 
 [workspace.package]
 edition = "2024"

@@ -4,15 +4,14 @@ Interface oficial do Vega, implementada em Rust, GTK4 e libadwaita. O `vegad`
 e o contrato em `../dbus/` formam a fronteira privilegiada do aplicativo. O
 pacote e o binário usam o nome `vega-gtk`.
 
-## Dependências no Fedora
+## Dependências no openSUSE Leap
 
 ```bash
-sudo dnf install rust cargo gtk4-devel libadwaita-devel
+sudo zypper install rust cargo gtk4-devel libadwaita-devel
 ```
 
 Quem usa `rustup` pode omitir os pacotes `rust` e `cargo`. O MSRV declarado no
-manifest é Rust 1.92, exigido pela geração atual de bindings; ele será confrontado com as demais distribuições antes
-do empacotamento final.
+manifest é Rust 1.92, exigido pela geração atual de bindings.
 
 ## Desenvolvimento
 

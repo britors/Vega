@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# Instalador de conveniência: baixa os pacotes pré-compilados da release mais
-# recente do Vega e instala com o gerenciador de pacotes da distro. Cobre
-# openSUSE Leap (RPM, via .github/workflows/release-opensuse.yml), Fedora
-# (RPM, via .github/workflows/release-fedora.yml), Ubuntu/Debian (.deb, via
-# .github/workflows/release-debian.yml) e Arch (.pkg.tar.zst, via
-# .github/workflows/release-arch.yml) — mesma release do GitHub pras 4.
+# Instalador de conveniência: baixa os pacotes RPM pré-compilados da release
+# mais recente do Vega (via .github/workflows/release-opensuse.yml) e
+# instala com zypper. Cobre só openSUSE Leap.
 #
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
@@ -35,9 +32,7 @@ if [ -r /etc/os-release ]; then
 fi
 
 # download_release_assets baixa pra $workdir todo asset da release cujo nome
-# termina no sufixo passado (".rpm" ou ".deb"), usando a API de releases do
-# GitHub — mesma lógica que já existia hardcoded pra RPM, só parametrizada
-# pelo sufixo pra ser reaproveitada pelo caminho .deb também.
+# termina no sufixo passado (".rpm"), usando a API de releases do GitHub.
 download_release_assets() {
   local suffix="$1"
   local release_tag="${VEGA_VERSION:-latest}"
@@ -71,49 +66,27 @@ download_release_assets() {
   done
 }
 
-# skip_gtk_package_if_cli_only remove do $workdir o(s) pacote(s) da
-# interface GTK (vega-gtk) quando VEGA_CLI_ONLY=1 — feito depois do
-# download e antes de instalar, pra nenhum gerenciador de pacotes puxar
-# gtk4/libadwaita como dependência dela num servidor headless. O nome do
-# pacote vira prefixo do arquivo com "-" (Arch/RPM) ou "_" (Debian), daí os
-# dois padrões de glob.
+# skip_gtk_package_if_cli_only remove do $workdir o pacote da interface GTK
+# (vega-gtk) quando VEGA_CLI_ONLY=1 — feito depois do download e antes de
+# instalar, pra o zypper não puxar gtk4/libadwaita como dependência dela num
+# servidor headless.
 skip_gtk_package_if_cli_only() {
   [ "$VEGA_CLI_ONLY" = "1" ] || return 0
   echo "==> VEGA_CLI_ONLY=1: pulando a interface GTK (vega-gtk)" >&2
-  rm -f "$workdir"/vega-gtk-* "$workdir"/vega-gtk_*
+  rm -f "$workdir"/vega-gtk-*
 }
 
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
 case "$distro_id $distro_id_like" in
-  *arch*)
-    if ! command -v pacman >/dev/null 2>&1; then
-      echo "Erro: 'pacman' não encontrado — isso não parece ser Arch." >&2
-      exit 1
-    fi
-
-    download_release_assets '\.pkg\.tar\.zst'
-    skip_gtk_package_if_cli_only
-
-    echo "==> Instalando via pacman"
-    pacman -U --noconfirm "$workdir"/*.pkg.tar.zst
-    ;;
   *opensuse*|*suse*)
     if ! command -v zypper >/dev/null 2>&1; then
       echo "Erro: 'zypper' não encontrado — isso não parece ser openSUSE." >&2
       exit 1
     fi
 
-    # A mesma release do GitHub carrega tanto os RPMs do openSUSE quanto os
-    # do Fedora agora (release-opensuse.yml e release-fedora.yml publicam no
-    # mesmo tag) — um suffix genérico '\.rpm' pegaria os dois conjuntos.
-    # Os specs de packaging/opensuse/*.spec não definem %dist (então o
-    # nome do arquivo termina em "-1.x86_64.rpm" ou, pro vega-cli
-    # noarch, "-1.noarch.rpm"), enquanto os de packaging/fedora/*.spec
-    # definem "dist .fcNN" (terminam em "-1.fcNN.x86_64.rpm"/".fcNN.noarch.rpm")
-    # — usa isso pra distinguir os dois conjuntos.
-    download_release_assets '-1\.(x86_64|noarch)\.rpm'
+    download_release_assets '\.rpm'
     skip_gtk_package_if_cli_only
 
     echo "==> Instalando via zypper"
@@ -121,41 +94,9 @@ case "$distro_id $distro_id_like" in
     echo "configurada), então a instalação usa --allow-unsigned-rpm."
     zypper --non-interactive install -y --allow-unsigned-rpm "$workdir"/*.rpm
     ;;
-  *fedora*)
-    if ! command -v dnf >/dev/null 2>&1; then
-      echo "Erro: 'dnf' não encontrado — isso não parece ser Fedora." >&2
-      exit 1
-    fi
-
-    download_release_assets '-1\.fc[0-9]+\.(x86_64|noarch)\.rpm'
-    skip_gtk_package_if_cli_only
-
-    echo "==> Instalando via dnf"
-    echo "Aviso: empacotamento Fedora ainda é considerado de teste, não"
-    echo "validado ponta a ponta numa instalação real. Os RPMs também não"
-    echo "são assinados (sem chave GPG configurada)."
-    dnf install -y --nogpgcheck "$workdir"/*.rpm
-    ;;
-  *debian*|*ubuntu*)
-    if ! command -v apt-get >/dev/null 2>&1; then
-      echo "Erro: 'apt-get' não encontrado — isso não parece ser Debian/Ubuntu." >&2
-      exit 1
-    fi
-
-    download_release_assets '\.deb'
-    skip_gtk_package_if_cli_only
-
-    echo "==> Instalando via apt"
-    echo "Aviso: empacotamento Ubuntu/Debian ainda é considerado de teste,"
-    echo "não validado ponta a ponta numa instalação real."
-    apt-get update
-    # apt (não dpkg -i) resolve as dependências declaradas em debian/control
-    # (dbus, polkit etc.) a partir dos repositórios já configurados.
-    apt-get install -y "$workdir"/*.deb
-    ;;
   *)
     echo "Distro não reconhecida (ID=$distro_id, ID_LIKE=$distro_id_like)." >&2
-    echo "Este instalador cobre openSUSE Leap, Fedora e Ubuntu/Debian por enquanto." >&2
+    echo "Este instalador cobre só openSUSE Leap." >&2
     exit 1
     ;;
 esac

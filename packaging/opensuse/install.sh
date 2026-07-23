@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# Manual install script for openSUSE Leap — there is no .rpm packaging yet,
-# so this mirrors packaging/vegad/PKGBUILD's package() layout by hand,
-# minus the AUR/vega-build sandbox bits that don't apply here (Leap has no
-# AUR-equivalent community layer; distro.Provider.Community() is nil on
-# openSUSE, see vegad/internal/distro/opensuse.go).
+# Manual install script for openSUSE Leap — mirrors the layout the
+# packaging/opensuse/*.spec files install via RPM, done by hand for a
+# from-source install without going through rpmbuild/OBS.
 #
 # Usage: sudo packaging/opensuse/install.sh
 set -euo pipefail
@@ -16,7 +14,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-VERSION="${VEGA_VERSION:-$(grep -m1 '^pkgver=' "$REPO_ROOT/packaging/vegad/PKGBUILD" | cut -d= -f2)}"
+VERSION="${VEGA_VERSION:-$(grep -m1 '^var Version' "$REPO_ROOT/vegad/internal/version/version.go" | cut -d'"' -f2)}"
 echo "==> Instalando Vega/vegad $VERSION (openSUSE Leap) a partir de $REPO_ROOT"
 
 for tool in go cargo; do

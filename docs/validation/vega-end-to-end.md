@@ -1,6 +1,6 @@
 # Vega End-to-End Validation
 
-Este roteiro cobre a validação local automatizada e o smoke test manual no Arch.
+Este roteiro cobre a validação local automatizada e o smoke test manual no openSUSE.
 
 ## 1. Validação local automatizada
 
@@ -15,13 +15,12 @@ O script valida:
 - `go test` em `vegad`
 - `cargo fmt --check`, testes e Clippy em `vega-gtk`
 - build Rust otimizado com o lockfile versionado
-- sintaxe do helper de empacotamento
-- `makepkg --printsrcinfo` dos dois PKGBUILDs
+- sintaxe do helper de instalação
 - presença dos contratos D-Bus versionados
 
-## 2. Smoke test no Arch
+## 2. Smoke test no openSUSE
 
-Executar em uma máquina/VM com os pacotes `lyra-vega-gtk` e `vegad` instalados.
+Executar em uma máquina/VM com os pacotes `vega-gtk` e `vegad` instalados.
 
 ### 2.1 Base do sistema
 
@@ -53,7 +52,7 @@ Verificar:
 
 Verificar:
 
-- busca unificada mostra oficiais, Flathub e AUR
+- busca unificada mostra oficiais e Flathub
 - instalação e remoção emitem progresso
 - atualização completa exige confirmação
 - limpeza de cache retorna sucesso

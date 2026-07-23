@@ -31,7 +31,7 @@ Licensed under GPL-3.0. Code at [github.com/britors/Vega](https://github.com/bri
 ## Features
 
 - dashboard with system health and shortcuts;
-- native software, Flatpak, and AUR, with updates and repositories;
+- native software (Zypper) and Flatpak, with updates and repositories;
 - optional snapshots via Snapper or Timeshift, and backups via Restic;
 - hardware, drivers, kernel, bootloader, storage, date and time;
 - Wi-Fi, Bluetooth, firewall, VPN, proxy, and IPv4;
@@ -40,43 +40,29 @@ Licensed under GPL-3.0. Code at [github.com/britors/Vega](https://github.com/bri
 
 ## Installation
 
-Same convenience installer for Arch, openSUSE Leap, Fedora, and
-Ubuntu/Debian — it detects the distro automatically and downloads the
-right package from the latest release:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
-```
-
-To pin a specific version: `VEGA_VERSION=v1.3.4 sudo -E bash install.sh`
-(download the script first if you use this variant).
-
-On a headless server managed only over SSH, skip the graphical interface
-(and its GTK4/libadwaita dependency) and install just `vegad` + `vega-cli`:
-`VEGA_CLI_ONLY=1 sudo -E bash install.sh` (or `sudo -E bash install.sh` if
-downloaded first).
-
-After installation, open Vega CLI in a terminal with `vega` — it has no
-application-menu launcher and re-executes itself via `sudo` if not already
-running as root.
-
-Arch, Fedora, and Ubuntu/Debian aren't in an official repository yet (no
-AUR, Copr, or PPA), and their packages aren't signed — privileged
-operations should be validated carefully before each release.
-
-openSUSE Leap is the exception: it's built and published for real on the
+Vega targets openSUSE Leap. The recommended way to install is via the
 openSUSE Build Service, at
 [`home:rodrigosbrito:vega`](https://build.opensuse.org/project/show/home:rodrigosbrito:vega),
-rebuilt automatically from this repo on every tagged release. To install
-from there instead of a one-off binary download (and keep the repo
-configured for future `zypper update`s):
+rebuilt automatically from this repo on every tagged release. This keeps the
+repo configured for future `zypper update`s:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install-obs.sh | sudo bash
 ```
 
-Same `VEGA_CLI_ONLY=1` env var as `install.sh` works here too, to skip the
-GTK interface on a headless server.
+On a headless server managed only over SSH, skip the graphical interface
+(and its GTK4/libadwaita dependency) and install just `vegad` + `vega-cli`:
+`VEGA_CLI_ONLY=1 sudo -E bash install-obs.sh` (or `sudo -E bash
+install-obs.sh` if downloaded first).
+
+After installation, open Vega CLI in a terminal with `vega` — it has no
+application-menu launcher and re-executes itself via `sudo` if not already
+running as root.
+
+Alternatively, `scripts/install.sh` downloads a one-off RPM straight from
+the latest GitHub release instead of configuring the OBS repo — useful to
+pin a specific version (`VEGA_VERSION=v1.3.4 sudo -E bash install.sh`), but
+the RPMs it fetches aren't signed yet.
 
 ## Uninstallation
 
@@ -84,12 +70,10 @@ GTK interface on a headless server.
 sudo bash scripts/uninstall.sh
 ```
 
-Detects the distro the same way `install.sh` does and removes whichever of
-`vega-gtk`, `vegad`, and `vega-cli` are installed through the native
-package manager. Add `VEGA_PURGE=1` to also wipe state no package tracks:
-Backup module configs/passwords under `/etc/vega`, the journal export at
-`/var/log/vega`, and — Arch only — the `vega-build` user used for AUR
-builds. Per-user GTK assistant settings
+Removes whichever of `vega-gtk`, `vegad`, and `vega-cli` are installed via
+zypper. Add `VEGA_PURGE=1` to also wipe state no package tracks: Backup
+module configs/passwords under `/etc/vega` and the journal export at
+`/var/log/vega`. Per-user GTK assistant settings
 (`~/.local/share/vega-gtk/ai-settings.json`) are left alone; remove
 them by hand if needed.
 
@@ -112,32 +96,15 @@ interface.
 
 ## Tested distributions
 
-Besides the four with an automated installer (Arch, Fedora, openSUSE Leap,
-and Debian/Ubuntu, described in [Installation](#installation)), Vega has
-been manually tested on:
-
-- Fedora Workstation 44, Fedora KDE 44
 - openSUSE Leap 16, openSUSE Tumbleweed
-- Debian 13, Ubuntu 26.04
-- MX Linux 25.2, Linux Mint 22.3, LMDE 7, Zorin OS 18.1, Pop!_OS 24.04,
-  deepin 25 (Debian/Ubuntu derivatives)
-- Rocky Linux 10, AlmaLinux 10 (RHEL derivatives)
-- Arch Linux, CachyOS, EndeavourOS (Arch derivatives)
 
 ## Known limitations
 
-- Software uses the distribution's package managers and Flatpak via
-  subprocess; progress is reported per step, not per byte transferred.
-- AUR (as an install origin inside the Software module) requires `yay` or
-  `paru`, runs builds under the isolated `vega-build` user, and always shows
-  the PKGBUILD before confirmation.
+- Software uses Zypper and Flatpak via subprocess; progress is reported per
+  step, not per byte transferred.
 - Snapper and Timeshift are optional. Without one of these tools, Restore
   Points shows up as unavailable; advanced diff and retention features
   remain Snapper-specific.
-- The NVIDIA driver on Fedora depends on RPM Fusion nonfree already being
-  configured; Vega doesn't enable third-party repositories automatically.
-- The Debian/Ubuntu backend doesn't manage PPAs via `add-apt-repository`
-  yet. The firewall uses UFW when firewalld isn't present.
 
 ## Contributing
 

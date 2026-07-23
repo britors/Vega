@@ -1,8 +1,0 @@
-src/application.rs
-src/i18n.rs
-src/model.rs
-src/ui/services.rs
-src/ui/shell.rs
-src/ui/software.rs
-src/ui/users.rs
-src/ui/widgets.rs

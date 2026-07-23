@@ -26,8 +26,8 @@
     <param name="versionrewrite-pattern">v(.*)</param>
     <param name="versionrewrite-replacement">\1</param>
     <!-- Mesmos excludes do tar czf em .github/workflows/release-opensuse.yml
-         e release-fedora.yml — sem histórico do git nem build artifacts
-         do Rust no tarball de fontes. -->
+         — sem histórico do git nem build artifacts do Rust no tarball de
+         fontes. -->
     <param name="exclude">.git</param>
     <param name="exclude">vega-gtk/target</param>
     <param name="filename">vega-src</param>

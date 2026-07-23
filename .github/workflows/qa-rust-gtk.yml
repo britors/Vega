@@ -44,8 +44,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Pacotes finais não incluem Electron/Node
         run: |
-          files=(packaging/vega/PKGBUILD packaging/fedora/vega.spec \
-            packaging/opensuse/vega.spec packaging/debian-src/debian/control \
-            packaging/debian-src/debian/rules .github/workflows/release-*.yml)
+          files=(packaging/opensuse/vega.spec packaging/obs/*.spec \
+            .github/workflows/release-*.yml)
           ! grep -Ei '(electron|node_modules|npm (ci|install|run)|nodejs)' "${files[@]}"
-          grep -q 'cargo build --release --locked' packaging/vega/PKGBUILD
+          grep -q 'cargo build --release --locked' packaging/opensuse/vega.spec

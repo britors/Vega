@@ -9,10 +9,8 @@ sistema.
 
 - Rust 1.92 ou mais recente, GTK4 e libadwaita para a interface em `vega-gtk/`.
 - Go para o daemon em `vegad/`.
-- Linux com systemd, D-Bus e polkit para testar integracoes reais.
-- Em Arch, use os scripts em `scripts/` e os PKGBUILDs em `packaging/vega/` e `packaging/vegad/` para validar instalacao local.
-- Em openSUSE Leap, use `packaging/opensuse/install.sh` (e `uninstall.sh`) para validar instalacao local.
-- Em Fedora, use `rpmbuild -bb --define "version X.Y.Z" packaging/fedora/{vegad,vega}.spec` para validar instalacao local (ainda nao ha install.sh/uninstall.sh dedicados, so os specs).
+- Linux com systemd, D-Bus e polkit para testar integracoes reais (openSUSE Leap).
+- Use `packaging/opensuse/install.sh` (e `uninstall.sh`) para validar instalacao local.
 
 ## Fluxo de trabalho
 
@@ -62,7 +60,7 @@ Quando a mudanca tocar empacotamento, D-Bus, polkit ou integracao com ferramenta
 
 - Use mensagens objetivas, em portugues ou ingles, descrevendo o efeito da mudanca.
 - Descreva testes executados no PR.
-- Informe riscos residuais, principalmente quando depender de hardware, bootloader, NetworkManager, pacman, zypper, flatpak, snapper ou restic.
+- Informe riscos residuais, principalmente quando depender de hardware, bootloader, NetworkManager, zypper, flatpak, snapper ou restic.
 - Evite refatoracoes amplas junto de mudancas funcionais.
 
 ## Licenca

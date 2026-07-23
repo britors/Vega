@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # Instalador de conveniência via openSUSE Build Service (OBS): adiciona o
-# repositório home:rodrigosbrito:vega e instala os pacotes de lá — só
-# openSUSE Leap 16.0 por enquanto (única distro com pacotes de verdade
-# publicados no OBS hoje; as 4 distros continuam cobertas por
-# scripts/install.sh, que baixa RPM/deb pré-compilados direto da release
-# do GitHub, sem precisar de repositório nenhum).
+# repositório home:rodrigosbrito:vega e instala os pacotes de lá — openSUSE
+# Leap 16.0. Alternativa: scripts/install.sh, que baixa RPM pré-compilado
+# direto da release do GitHub, sem precisar de repositório nenhum.
 #
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install-obs.sh | sudo bash
@@ -29,7 +27,6 @@ fi
 
 if ! command -v zypper >/dev/null 2>&1; then
   echo "Erro: 'zypper' não encontrado — este script só cobre openSUSE Leap (via OBS)." >&2
-  echo "Para Arch, Fedora e Ubuntu/Debian, use scripts/install.sh." >&2
   exit 1
 fi
 

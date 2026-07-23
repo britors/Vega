@@ -15,11 +15,11 @@ Metas de aceite da milestone:
 - menos de 80 MiB de memória ociosa para toda a árvore da UI;
 - CPU ociosa próxima de zero;
 - paridade dos 16 módulos atuais;
-- Wayland e X11 em Arch, Fedora, openSUSE e Ubuntu/Debian;
+- Wayland e X11 no openSUSE;
 - nenhum Electron, Node ou npm no pacote final.
 
 O desempenho de comandos do sistema não faz parte do ganho esperado da troca
-da UI: pacman, apt, dnf, zypper, flatpak, snapper, timeshift e restic continuam sendo
+da UI: zypper, flatpak, snapper, timeshift e restic continuam sendo
 executados pelo `vegad`.
 
 ## Decisões
