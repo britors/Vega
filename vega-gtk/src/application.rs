@@ -804,24 +804,88 @@ fn configure_users(shell: &VegaShell, dbus: VegaDbus) {
         refresh_users_page(&load_page, &load_dbus).await;
     });
 
+    let new_page = page.clone();
+    page.open_create
+        .connect_clicked(move |_| new_page.begin_create());
+
+    let photo_page = page.clone();
+    page.photo.connect_clicked(move |_| {
+        let filter = gtk::FileFilter::new();
+        filter.set_name(Some(&gettext("Imagens PNG ou JPEG")));
+        filter.add_mime_type("image/png");
+        filter.add_mime_type("image/jpeg");
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&filter);
+        let chooser = gtk::FileDialog::builder()
+            .title(gettext("Selecionar foto"))
+            .accept_label(gettext("Selecionar"))
+            .filters(&filters)
+            .default_filter(&filter)
+            .modal(true)
+            .build();
+        let page = photo_page.clone();
+        glib::MainContext::default().spawn_local(async move {
+            if let Ok(file) = chooser.open_future(gtk::Window::NONE).await
+                && let Some(path) = file.path()
+            {
+                match std::fs::read(&path) {
+                    Ok(bytes) if bytes.len() <= 5 * 1024 * 1024 => {
+                        *page.photo_data.borrow_mut() = bytes;
+                        page.photo.set_label(
+                            &path
+                                .file_name()
+                                .map(|name| name.to_string_lossy().into_owned())
+                                .unwrap_or_else(|| gettext("Foto selecionada")),
+                        );
+                    }
+                    Ok(_) => page
+                        .status
+                        .set_label(&gettext("A foto deve ter no máximo 5 MB.")),
+                    Err(error) => page.status.set_label(
+                        &gettext("Não foi possível ler a foto: {error}")
+                            .replace("{error}", &error.to_string()),
+                    ),
+                }
+            }
+        });
+    });
+
     let create_page = page.clone();
     let create_dbus = dbus.clone();
     page.create.connect_clicked(move |_| {
         let username = create_page.username.text().trim().to_owned();
+        let full_name = create_page.full_name.text().trim().to_owned();
+        let password = create_page.password.text().to_string();
+        let groups = create_page
+            .groups
+            .text()
+            .split(',')
+            .map(str::trim)
+            .filter(|group| !group.is_empty())
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
+        let photo = create_page.photo_data.borrow().clone();
+        let editing = create_page.editing.borrow().is_some();
         let is_admin = create_page.admin.is_active();
         let role = if is_admin {
             gettext("administrador")
         } else {
             gettext("usuário comum")
         };
-        let dialog = adw::AlertDialog::new(
-            Some(&gettext("Criar usuário?")),
-            Some(
-                &gettext("A conta {username} será criada como {role}.")
-                    .replace("{username}", &username)
-                    .replace("{role}", &role),
-            ),
-        );
+        let title = if editing {
+            gettext("Salvar alterações?")
+        } else {
+            gettext("Criar usuário?")
+        };
+        let message = if editing {
+            gettext("Os dados da conta {username} serão atualizados.")
+                .replace("{username}", &username)
+        } else {
+            gettext("A conta {username} será criada como {role}.")
+                .replace("{username}", &username)
+                .replace("{role}", &role)
+        };
+        let dialog = adw::AlertDialog::new(Some(&title), Some(&message));
         dialog.add_responses(&[
             ("cancel", &gettext("Cancelar")),
             ("confirm", &gettext("Criar")),
@@ -838,15 +902,39 @@ fn configure_users(shell: &VegaShell, dbus: VegaDbus) {
             page.set_busy(true);
             page.status
                 .set_label(&gettext("Criando {username}…").replace("{username}", &username));
-            match dbus.users().create(&username, is_admin).await {
+            let result = if editing {
+                dbus.users()
+                    .update(&username, &full_name, &password, &groups, &photo, is_admin)
+                    .await
+            } else {
+                dbus.users()
+                    .create(&username, &full_name, &password, &groups, &photo, is_admin)
+                    .await
+            };
+            match result {
                 Ok(()) => {
+                    page.finish_edit();
                     page.username.set_text("");
+                    page.full_name.set_text("");
+                    page.password.set_text("");
+                    page.password_confirm.set_text("");
+                    page.groups.set_text("");
+                    page.photo_data.borrow_mut().clear();
+                    page.photo.set_label(&gettext("Selecionar foto…"));
+                    page.editor_dialog.close();
                     refresh_users_page(&page, &dbus).await;
                 }
                 Err(error) => page.status.set_label(&error.to_string()),
             }
             page.set_busy(false);
         });
+    });
+
+    let edit_page = page.clone();
+    page.edit.connect_clicked(move |_| {
+        if let Some(user) = edit_page.selected() {
+            edit_page.begin_edit(&user);
+        }
     });
 
     connect_user_action(&page.change_admin, &page, &dbus, UserAction::Admin);

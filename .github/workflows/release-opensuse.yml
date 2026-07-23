@@ -90,8 +90,8 @@ jobs:
   # via https://openbuildservice.org/help/manuals/obs-user-guide/cha-obs-authorization-token
   # Cada pacote (vega-gtk, vegad, vega-cli — mesmo trio de
   # packaging/opensuse/*.spec) tem seu próprio token de trigger, escopado
-  # só pra "runservice" naquele pacote (osc token --create <projeto>
-  # <pacote> runservice), guardado como secret. Depende só de `publish`
+  # só pra "runservice" naquele pacote (osc token --create --operation
+  # runservice <projeto> <pacote>), guardado como secret. Depende só de `publish`
   # (a release do GitHub já está no ar antes de avisar o OBS) e é
   # best-effort: falha aqui não desfaz a release, e cada step é pulado sem
   # erro enquanto o secret correspondente ainda não existir (setup do lado
@@ -149,7 +149,11 @@ jobs:
             echo "OBS_TOKEN_VEGA_GTK não configurado, pulando." >&2
             exit 0
           fi
-          curl -fsS -H "Authorization: Token $OBS_TOKEN" \
+          # --fail-with-body mantém o XML de erro do OBS no log. `-f`
+          # sozinho escondia mensagens essenciais como
+          # "no source service defined!".
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Token $OBS_TOKEN" \
             -X POST "$OBS_API/trigger/runservice"
 
       - name: Disparar rebuild no OBS (vegad)
@@ -161,7 +165,8 @@ jobs:
             echo "OBS_TOKEN_VEGAD não configurado, pulando." >&2
             exit 0
           fi
-          curl -fsS -H "Authorization: Token $OBS_TOKEN" \
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Token $OBS_TOKEN" \
             -X POST "$OBS_API/trigger/runservice"
 
       - name: Disparar rebuild no OBS (vega-cli)
@@ -173,5 +178,6 @@ jobs:
             echo "OBS_TOKEN_VEGA_CLI não configurado, pulando." >&2
             exit 0
           fi
-          curl -fsS -H "Authorization: Token $OBS_TOKEN" \
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Token $OBS_TOKEN" \
             -X POST "$OBS_API/trigger/runservice"
