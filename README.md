@@ -1,112 +1,188 @@
-# Lyra Vega - Enterprise Control Center
+# Vega — Enterprise Control Center
 
 *[Leia em português](README.pt-br.md)*
 
-Lyra Vega is a native control center for Linux: it brings together software,
-hardware, kernel, network, backup, user, and service administration in a
-single interface integrated with GNOME, instead of spreading these tasks
-across `nmcli`, `systemctl`, config file editors, and a handful of
-mismatched graphical tools. The goal isn't to replace GNOME Settings, but
-to cover the range of system administration it leaves out — packages,
-kernel, snapshots, firewall, users — with the same visual integration
-quality.
+Vega is a native control center built exclusively for openSUSE. It brings
+software, hardware, kernel, network, backup, user, and service administration
+into a single interface integrated with GNOME. It complements GNOME Settings
+with administration tasks that would otherwise require separate tools such as
+`zypper`, `nmcli`, `systemctl`, and configuration-file editors.
 
-The project is split into three parts. `vegad`, a separate daemon (Go),
-runs as root and asks for your password via polkit — the same
-authorization mechanism GNOME Settings uses — whenever an action actually
-needs to touch the system: switching a driver, installing a package,
-changing the network. Both interfaces talk to `vegad` through the same
-well-defined D-Bus contract. On top of that shared backend there are two
-interfaces, for two different contexts: `vega-gtk` (Rust +
-GTK4/libadwaita), a graphical interface that runs as your regular user,
-with no privileges; and `vega-cli` (bash + `dialog`), a terminal interface
-for administering a server over SSH with no graphical environment at all.
-Vega CLI has no application-menu launcher — it only runs from a terminal,
-via `vega` — and always needs administrator privileges: if started without
-them, it re-executes itself through `sudo`, which prompts for the user's
-password.
+The project provides a graphical interface built with Rust and
+GTK4/libadwaita, plus a terminal interface built with Bash and `dialog`. Both
+use the same privileged daemon and D-Bus contract.
 
-Licensed under GPL-3.0. Code at [github.com/britors/Vega](https://github.com/britors/Vega).
+Licensed under GPL-3.0. Source code at
+[github.com/britors/Vega](https://github.com/britors/Vega).
 
 ## Features
 
-- dashboard with system health and shortcuts;
-- native software (Zypper) and Flatpak, with updates and repositories;
-- optional snapshots via Snapper or Timeshift, and backups via Restic;
-- hardware, drivers, kernel, bootloader, storage, date and time;
-- Wi-Fi, Bluetooth, firewall, VPN, proxy, and IPv4;
-- users, services, logs, and an assistant with multiple AI providers;
-- wallpaper picker, screen lock preferences, and a live system/process monitor.
+- dashboard with system-health information and shortcuts;
+- Zypper packages, Flatpak applications, updates, and repositories;
+- optional snapshots with Snapper or Timeshift, and backups with Restic;
+- hardware inventory, drivers, kernel, and bootloader;
+- storage, date, time, and locale;
+- network, Wi-Fi, Bluetooth, firewall, VPN, proxy, and IPv4;
+- users, services, logs, and live process monitoring;
+- wallpaper, screen-lock preferences, and a multi-provider AI assistant.
 
-## Installation
+Features backed by optional programs are shown as unavailable when their
+dependency is missing without preventing the other pages from working.
 
-Vega targets openSUSE Leap. The recommended way to install is via the
-openSUSE Build Service, at
-[`home:rodrigosbrito:vega`](https://build.opensuse.org/project/show/home:rodrigosbrito:vega),
-rebuilt automatically from this repo on every tagged release. This keeps the
-repo configured for future `zypper update`s:
+## Architecture
+
+| Component | Technology | Role |
+| --- | --- | --- |
+| `vega-gtk` | Rust, GTK4, and libadwaita | Unprivileged graphical interface |
+| `vega-cli` | Bash and `dialog` | Terminal interface for local or SSH use |
+| `lyra-vega-dbus` | Rust and zbus | Typed D-Bus client shared by the GTK interface |
+| `vegad` | Go | Daemon that performs authorized system operations |
+| `dbus/` | Introspection XML | Public `org.lyraos.Vega1.*` contract between clients and daemon |
+
+`vegad` uses the system bus and is activated on demand by D-Bus. It releases
+the bus name and exits after two minutes without activity. Read-only queries do
+not require authentication; system-changing actions are protected by granular
+polkit rules. The graphical interface never needs to run as root.
+
+Vega CLI is aimed primarily at headless servers. Its `vega` entrypoint requires
+an interactive terminal and re-executes itself with `sudo` when necessary.
+
+## Installing on openSUSE
+
+Vega supports openSUSE only. On openSUSE Leap 16.0, the recommended installation
+method uses the
+[`home:rodrigosbrito:vega`](https://build.opensuse.org/project/show/home:rodrigosbrito:vega)
+repository on the openSUSE Build Service:
+
+### Automatic installation
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install-obs.sh | sudo bash
 ```
 
-On a headless server managed only over SSH, skip the graphical interface
-(and its GTK4/libadwaita dependency) and install just `vegad` + `vega-cli`:
-`VEGA_CLI_ONLY=1 sudo -E bash install-obs.sh` (or `sudo -E bash
-install-obs.sh` if downloaded first).
+This installs `vega-gtk`, `vegad`, and `vega-cli`, and leaves the repository
+configured for future updates through `zypper`.
 
-After installation, open Vega CLI in a terminal with `vega` — it has no
-application-menu launcher and re-executes itself via `sudo` if not already
-running as root.
+### Add the OBS repository and install with Zypper
 
-Alternatively, `scripts/install.sh` downloads a one-off RPM straight from
-the latest GitHub release instead of configuring the OBS repo — useful to
-pin a specific version (`VEGA_VERSION=v1.3.4 sudo -E bash install.sh`), but
-the RPMs it fetches aren't signed yet.
+Add the Vega repository:
 
-## Uninstallation
+```sh
+sudo zypper addrepo --refresh \
+  https://download.opensuse.org/repositories/home:/rodrigosbrito:/vega/openSUSE_Leap_16.0/ \
+  vega-obs
+```
+
+Refresh its metadata and import the OBS signing key:
+
+```sh
+sudo zypper --gpg-auto-import-keys refresh vega-obs
+```
+
+Install the graphical interface, daemon, and terminal interface:
+
+```sh
+sudo zypper install vega-gtk vegad vega-cli
+```
+
+`vegad` is activated automatically over D-Bus when an interface needs it; it
+does not need to be started manually.
+
+To update Vega later:
+
+```sh
+sudo zypper refresh vega-obs
+sudo zypper update
+```
+
+### Headless installation
+
+To install only the daemon and terminal interface on a headless machine:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install-obs.sh \
+  | sudo env VEGA_CLI_ONLY=1 bash
+```
+
+Or, if the repository is already configured:
+
+```sh
+sudo zypper install vegad vega-cli
+```
+
+After installation, open the graphical interface from the application menu or
+run `vega-gtk`. Run `vega` to start the terminal interface.
+
+### Release RPMs
+
+Alternatively, `scripts/install.sh` downloads RPMs from the latest GitHub
+release without configuring the OBS repository. A specific tag can be selected
+with `VEGA_VERSION=vX.Y.Z`; these standalone RPMs are still installed as
+unsigned packages.
+
+## Uninstalling
 
 ```sh
 sudo bash scripts/uninstall.sh
 ```
 
-Removes whichever of `vega-gtk`, `vegad`, and `vega-cli` are installed via
-zypper. Add `VEGA_PURGE=1` to also wipe state no package tracks: Backup
-module configs/passwords under `/etc/vega` and the journal export at
-`/var/log/vega`. Per-user GTK assistant settings
-(`~/.local/share/vega-gtk/ai-settings.json`) are left alone; remove
-them by hand if needed.
+The script removes any installed `vega-gtk`, `vegad`, and `vega-cli` packages.
+Set `VEGA_PURGE=1` to also delete backup configuration under `/etc/vega` and
+exported logs under `/var/log/vega`.
 
-## What already works
+Per-user assistant preferences in
+`~/.local/share/vega-gtk/ai-settings.json` are preserved.
 
-The graphical interface covers Dashboard, Software, Restore Points, Backup,
-Hardware, Kernel, Storage, Date and Time, Screen (Wallpaper, Screen Lock),
-System Monitor, Network/Firewall, Wi-Fi, Bluetooth, Users, Services, Logs,
-Assistant, and About. Features that
-depend on a tool that isn't installed (Snapper, firewalld, etc.) show up as
-unavailable instead of breaking the screen.
+## Development
 
-`vega-cli`, the terminal interface, covers the same functional range minus
-what doesn't make sense on a headless server: Dashboard, Software, Backup
-and Restore Points, Hardware and Kernel, Users, Network and Firewall,
-Services, Date/Time/Locale, Storage, System Log, and System Monitor
-(values only, no graphs). Wi-Fi, Bluetooth, the AI Assistant, and Screen
-are graphical-session concepts and are intentionally left out of this
-interface.
+Prerequisites:
 
-## Tested distributions
+- Rust 1.92 or newer, GTK4, and libadwaita;
+- Go;
+- openSUSE with systemd, D-Bus, and polkit for integration testing.
 
-- openSUSE Leap 16, openSUSE Tumbleweed
+Validate the Rust interface and client from the repository root:
+
+```sh
+cargo fmt --check
+cargo test --locked
+cargo clippy --locked --all-targets -- -D warnings
+```
+
+Validate the daemon:
+
+```sh
+cd vegad
+GOCACHE=/tmp/vega-gocache go test ./...
+```
+
+Run the graphical interface during development:
+
+```sh
+cargo run --manifest-path vega-gtk/Cargo.toml
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines,
+[vega-gtk/README.md](vega-gtk/README.md) for interface details, and
+[dbus/README.md](dbus/README.md) for the D-Bus contract.
+
+## Tested openSUSE versions
+
+- openSUSE Leap 16
+- openSUSE Tumbleweed
 
 ## Known limitations
 
-- Software uses Zypper and Flatpak via subprocess; progress is reported per
-  step, not per byte transferred.
-- Snapper and Timeshift are optional. Without one of these tools, Restore
-  Points shows up as unavailable; advanced diff and retention features
+- Other Linux distributions are not supported.
+- Zypper and Flatpak progress is reported per step rather than per byte
+  transferred.
+- Snapper and Timeshift are optional. Advanced diff and retention features
   remain Snapper-specific.
+- Wi-Fi, Bluetooth, screen settings, and the AI assistant belong to a graphical
+  session and are not included in Vega CLI.
 
-## Contributing
+## Assistant privacy
 
-Want to run the project locally, understand the architecture, or open a
-PR? See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+The assistant is optional. Keys are stored in the session Secret Service, and
+system-changing actions are presented as proposals before anything is executed.
+See [docs/ai-privacidade.md](docs/ai-privacidade.md) for details.

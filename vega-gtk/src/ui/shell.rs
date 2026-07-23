@@ -172,7 +172,7 @@ impl VegaShell {
         let mark = gtk::Label::new(Some(" "));
         mark.add_css_class("brand-mark");
         brand.append(&mark);
-        brand.append(&gtk::Label::new(Some("Lyra Vega")));
+        brand.append(&gtk::Label::new(Some("Vega")));
         let sidebar_search = gtk::SearchEntry::builder()
             .placeholder_text(gettext("Buscar configuração…"))
             .build();
@@ -299,7 +299,7 @@ impl VegaShell {
             .vexpand(true)
             .build();
 
-        let title = adw::WindowTitle::new("Lyra Vega", &gettext("Centro de Controle Empresarial"));
+        let title = adw::WindowTitle::new("Vega", &gettext("Centro de Controle Empresarial"));
         let header = adw::HeaderBar::builder().title_widget(&title).build();
         header.add_css_class("window-chrome");
         let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
