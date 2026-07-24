@@ -242,12 +242,13 @@ impl VegaShell {
             &mut nav_group,
         );
         let start_page = preferences.borrow().start_page.clone();
-        if let Some((_, _, button, _)) = searchable
+        if let Some((_, target, button, _)) = searchable
             .iter()
             .find(|(_, target, _, _)| target == &start_page)
             .or_else(|| searchable.first())
         {
             button.set_active(true);
+            stack.set_visible_child_name(target);
         }
         let nav_buttons = searchable.clone();
         stack.connect_visible_child_name_notify(move |stack| {
