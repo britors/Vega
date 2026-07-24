@@ -1,5 +1,7 @@
 use adw::prelude::*;
 use gettextrs::gettext;
+use gtk::gio;
+use std::{cell::RefCell, rc::Rc};
 
 use super::{
     AssistantPage, BackupPage, BluetoothPage, DateTimePage, KernelPage, LogsPage, MonitorPage,
@@ -22,10 +24,6 @@ pub struct VegaShell {
     pub hardware_firmware: gtk::Label,
     pub driver_dropdown: gtk::DropDown,
     pub driver_apply: gtk::Button,
-    pub about_versions: gtk::Label,
-    pub about_channel: gtk::Label,
-    pub about_distro: gtk::Label,
-    pub about_logo: gtk::Image,
     pub software: SoftwarePage,
     pub backup: BackupPage,
     pub snapshots: SnapshotsPage,
@@ -44,6 +42,8 @@ pub struct VegaShell {
 
 impl VegaShell {
     pub fn new() -> Self {
+        let preferences = Rc::new(RefCell::new(crate::preferences::load()));
+        crate::preferences::apply_appearance(preferences.borrow().appearance);
         let backend_status = status_label(&gettext("Conectando ao vegad…"));
         let dashboard_system = status_label(&gettext("Carregando informações do sistema…"));
         let dashboard_updates = status_label(&gettext("Carregando…"));
@@ -61,10 +61,6 @@ impl VegaShell {
             .label(gettext("Aplicar"))
             .css_classes(["suggested-action"])
             .build();
-        let about_versions = status_label(&gettext("Consultando versões…"));
-        let about_channel = value_label(&gettext("Carregando…"));
-        let about_distro = value_label(&gettext("Carregando…"));
-        let about_logo = gtk::Image::builder().pixel_size(32).visible(false).build();
         let software = SoftwarePage::new();
         let backup = BackupPage::new();
         let snapshots = SnapshotsPage::new();
@@ -161,12 +157,6 @@ impl VegaShell {
             Some("hardware"),
             &gettext("Hardware e Kernel"),
         );
-        stack.add_titled(
-            &about_page(&about_versions, &about_channel, &about_distro, &about_logo),
-            Some("about"),
-            &gettext("Sobre"),
-        );
-
         let brand = gtk::Box::new(gtk::Orientation::Horizontal, 10);
         brand.add_css_class("sidebar-brand");
         let mark = gtk::Label::new(Some(" "));
@@ -251,15 +241,12 @@ impl VegaShell {
             &mut searchable,
             &mut nav_group,
         );
-        add_nav_section(
-            &nav,
-            &gettext("Outros"),
-            &[(gettext("Sobre"), "about", "help-about-symbolic")],
-            &stack,
-            &mut searchable,
-            &mut nav_group,
-        );
-        if let Some((_, _, button, _)) = searchable.first() {
+        let start_page = preferences.borrow().start_page.clone();
+        if let Some((_, _, button, _)) = searchable
+            .iter()
+            .find(|(_, target, _, _)| target == &start_page)
+            .or_else(|| searchable.first())
+        {
             button.set_active(true);
         }
         let nav_buttons = searchable.clone();
@@ -302,6 +289,7 @@ impl VegaShell {
         let title = adw::WindowTitle::new("Vega", &gettext("Centro de Controle Empresarial"));
         let header = adw::HeaderBar::builder().title_widget(&title).build();
         header.add_css_class("window-chrome");
+        header.pack_end(&app_menu(&stack, preferences));
         let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
         root.add_css_class("app-frame");
         root.append(&header);
@@ -322,10 +310,6 @@ impl VegaShell {
             hardware_firmware,
             driver_dropdown,
             driver_apply,
-            about_versions,
-            about_channel,
-            about_distro,
-            about_logo,
             software,
             backup,
             snapshots,
@@ -342,6 +326,266 @@ impl VegaShell {
             monitor,
         }
     }
+}
+
+fn app_menu(
+    stack: &gtk::Stack,
+    preferences: Rc<RefCell<crate::preferences::Settings>>,
+) -> gtk::MenuButton {
+    let menu = gio::Menu::new();
+    let settings_section = gio::Menu::new();
+    settings_section.append(Some(&gettext("Configurações")), Some("menu.settings"));
+    menu.append_section(None, &settings_section);
+    let about_section = gio::Menu::new();
+    about_section.append(Some(&gettext("Sobre o Vega")), Some("menu.about"));
+    menu.append_section(None, &about_section);
+
+    let actions = gio::SimpleActionGroup::new();
+    let settings = gio::SimpleAction::new("settings", None);
+    let settings_stack = stack.clone();
+    settings.connect_activate(move |_, _| {
+        if let Some(window) = settings_stack
+            .root()
+            .and_then(|root| root.downcast::<gtk::Window>().ok())
+        {
+            show_preferences(&window, preferences.clone());
+        }
+    });
+    actions.add_action(&settings);
+
+    let about = gio::SimpleAction::new("about", None);
+    let about_stack = stack.clone();
+    about.connect_activate(move |_, _| {
+        let dialog = adw::AboutDialog::builder()
+            .application_name("Vega")
+            .application_icon("vega")
+            .developer_name("Lyra Linux")
+            .version(env!("CARGO_PKG_VERSION"))
+            .website("https://github.com/britors/Vega")
+            .issue_url("https://github.com/britors/Vega/issues")
+            .license_type(gtk::License::Gpl30)
+            .build();
+        dialog.set_developers(&["Rodrigo Brito"]);
+        if let Some(window) = about_stack
+            .root()
+            .and_then(|root| root.downcast::<gtk::Window>().ok())
+        {
+            dialog.present(Some(&window));
+        }
+    });
+    actions.add_action(&about);
+
+    let button = gtk::MenuButton::builder()
+        .icon_name("open-menu-symbolic")
+        .menu_model(&menu)
+        .tooltip_text(gettext("Menu principal"))
+        .build();
+    button.insert_action_group("menu", Some(&actions));
+    button.update_property(&[gtk::accessible::Property::Label(&gettext("Menu principal"))]);
+    button
+}
+
+fn show_preferences(parent: &gtk::Window, preferences: Rc<RefCell<crate::preferences::Settings>>) {
+    use crate::preferences::Appearance;
+
+    let dialog = adw::PreferencesDialog::builder()
+        .title(gettext("Configurações"))
+        .build();
+    let page = adw::PreferencesPage::new();
+
+    let general = adw::PreferencesGroup::builder()
+        .title(gettext("Geral"))
+        .build();
+    let appearance = adw::ComboRow::builder()
+        .title(gettext("Aparência"))
+        .model(&gtk::StringList::new(&[
+            &gettext("Seguir o sistema"),
+            &gettext("Claro"),
+            &gettext("Escuro"),
+        ]))
+        .selected(match preferences.borrow().appearance {
+            Appearance::System => 0,
+            Appearance::Light => 1,
+            Appearance::Dark => 2,
+        })
+        .build();
+    general.add(&appearance);
+
+    const START_PAGES: [&str; 4] = ["dashboard", "software", "monitor", "assistant"];
+    let start_page = adw::ComboRow::builder()
+        .title(gettext("Página inicial"))
+        .model(&gtk::StringList::new(&[
+            &gettext("Painel"),
+            &gettext("Software"),
+            &gettext("Monitor do Sistema"),
+            &gettext("Assistente de IA"),
+        ]))
+        .selected(
+            START_PAGES
+                .iter()
+                .position(|page| *page == preferences.borrow().start_page)
+                .unwrap_or(0) as u32,
+        )
+        .build();
+    general.add(&start_page);
+
+    let refresh = adw::SpinRow::builder()
+        .title(gettext("Atualização automática"))
+        .subtitle(gettext("Intervalo em minutos"))
+        .adjustment(&gtk::Adjustment::new(
+            preferences.borrow().refresh_interval_minutes.into(),
+            1.0,
+            60.0,
+            1.0,
+            5.0,
+            0.0,
+        ))
+        .build();
+    general.add(&refresh);
+    let confirmations = adw::SwitchRow::builder()
+        .title(gettext("Confirmar ações administrativas"))
+        .subtitle(gettext(
+            "Solicitar confirmação antes de alterações no sistema",
+        ))
+        .active(preferences.borrow().confirm_actions)
+        .build();
+    general.add(&confirmations);
+    page.add(&general);
+
+    let notifications = adw::PreferencesGroup::builder()
+        .title(gettext("Notificações"))
+        .build();
+    let notify_updates = switch_row(
+        &gettext("Atualizações disponíveis"),
+        preferences.borrow().notify_updates,
+    );
+    let notify_services = switch_row(
+        &gettext("Falhas em serviços"),
+        preferences.borrow().notify_service_failures,
+    );
+    let notify_backups = switch_row(
+        &gettext("Conclusão de backups"),
+        preferences.borrow().notify_backups,
+    );
+    notifications.add(&notify_updates);
+    notifications.add(&notify_services);
+    notifications.add(&notify_backups);
+    page.add(&notifications);
+
+    let privacy = adw::PreferencesGroup::builder()
+        .title(gettext("Privacidade da IA"))
+        .build();
+    let redact_ai = adw::SwitchRow::builder()
+        .title(gettext("Ocultar dados sensíveis"))
+        .subtitle(gettext(
+            "Remove credenciais e identificadores antes do envio",
+        ))
+        .active(preferences.borrow().redact_ai_data)
+        .build();
+    let save_history = adw::SwitchRow::builder()
+        .title(gettext("Salvar histórico local"))
+        .subtitle(gettext("Mantém as conversas da IA neste dispositivo"))
+        .active(preferences.borrow().save_ai_history)
+        .build();
+    privacy.add(&redact_ai);
+    privacy.add(&save_history);
+    page.add(&privacy);
+    dialog.add(&page);
+
+    macro_rules! save_on_change {
+        ($widget:expr, $signal:ident, $update:expr) => {{
+            let preferences = preferences.clone();
+            $widget.$signal(move |widget| {
+                let mut settings = preferences.borrow_mut();
+                $update(&mut settings, widget);
+                crate::preferences::save(&settings);
+            });
+        }};
+    }
+
+    save_on_change!(
+        appearance,
+        connect_selected_notify,
+        |settings: &mut crate::preferences::Settings, row: &adw::ComboRow| {
+            settings.appearance = match row.selected() {
+                1 => Appearance::Light,
+                2 => Appearance::Dark,
+                _ => Appearance::System,
+            };
+            crate::preferences::apply_appearance(settings.appearance);
+        }
+    );
+    save_on_change!(
+        start_page,
+        connect_selected_notify,
+        |settings: &mut crate::preferences::Settings, row: &adw::ComboRow| {
+            settings.start_page = START_PAGES
+                .get(row.selected() as usize)
+                .unwrap_or(&"dashboard")
+                .to_string();
+        }
+    );
+    save_on_change!(
+        refresh,
+        connect_value_notify,
+        |settings: &mut crate::preferences::Settings, row: &adw::SpinRow| {
+            settings.refresh_interval_minutes = row.value() as u32;
+        }
+    );
+    save_on_change!(
+        confirmations,
+        connect_active_notify,
+        |settings: &mut crate::preferences::Settings, row: &adw::SwitchRow| {
+            settings.confirm_actions = row.is_active();
+        }
+    );
+    save_on_change!(
+        notify_updates,
+        connect_active_notify,
+        |settings: &mut crate::preferences::Settings, row: &adw::SwitchRow| {
+            settings.notify_updates = row.is_active();
+        }
+    );
+    save_on_change!(
+        notify_services,
+        connect_active_notify,
+        |settings: &mut crate::preferences::Settings, row: &adw::SwitchRow| {
+            settings.notify_service_failures = row.is_active();
+        }
+    );
+    save_on_change!(
+        notify_backups,
+        connect_active_notify,
+        |settings: &mut crate::preferences::Settings, row: &adw::SwitchRow| {
+            settings.notify_backups = row.is_active();
+        }
+    );
+    save_on_change!(
+        redact_ai,
+        connect_active_notify,
+        |settings: &mut crate::preferences::Settings, row: &adw::SwitchRow| {
+            settings.redact_ai_data = row.is_active();
+        }
+    );
+    save_on_change!(
+        save_history,
+        connect_active_notify,
+        |settings: &mut crate::preferences::Settings, row: &adw::SwitchRow| {
+            settings.save_ai_history = row.is_active();
+            if !settings.save_ai_history {
+                let _ = crate::assistant::clear_history();
+            }
+        }
+    );
+
+    dialog.present(Some(parent));
+}
+
+fn switch_row(title: &str, active: bool) -> adw::SwitchRow {
+    adw::SwitchRow::builder()
+        .title(title)
+        .active(active)
+        .build()
 }
 
 struct DashboardWidgets<'a> {
@@ -530,38 +774,6 @@ fn hardware_page(
     scrolled(content)
 }
 
-fn about_page(
-    versions: &gtk::Label,
-    channel: &gtk::Label,
-    distro: &gtk::Label,
-    logo: &gtk::Image,
-) -> gtk::Widget {
-    let content = page_box(&gettext("Sobre"), "Lyra Vega - Enterprise Control Center");
-    content.append(&card(&gettext("Versões"), versions));
-    let system = adw::PreferencesGroup::builder()
-        .title(gettext("Sistema"))
-        .build();
-    system.add(&property_row(&gettext("Distribuição"), distro));
-    let logo_row = adw::ActionRow::builder().title(gettext("Logo")).build();
-    logo_row.add_suffix(logo);
-    system.add(&logo_row);
-    system.add(&property_row(&gettext("Camada da comunidade"), channel));
-    content.append(&system);
-    let product = adw::PreferencesGroup::builder()
-        .title(gettext("Produto"))
-        .build();
-    // Nome próprio, licença e aviso de copyright não são traduzidos — ficam
-    // iguais em qualquer idioma, como convenção de créditos/legal.
-    let creator = value_label("Rodrigo Brito");
-    let license = value_label("GNU General Public License v3.0");
-    let copyright = value_label("Copyright © 2025–2026 Rodrigo Brito");
-    product.add(&property_row(&gettext("Criador"), &creator));
-    product.add(&property_row(&gettext("Licença"), &license));
-    product.add(&property_row(&gettext("Direitos autorais"), &copyright));
-    content.append(&product);
-    scrolled(content)
-}
-
 /// Combina páginas já existentes em abas dentro de uma única entrada de
 /// navegação (mesmo padrão do módulo Software) — o título/subtítulo fica só
 /// aqui, cada aba não repete o próprio cabeçalho de página.
@@ -635,15 +847,6 @@ fn page_box(title: &str, description: &str) -> gtk::Box {
     content.append(&heading);
     content.append(&subtitle);
     content
-}
-
-fn card(title: &str, value: &gtk::Label) -> adw::PreferencesGroup {
-    let group = adw::PreferencesGroup::builder().title(title).build();
-    group.add_css_class("card");
-    let row = adw::ActionRow::new();
-    row.set_child(Some(value));
-    group.add(&row);
-    group
 }
 
 fn property_row(title: &str, value: &gtk::Label) -> adw::ActionRow {

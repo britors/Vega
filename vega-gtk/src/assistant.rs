@@ -280,6 +280,9 @@ pub fn save_settings(settings: &Settings) -> Result<(), AssistantError> {
 }
 
 pub fn load_history() -> Vec<Message> {
+    if !crate::preferences::save_ai_history() {
+        return Vec::new();
+    }
     private_file("ai-history.json")
         .ok()
         .and_then(|path| fs::read_to_string(path).ok())
@@ -288,6 +291,9 @@ pub fn load_history() -> Vec<Message> {
 }
 
 pub fn save_history(messages: &[Message]) -> Result<(), AssistantError> {
+    if !crate::preferences::save_ai_history() {
+        return Ok(());
+    }
     write_private(
         "ai-history.json",
         serde_json::to_string(messages)?.as_bytes(),
