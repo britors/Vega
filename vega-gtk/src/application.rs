@@ -1,7 +1,11 @@
 use adw::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib};
-use std::{cell::RefCell, rc::Rc, time::Instant};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+    time::Instant,
+};
 
 use crate::model::AppIdentity;
 use crate::ui::VegaShell;
@@ -13,6 +17,10 @@ use lyra_vega_dbus::{
 };
 
 pub const APPLICATION_ID: &str = "org.lyraos.Vega";
+
+thread_local! {
+    static LAST_STRUGGLING_SERVICES: Cell<Option<usize>> = const { Cell::new(None) };
+}
 
 pub fn run() -> glib::ExitCode {
     let app = adw::Application::builder()
@@ -55,11 +63,11 @@ fn build_window(app: &adw::Application) {
         .build();
     window.set_icon_name(Some("vega"));
 
-    update_content(shell, identity.version.clone(), window.clone());
+    update_content(shell, window.clone());
     window.present();
 }
 
-fn update_content(shell: VegaShell, ui_version: String, window: adw::ApplicationWindow) {
+fn update_content(shell: VegaShell, window: adw::ApplicationWindow) {
     glib::MainContext::default().spawn_local(async move {
         let dbus = match VegaDbus::connect().await {
             Ok(dbus) => dbus,
@@ -88,7 +96,30 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
         configure_assistant(&shell, &window, dbus.clone());
         configure_driver_action(&shell, &window, dbus.clone());
 
-        refresh_dashboard_summary(&shell, &ui_version, &dbus).await;
+        refresh_dashboard_summary(&shell, &dbus).await;
+        schedule_dashboard_refresh(shell, dbus);
+    });
+}
+
+fn schedule_dashboard_refresh(shell: VegaShell, dbus: VegaDbus) {
+    let elapsed_minutes = Rc::new(std::cell::Cell::new(0_u32));
+    glib::timeout_add_seconds_local(60, move || {
+        if shell.root.root().is_none() {
+            return glib::ControlFlow::Break;
+        }
+        let elapsed = elapsed_minutes.get() + 1;
+        let interval = crate::preferences::refresh_interval_minutes();
+        if elapsed >= interval {
+            elapsed_minutes.set(0);
+            let shell = shell.clone();
+            let dbus = dbus.clone();
+            glib::MainContext::default().spawn_local(async move {
+                refresh_dashboard_summary(&shell, &dbus).await;
+            });
+        } else {
+            elapsed_minutes.set(elapsed);
+        }
+        glib::ControlFlow::Continue
     });
 }
 
@@ -97,7 +128,7 @@ fn update_content(shell: VegaShell, ui_version: String, window: adw::Application
 // aguardados um atrás do outro — o tempo total do painel passa a ser o da
 // chamada mais lenta (tipicamente list_updates, que shella pro zypper) em
 // vez da soma de todas elas.
-async fn refresh_dashboard_summary(shell: &VegaShell, ui_version: &str, dbus: &VegaDbus) {
+async fn refresh_dashboard_summary(shell: &VegaShell, dbus: &VegaDbus) {
     let status_task = async {
         match dbus.system().status().await {
             Ok(status) => {
@@ -110,15 +141,6 @@ async fn refresh_dashboard_summary(shell: &VegaShell, ui_version: &str, dbus: &V
                     &gettext("{distro} • interface nativa ativa")
                         .replace("{distro}", &status.distro),
                 );
-                shell.about_versions.set_label(&format!(
-                    "Vega GTK {} • vegad {}",
-                    ui_version, status.version
-                ));
-                shell.about_distro.set_label(&status.distro);
-                if !status.logo_path.is_empty() {
-                    shell.about_logo.set_from_file(Some(&status.logo_path));
-                    shell.about_logo.set_visible(true);
-                }
             }
             Err(error) => set_unavailable(shell, &error.to_string()),
         }
@@ -144,14 +166,6 @@ async fn refresh_dashboard_summary(shell: &VegaShell, ui_version: &str, dbus: &V
         match dbus.hardware().firmware_status().await {
             Ok(status) => shell.hardware_firmware.set_label(&status),
             Err(error) => shell.hardware_firmware.set_label(&error.to_string()),
-        }
-    };
-
-    let channel_task = async {
-        match dbus.software().community_layer_name().await {
-            Ok(channel) if channel.is_empty() => shell.about_channel.set_label(&gettext("Nenhuma")),
-            Ok(channel) => shell.about_channel.set_label(&channel),
-            Err(error) => shell.about_channel.set_label(&error.to_string()),
         }
     };
 
@@ -197,6 +211,20 @@ async fn refresh_dashboard_summary(shell: &VegaShell, ui_version: &str, dbus: &V
                     .iter()
                     .filter(|service| service.available && service.enabled && !service.active)
                     .count();
+                LAST_STRUGGLING_SERVICES.with(|previous| {
+                    if previous.get().is_some_and(|old| old != struggling)
+                        && struggling > 0
+                        && crate::preferences::notifications().1
+                    {
+                        send_notification(
+                            &gettext("Falha em serviços"),
+                            &gettext("{count} serviço(s) requer(em) atenção")
+                                .replace("{count}", &struggling.to_string()),
+                            "service-failures",
+                        );
+                    }
+                    previous.set(Some(struggling));
+                });
                 shell.dashboard_services.set_label(&if struggling == 0 {
                     gettext("Nenhum serviço com problema")
                 } else {
@@ -224,7 +252,6 @@ async fn refresh_dashboard_summary(shell: &VegaShell, ui_version: &str, dbus: &V
         status_task,
         hardware_task,
         firmware_task,
-        channel_task,
         updates_task,
         backup_task,
         snapshots_task,
@@ -321,7 +348,7 @@ fn configure_assistant(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
         dialog.set_close_response("cancel");
         let page = remove_page.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "remove" {
+            if !confirm_dialog(&dialog, "remove").await {
                 return;
             }
             let result = gio::spawn_blocking(move || crate::assistant::clear_key(provider)).await;
@@ -569,7 +596,14 @@ async fn handle_assistant_tool(
             dbus.logs()
                 .query(&unit, &priority, "", "", max_lines)
                 .await
-                .map(|lines| crate::assistant::redact(&lines.join("\n")))
+                .map(|lines| {
+                    let logs = lines.join("\n");
+                    if crate::preferences::redact_ai_data() {
+                        crate::assistant::redact(&logs)
+                    } else {
+                        logs
+                    }
+                })
                 .map_err(|error| error.to_string())
         }
         "get_system_status" => {
@@ -696,7 +730,7 @@ async fn handle_assistant_mutation(
     );
     dialog.set_default_response(Some("cancel"));
     dialog.set_close_response("cancel");
-    if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+    if !confirm_dialog(&dialog, "confirm").await {
         page.append(
             "assistant",
             gettext("A proposta foi rejeitada. Nenhuma alteração foi realizada."),
@@ -896,7 +930,7 @@ fn configure_users(shell: &VegaShell, dbus: VegaDbus) {
         let page = create_page.clone();
         let dbus = create_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.set_busy(true);
@@ -993,7 +1027,7 @@ fn connect_user_action(
         let page = page.clone();
         let dbus = dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.set_busy(true);
@@ -1115,7 +1149,7 @@ fn connect_service_action(
         let page = page.clone();
         let dbus = dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.set_busy(true);
@@ -1209,7 +1243,7 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
         let page = power_page.clone();
         let dbus = power_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.power.set_sensitive(false);
@@ -1276,7 +1310,7 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
         let page = device_page.clone();
         let dbus = device_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.device_action.set_sensitive(false);
@@ -1344,7 +1378,7 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
             let dbus = dbus.clone();
             let address = device.address.clone();
             glib::MainContext::default().spawn_local(async move {
-                if dialog.choose_future(gtk::Widget::NONE).await != "send" {
+                if !confirm_dialog(&dialog, "send").await {
                     return;
                 }
                 page.send_file.set_sensitive(false);
@@ -1405,7 +1439,7 @@ fn configure_bluetooth(shell: &VegaShell, window: &adw::ApplicationWindow, dbus:
             let page = page.clone();
             let dbus = dbus.clone();
             glib::MainContext::default().spawn_local(async move {
-                if dialog.choose_future(gtk::Widget::NONE).await != "start" {
+                if !confirm_dialog(&dialog, "start").await {
                     return;
                 }
                 page.receive_files.set_sensitive(false);
@@ -1521,7 +1555,7 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
         let page = interface_page.clone();
         let dbus = interface_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "apply" {
+            if !confirm_dialog(&dialog, "apply").await {
                 return;
             }
             let connection = connection.text().trim().to_owned();
@@ -1603,7 +1637,7 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
         let page = wifi_page.clone();
         let dbus = wifi_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             let secret = password.text().to_string();
@@ -1674,7 +1708,7 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
         let page = proxy_page.clone();
         let dbus = proxy_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "apply" {
+            if !confirm_dialog(&dialog, "apply").await {
                 return;
             }
             page.proxy_apply.set_sensitive(false);
@@ -1749,7 +1783,7 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
             let page = page.clone();
             let dbus = dbus.clone();
             glib::MainContext::default().spawn_local(async move {
-                if dialog.choose_future(gtk::Widget::NONE).await != "import" {
+                if !confirm_dialog(&dialog, "import").await {
                     return;
                 }
                 page.vpn_import.set_sensitive(false);
@@ -1806,7 +1840,7 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
         let action_page = page.clone();
         let action_dbus = dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             action_page.firewall_action.set_sensitive(false);
@@ -1920,7 +1954,7 @@ fn configure_storage(shell: &VegaShell, dbus: VegaDbus) {
         let page = action_page.clone();
         let dbus = action_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.action.set_sensitive(false);
@@ -2080,7 +2114,7 @@ fn configure_monitor_tab(page: &crate::ui::MonitorPage, dbus: VegaDbus) {
         let page = kill_page.clone();
         let dbus = dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             match dbus.monitor().kill_process(process.pid).await {
@@ -2185,7 +2219,7 @@ fn configure_datetime(shell: &VegaShell, dbus: VegaDbus) {
         let page = apply_page.clone();
         let dbus = apply_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "apply" {
+            if !confirm_dialog(&dialog, "apply").await {
                 return;
             }
             page.apply.set_sensitive(false);
@@ -2253,7 +2287,7 @@ fn configure_kernel(shell: &VegaShell, dbus: VegaDbus) {
         let page = install_page.clone();
         let dbus = install_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "install" {
+            if !confirm_dialog(&dialog, "install").await {
                 return;
             }
             page.install.set_sensitive(false);
@@ -2301,7 +2335,7 @@ fn configure_kernel(shell: &VegaShell, dbus: VegaDbus) {
         let page = remove_page.clone();
         let dbus = remove_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "remove" {
+            if !confirm_dialog(&dialog, "remove").await {
                 return;
             }
             page.remove.set_sensitive(false);
@@ -2344,7 +2378,7 @@ fn configure_kernel(shell: &VegaShell, dbus: VegaDbus) {
         let page = boot_page.clone();
         let dbus = boot_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "apply" {
+            if !confirm_dialog(&dialog, "apply").await {
                 return;
             }
             page.apply_boot.set_sensitive(false);
@@ -2447,7 +2481,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
         let page = create_page.clone();
         let client = create_dbus.snapshots();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "create" {
+            if !confirm_dialog(&dialog, "create").await {
                 return;
             }
             let description = description.text().trim().to_owned();
@@ -2490,7 +2524,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
         let page = delete_page.clone();
         let client = delete_dbus.snapshots();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "delete" {
+            if !confirm_dialog(&dialog, "delete").await {
                 return;
             }
             button.set_sensitive(false);
@@ -2561,7 +2595,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
             dialog.set_response_appearance("rollback", adw::ResponseAppearance::Destructive);
             dialog.set_default_response(Some("cancel"));
             dialog.set_close_response("cancel");
-            if dialog.choose_future(gtk::Widget::NONE).await != "rollback" {
+            if !confirm_dialog(&dialog, "rollback").await {
                 button.set_sensitive(true);
                 return;
             }
@@ -2600,7 +2634,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
         let page = retention_page.clone();
         let client = retention_dbus.snapshots();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "apply" {
+            if !confirm_dialog(&dialog, "apply").await {
                 return;
             }
             page.apply_retention.set_sensitive(false);
@@ -2730,7 +2764,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
         let page = create_page.clone();
         let client = create_dbus.backup();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "create" {
+            if !confirm_dialog(&dialog, "create").await {
                 return;
             }
             let parsed_paths = paths
@@ -2798,7 +2832,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
         let page = delete_page.clone();
         let client = delete_dbus.backup();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "delete" {
+            if !confirm_dialog(&dialog, "delete").await {
                 return;
             }
             page.delete_config.set_sensitive(false);
@@ -2871,7 +2905,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
         let page = restore_page.clone();
         let client = restore_dbus.backup();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.restore_selected.set_sensitive(false);
@@ -2919,7 +2953,7 @@ fn configure_backup(shell: &VegaShell, dbus: VegaDbus) {
         let page = run_page.clone();
         let client = run_dbus.backup();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.run_now.set_sensitive(false);
@@ -2990,6 +3024,13 @@ async fn monitor_backup_transaction(
                 if finished.transaction_id == transaction_id =>
             {
                 page.finish(finished.success, &finished.message);
+                if crate::preferences::notifications().2 {
+                    send_notification(
+                        &gettext("Backup concluído"),
+                        &finished.message,
+                        "backup-finished",
+                    );
+                }
                 break;
             }
             Ok(BackupEvent::Alert(alert)) => page.status.set_label(
@@ -3105,7 +3146,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         let client = mirrors_dbus.software();
         let dashboard_updates = mirrors_dashboard_updates.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.optimize_mirrors.set_sensitive(false);
@@ -3159,7 +3200,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         let client = global_dbus.software();
         let dashboard_updates = global_dashboard_updates.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.global_action.set_sensitive(false);
@@ -3371,7 +3412,7 @@ fn connect_repository_toggle(page: &crate::ui::SoftwarePage, dbus: &VegaDbus) {
         let page = page.clone();
         let client = dbus.software();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+            if !confirm_dialog(&dialog, "confirm").await {
                 return;
             }
             page.repository_list.set_sensitive(false);
@@ -3520,7 +3561,7 @@ async fn confirm_and_trust_repo_key(
     dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
     dialog.set_default_response(Some("cancel"));
     dialog.set_close_response("cancel");
-    if dialog.choose_future(gtk::Widget::NONE).await != "confirm" {
+    if !confirm_dialog(&dialog, "confirm").await {
         return;
     }
 
@@ -3705,7 +3746,9 @@ fn configure_driver_action(shell: &VegaShell, window: &adw::ApplicationWindow, d
         let button = button.clone();
         let window = window.clone();
         glib::MainContext::default().spawn_local(async move {
-            if dialog.choose_future(Some(&window)).await != "apply" {
+            if crate::preferences::confirmations_enabled()
+                && dialog.choose_future(Some(&window)).await != "apply"
+            {
                 return;
             }
             button.set_sensitive(false);
@@ -3745,8 +3788,16 @@ fn watch_dashboard_updates(dashboard_updates: gtk::Label, dbus: VegaDbus) {
         };
         loop {
             match events.next().await {
-                Ok(SoftwareEvent::UpdatesAvailable(_)) => {
+                Ok(SoftwareEvent::UpdatesAvailable(count)) => {
                     refresh_dashboard_updates(&dashboard_updates, &client).await;
+                    if count > 0 && crate::preferences::notifications().0 {
+                        send_notification(
+                            &gettext("Atualizações disponíveis"),
+                            &gettext("{count} pacote(s) pendente(s)")
+                                .replace("{count}", &count.to_string()),
+                            "updates-available",
+                        );
+                    }
                 }
                 Ok(_) => {}
                 Err(_) => break,
@@ -3765,14 +3816,24 @@ fn set_unavailable(shell: &VegaShell, message: &str) {
     shell.dashboard_snapshots.set_label(message);
     shell.dashboard_services.set_label(message);
     shell.dashboard_disk.set_label(message);
-    shell.about_versions.set_label(message);
     shell.hardware_cpu.set_label(message);
     shell.hardware_gpu.set_label("—");
     shell.hardware_ram.set_label("—");
     shell.hardware_firmware.set_label("—");
     shell.driver_apply.set_sensitive(false);
-    shell.about_channel.set_label("—");
-    shell.about_distro.set_label("—");
+}
+
+fn send_notification(title: &str, body: &str, id: &str) {
+    if let Some(app) = gio::Application::default() {
+        let notification = gio::Notification::new(title);
+        notification.set_body(Some(body));
+        app.send_notification(Some(id), &notification);
+    }
+}
+
+async fn confirm_dialog(dialog: &adw::AlertDialog, response: &str) -> bool {
+    !crate::preferences::confirmations_enabled()
+        || dialog.clone().choose_future(gtk::Widget::NONE).await == response
 }
 
 #[cfg(test)]

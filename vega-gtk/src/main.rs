@@ -1,6 +1,7 @@
 mod application;
 mod i18n;
 mod model;
+mod preferences;
 mod screensaver;
 mod ui;
 mod wallpaper;
