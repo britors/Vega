@@ -43,7 +43,6 @@ pub struct VegaShell {
 impl VegaShell {
     pub fn new() -> Self {
         let preferences = Rc::new(RefCell::new(crate::preferences::load()));
-        crate::preferences::apply_appearance(preferences.borrow().appearance);
         let backend_status = status_label(&gettext("Conectando ao vegad…"));
         let dashboard_system = status_label(&gettext("Carregando informações do sistema…"));
         let dashboard_updates = status_label(&gettext("Carregando…"));
@@ -116,7 +115,7 @@ impl VegaShell {
             Some("datetime"),
             &gettext("Data, Hora e Idioma"),
         );
-        stack.add_titled(&screen.root, Some("screen"), &gettext("Tela"));
+        stack.add_titled(&screen.root, Some("screen"), &gettext("Personalização"));
         stack.add_titled(
             &monitor.root,
             Some("monitor"),
@@ -213,7 +212,7 @@ impl VegaShell {
                     "preferences-system-time-symbolic",
                 ),
                 (
-                    gettext("Tela"),
+                    gettext("Personalização"),
                     "screen",
                     "preferences-desktop-wallpaper-symbolic",
                 ),
@@ -287,7 +286,7 @@ impl VegaShell {
             .vexpand(true)
             .build();
 
-        let title = adw::WindowTitle::new("Vega", &gettext("Centro de Controle Empresarial"));
+        let title = adw::WindowTitle::new("Vega", "");
         let header = adw::HeaderBar::builder().title_widget(&title).build();
         header.add_css_class("window-chrome");
         header.pack_end(&app_menu(&stack, preferences));
@@ -387,8 +386,6 @@ fn app_menu(
 }
 
 fn show_preferences(parent: &gtk::Window, preferences: Rc<RefCell<crate::preferences::Settings>>) {
-    use crate::preferences::Appearance;
-
     let dialog = adw::PreferencesDialog::builder()
         .title(gettext("Configurações"))
         .build();
@@ -397,20 +394,6 @@ fn show_preferences(parent: &gtk::Window, preferences: Rc<RefCell<crate::prefere
     let general = adw::PreferencesGroup::builder()
         .title(gettext("Geral"))
         .build();
-    let appearance = adw::ComboRow::builder()
-        .title(gettext("Aparência"))
-        .model(&gtk::StringList::new(&[
-            &gettext("Seguir o sistema"),
-            &gettext("Claro"),
-            &gettext("Escuro"),
-        ]))
-        .selected(match preferences.borrow().appearance {
-            Appearance::System => 0,
-            Appearance::Light => 1,
-            Appearance::Dark => 2,
-        })
-        .build();
-    general.add(&appearance);
 
     const START_PAGES: [&str; 4] = ["dashboard", "software", "monitor", "assistant"];
     let start_page = adw::ComboRow::builder()
@@ -504,18 +487,6 @@ fn show_preferences(parent: &gtk::Window, preferences: Rc<RefCell<crate::prefere
         }};
     }
 
-    save_on_change!(
-        appearance,
-        connect_selected_notify,
-        |settings: &mut crate::preferences::Settings, row: &adw::ComboRow| {
-            settings.appearance = match row.selected() {
-                1 => Appearance::Light,
-                2 => Appearance::Dark,
-                _ => Appearance::System,
-            };
-            crate::preferences::apply_appearance(settings.appearance);
-        }
-    );
     save_on_change!(
         start_page,
         connect_selected_notify,

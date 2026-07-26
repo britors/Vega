@@ -5,19 +5,9 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Appearance {
-    #[default]
-    System,
-    Light,
-    Dark,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
-    pub appearance: Appearance,
     pub start_page: String,
     pub confirm_actions: bool,
     pub refresh_interval_minutes: u32,
@@ -31,7 +21,6 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            appearance: Appearance::System,
             start_page: "dashboard".into(),
             confirm_actions: true,
             refresh_interval_minutes: 5,
@@ -99,15 +88,6 @@ pub fn save_ai_history() -> bool {
     load().save_ai_history
 }
 
-pub fn apply_appearance(appearance: Appearance) {
-    let scheme = match appearance {
-        Appearance::System => adw::ColorScheme::Default,
-        Appearance::Light => adw::ColorScheme::ForceLight,
-        Appearance::Dark => adw::ColorScheme::ForceDark,
-    };
-    adw::StyleManager::default().set_color_scheme(scheme);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,6 +97,5 @@ mod tests {
         let settings = Settings::default();
         assert_eq!(settings.start_page, "dashboard");
         assert!(settings.confirm_actions);
-        assert!(matches!(settings.appearance, Appearance::System));
     }
 }
