@@ -359,7 +359,7 @@ fn app_menu(
         let dialog = adw::AboutDialog::builder()
             .application_name("Vega")
             .application_icon("vega")
-            .developer_name("Lyra Linux")
+            .developer_name("Lyra OS")
             .version(env!("CARGO_PKG_VERSION"))
             .website("https://github.com/britors/Vega")
             .issue_url("https://github.com/britors/Vega/issues")
