@@ -1,4 +1,4 @@
-# Vega — Enterprise Control Center
+# Vega — Control Center
 
 *[Leia em português](README.pt-br.md)*
 
