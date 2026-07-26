@@ -1986,6 +1986,7 @@ async fn refresh_storage_page(page: &crate::ui::StoragePage, dbus: &VegaDbus) {
 fn configure_screen(shell: &VegaShell, dbus: VegaDbus) {
     configure_wallpaper_tab(&shell.screen.wallpaper);
     configure_screensaver_tab(&shell.screen.screensaver);
+    configure_dock_tab(&shell.screen.dock);
     configure_monitor_tab(&shell.monitor, dbus);
 }
 
@@ -2040,6 +2041,26 @@ fn configure_screensaver_tab(page: &crate::ui::ScreensaverPage) {
     page.apply.connect_clicked(move |_| {
         let settings = apply_page.selected();
         match crate::screensaver::apply(&settings) {
+            Ok(()) => apply_page
+                .status
+                .set_label(&gettext("Configuração aplicada.")),
+            Err(error) => apply_page.status.set_label(&error.to_string()),
+        }
+    });
+}
+
+fn configure_dock_tab(page: &crate::ui::DockPage) {
+    match crate::dock::current() {
+        Some(settings) => page.show(&settings),
+        None => page
+            .status
+            .set_label(&gettext("A extensão Sheliak não está instalada.")),
+    }
+
+    let apply_page = page.clone();
+    page.apply.connect_clicked(move |_| {
+        let settings = apply_page.selected();
+        match crate::dock::apply(&settings) {
             Ok(()) => apply_page
                 .status
                 .set_label(&gettext("Configuração aplicada.")),

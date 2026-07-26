@@ -1,4 +1,6 @@
 mod application;
+mod appearance;
+mod dock;
 mod i18n;
 mod model;
 mod preferences;
