@@ -1,4 +1,4 @@
-# Vega — Centro de Controle Empresarial
+# Vega — Centro de Controle
 
 *[Read in English](README.md)*
 
