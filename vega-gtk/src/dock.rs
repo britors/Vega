@@ -50,7 +50,9 @@ fn extension_dir() -> Option<PathBuf> {
                 .join(EXTENSION_UUID),
         );
     }
-    candidates.into_iter().find(|dir| dir.join("metadata.json").is_file())
+    candidates
+        .into_iter()
+        .find(|dir| dir.join("metadata.json").is_file())
 }
 
 pub fn is_installed() -> bool {

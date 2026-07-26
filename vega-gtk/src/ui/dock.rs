@@ -25,9 +25,7 @@ fn hide_mode_label(id: &str) -> String {
 
 fn id_dropdown(ids: &[&str], labels: impl Fn(&str) -> String, current: &str) -> gtk::DropDown {
     let strings: Vec<String> = ids.iter().map(|id| labels(id)).collect();
-    let model = gtk::StringList::new(
-        &strings.iter().map(String::as_str).collect::<Vec<_>>(),
-    );
+    let model = gtk::StringList::new(&strings.iter().map(String::as_str).collect::<Vec<_>>());
     let dropdown = gtk::DropDown::builder()
         .model(&model)
         .valign(gtk::Align::Center)
@@ -38,7 +36,9 @@ fn id_dropdown(ids: &[&str], labels: impl Fn(&str) -> String, current: &str) -> 
 }
 
 fn dropdown_selected<'a>(dropdown: &gtk::DropDown, ids: &'a [&str]) -> &'a str {
-    ids.get(dropdown.selected() as usize).copied().unwrap_or(ids[0])
+    ids.get(dropdown.selected() as usize)
+        .copied()
+        .unwrap_or(ids[0])
 }
 
 #[derive(Clone)]
@@ -90,15 +90,27 @@ impl DockPage {
             .title(gettext("Comportamento"))
             .build();
         behavior_group.add(&property_row(&gettext("Visibilidade do dock"), &hide_mode));
-        behavior_group.add(&property_row(&gettext("Atraso para ocultar (ms)"), &hide_delay));
-        behavior_group.add(&property_row(&gettext("Ocultar em tela cheia"), &fullscreen_hide));
+        behavior_group.add(&property_row(
+            &gettext("Atraso para ocultar (ms)"),
+            &hide_delay,
+        ));
+        behavior_group.add(&property_row(
+            &gettext("Ocultar em tela cheia"),
+            &fullscreen_hide,
+        ));
 
         let content_group = adw::PreferencesGroup::builder()
             .title(gettext("Elementos exibidos"))
             .build();
-        content_group.add(&property_row(&gettext("Aplicativos em execução"), &show_running));
+        content_group.add(&property_row(
+            &gettext("Aplicativos em execução"),
+            &show_running,
+        ));
         content_group.add(&property_row(&gettext("Lixeira"), &show_trash));
-        content_group.add(&property_row(&gettext("Botão de aplicativos"), &show_apps_button));
+        content_group.add(&property_row(
+            &gettext("Botão de aplicativos"),
+            &show_apps_button,
+        ));
 
         let apply = gtk::Button::builder()
             .label(gettext("Aplicar"))
@@ -138,10 +150,16 @@ impl DockPage {
 
     pub fn show(&self, settings: &DockSettings) {
         self.position.set_selected(
-            POSITIONS.iter().position(|&id| id == settings.position).unwrap_or(0) as u32,
+            POSITIONS
+                .iter()
+                .position(|&id| id == settings.position)
+                .unwrap_or(0) as u32,
         );
         self.hide_mode.set_selected(
-            HIDE_MODES.iter().position(|&id| id == settings.hide_mode).unwrap_or(0) as u32,
+            HIDE_MODES
+                .iter()
+                .position(|&id| id == settings.hide_mode)
+                .unwrap_or(0) as u32,
         );
         self.icon_size.set_value(f64::from(settings.icon_size));
         self.edge_margin.set_value(f64::from(settings.edge_margin));
@@ -151,7 +169,8 @@ impl DockPage {
         self.show_trash.set_active(settings.show_trash);
         self.show_apps_button.set_active(settings.show_apps_button);
         self.fullscreen_hide.set_active(settings.fullscreen_hide);
-        self.status.set_label(&gettext("Configuração atual carregada"));
+        self.status
+            .set_label(&gettext("Configuração atual carregada"));
     }
 
     pub fn selected(&self) -> DockSettings {
