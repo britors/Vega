@@ -121,3 +121,15 @@ pub fn apply_accent_color(color: AccentColor) {
     }
     let _ = gio::Settings::new(SCHEMA).set_string("accent-color", color.key());
 }
+
+/// Tema de ícones padrão da Vega — reaplicado sempre que o usuário troca o
+/// card de tema, pra não ficar com um tema de ícones genérico depois de
+/// mexer só na claridade da interface.
+const ICON_THEME_NAME: &str = "Lyra-Enterprise-Icons";
+
+pub fn apply_icon_theme() {
+    if !schema_available() {
+        return;
+    }
+    let _ = gio::Settings::new(SCHEMA).set_string("icon-theme", ICON_THEME_NAME);
+}

@@ -364,3 +364,82 @@ button.suggested-action {
   background-image: linear-gradient(135deg, @lyra_blue, @lyra_violet);
   color: white;
 }
+
+button.vega-theme-card {
+  min-width: 190px;
+  min-height: 190px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  background-color: @lyra_surface;
+}
+
+button.vega-theme-card:hover {
+  background-color: @lyra_surface_raised;
+}
+
+button.vega-theme-card:checked {
+  border-color: @lyra_blue;
+  background-color: @lyra_surface_raised;
+}
+
+.vega-window-preview {
+  min-width: 150px;
+  min-height: 90px;
+  border: 1px solid @lyra_border;
+  border-radius: 10px;
+}
+
+.vega-window-preview-header {
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 9px 9px 0 0;
+}
+
+.vega-window-preview-body {
+  border-radius: 0 0 9px 9px;
+}
+
+.vega-window-preview-dot {
+  min-width: 6px;
+  min-height: 6px;
+  margin-top: 8px;
+  border-radius: 50%;
+}
+
+.vega-window-preview-line {
+  min-height: 8px;
+  border-radius: 4px;
+}
+
+.vega-window-preview-light {
+  background-color: #f6f6f6;
+}
+
+.vega-window-preview-light .vega-window-preview-header {
+  background-color: #e2e2e2;
+}
+
+.vega-window-preview-light .vega-window-preview-dot {
+  background-color: alpha(#000000, 0.2);
+}
+
+.vega-window-preview-light .vega-window-preview-line {
+  background-color: #d4d4d4;
+}
+
+.vega-window-preview-dark {
+  background-color: #2e2e2e;
+}
+
+.vega-window-preview-dark .vega-window-preview-header {
+  background-color: #222222;
+}
+
+.vega-window-preview-dark .vega-window-preview-dot {
+  background-color: alpha(#ffffff, 0.24);
+}
+
+.vega-window-preview-dark .vega-window-preview-line {
+  background-color: #484848;
+}
