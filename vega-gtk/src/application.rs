@@ -2058,14 +2058,11 @@ fn configure_dock_tab(page: &crate::ui::DockPage) {
     }
 
     let apply_page = page.clone();
-    page.apply.connect_clicked(move |_| {
-        let settings = apply_page.selected();
-        match crate::dock::apply(&settings) {
-            Ok(()) => apply_page
-                .status
-                .set_label(&gettext("Configuração aplicada.")),
-            Err(error) => apply_page.status.set_label(&error.to_string()),
-        }
+    page.connect_changed(move |settings| match crate::dock::apply(&settings) {
+        Ok(()) => apply_page
+            .status
+            .set_label(&gettext("Configuração aplicada.")),
+        Err(error) => apply_page.status.set_label(&error.to_string()),
     });
 }
 

@@ -1,10 +1,19 @@
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
+
 use adw::prelude::*;
 use gettextrs::gettext;
 
 use crate::dock::DockSettings;
 
+type ChangeHandler = Rc<dyn Fn(DockSettings)>;
+
 const POSITIONS: &[&str] = &["bottom", "top", "left", "right"];
 const HIDE_MODES: &[&str] = &["intelligent", "autohide", "always"];
+const CONTENT_ALIGNMENTS: &[&str] = &["start", "center", "end"];
+const RUNNING_APPS_POSITIONS: &[&str] = &["start", "end"];
 
 fn position_label(id: &str) -> String {
     match id {
@@ -20,6 +29,21 @@ fn hide_mode_label(id: &str) -> String {
         "autohide" => gettext("Auto hide"),
         "always" => gettext("Sempre ativo"),
         _ => gettext("Ocultação inteligente"),
+    }
+}
+
+fn content_alignment_label(id: &str) -> String {
+    match id {
+        "start" => gettext("Início"),
+        "end" => gettext("Fim"),
+        _ => gettext("Centro"),
+    }
+}
+
+fn running_apps_position_label(id: &str) -> String {
+    match id {
+        "start" => gettext("Início"),
+        _ => gettext("Fim"),
     }
 }
 
@@ -51,11 +75,15 @@ pub struct DockPage {
     pub edge_margin: gtk::SpinButton,
     pub hide_delay: gtk::SpinButton,
     pub animation: gtk::Switch,
+    pub extend_to_edges: gtk::Switch,
+    pub content_alignment: gtk::DropDown,
     pub show_running: gtk::Switch,
+    pub running_apps_position: gtk::DropDown,
     pub show_trash: gtk::Switch,
     pub show_apps_button: gtk::Switch,
     pub fullscreen_hide: gtk::Switch,
-    pub apply: gtk::Button,
+    suppress: Rc<Cell<bool>>,
+    change_handlers: Rc<RefCell<Vec<ChangeHandler>>>,
 }
 
 impl DockPage {
@@ -73,7 +101,11 @@ impl DockPage {
         let edge_margin = gtk::SpinButton::with_range(0.0, 48.0, 1.0);
         let hide_delay = gtk::SpinButton::with_range(100.0, 3000.0, 100.0);
         let animation = switch();
+        let extend_to_edges = switch();
+        let content_alignment = id_dropdown(CONTENT_ALIGNMENTS, content_alignment_label, "center");
         let show_running = switch();
+        let running_apps_position =
+            id_dropdown(RUNNING_APPS_POSITIONS, running_apps_position_label, "end");
         let show_trash = switch();
         let show_apps_button = switch();
         let fullscreen_hide = switch();
@@ -85,6 +117,11 @@ impl DockPage {
         appearance_group.add(&property_row(&gettext("Tamanho dos ícones"), &icon_size));
         appearance_group.add(&property_row(&gettext("Margem da borda"), &edge_margin));
         appearance_group.add(&property_row(&gettext("Animações"), &animation));
+        appearance_group.add(&property_row(
+            &gettext("Estender até as bordas"),
+            &extend_to_edges,
+        ));
+        appearance_group.add(&property_row(&gettext("Alinhamento"), &content_alignment));
 
         let behavior_group = adw::PreferencesGroup::builder()
             .title(gettext("Comportamento"))
@@ -106,24 +143,21 @@ impl DockPage {
             &gettext("Aplicativos em execução"),
             &show_running,
         ));
+        content_group.add(&property_row(
+            &gettext("Posição dos apps abertos"),
+            &running_apps_position,
+        ));
         content_group.add(&property_row(&gettext("Lixeira"), &show_trash));
         content_group.add(&property_row(
             &gettext("Botão de aplicativos"),
             &show_apps_button,
         ));
 
-        let apply = gtk::Button::builder()
-            .label(gettext("Aplicar"))
-            .halign(gtk::Align::End)
-            .css_classes(["suggested-action"])
-            .build();
-
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         content.append(&status);
         content.append(&appearance_group);
         content.append(&behavior_group);
         content.append(&content_group);
-        content.append(&apply);
 
         let root = gtk::ScrolledWindow::builder()
             .child(&content)
@@ -131,7 +165,7 @@ impl DockPage {
             .build()
             .upcast();
 
-        Self {
+        let page = Self {
             root,
             status,
             position,
@@ -140,15 +174,81 @@ impl DockPage {
             edge_margin,
             hide_delay,
             animation,
+            extend_to_edges,
+            content_alignment,
             show_running,
+            running_apps_position,
             show_trash,
             show_apps_button,
             fullscreen_hide,
-            apply,
+            suppress: Rc::new(Cell::new(false)),
+            change_handlers: Rc::new(RefCell::new(Vec::new())),
+        };
+        page.wire_changed_signals();
+        page
+    }
+
+    /// Chamado a cada mudança de controle (exceto durante `show`, quando os
+    /// valores são carregados programaticamente) para aplicar de imediato,
+    /// no mesmo padrão da aba Aparência — sem botão "Aplicar".
+    pub fn connect_changed(&self, handler: impl Fn(DockSettings) + 'static) {
+        self.change_handlers.borrow_mut().push(Rc::new(handler));
+    }
+
+    fn emit_changed(&self) {
+        if self.suppress.get() {
+            return;
+        }
+        let settings = self.selected();
+        for handler in self.change_handlers.borrow().iter() {
+            handler(settings.clone());
         }
     }
 
+    fn wire_changed_signals(&self) {
+        let page = self.clone();
+        self.position
+            .connect_selected_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.hide_mode
+            .connect_selected_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.icon_size
+            .connect_value_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.edge_margin
+            .connect_value_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.hide_delay
+            .connect_value_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.animation
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.extend_to_edges
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.content_alignment
+            .connect_selected_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.show_running
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.running_apps_position
+            .connect_selected_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.show_trash
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.show_apps_button
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.fullscreen_hide
+            .connect_active_notify(move |_| page.emit_changed());
+    }
+
     pub fn show(&self, settings: &DockSettings) {
+        self.suppress.set(true);
         self.position.set_selected(
             POSITIONS
                 .iter()
@@ -165,10 +265,24 @@ impl DockPage {
         self.edge_margin.set_value(f64::from(settings.edge_margin));
         self.hide_delay.set_value(f64::from(settings.hide_delay_ms));
         self.animation.set_active(settings.animation);
+        self.extend_to_edges.set_active(settings.extend_to_edges);
+        self.content_alignment.set_selected(
+            CONTENT_ALIGNMENTS
+                .iter()
+                .position(|&id| id == settings.content_alignment)
+                .unwrap_or(0) as u32,
+        );
         self.show_running.set_active(settings.show_running);
+        self.running_apps_position.set_selected(
+            RUNNING_APPS_POSITIONS
+                .iter()
+                .position(|&id| id == settings.running_apps_position)
+                .unwrap_or(0) as u32,
+        );
         self.show_trash.set_active(settings.show_trash);
         self.show_apps_button.set_active(settings.show_apps_button);
         self.fullscreen_hide.set_active(settings.fullscreen_hide);
+        self.suppress.set(false);
         self.status
             .set_label(&gettext("Configuração atual carregada"));
     }
@@ -181,7 +295,15 @@ impl DockPage {
             icon_size: self.icon_size.value_as_int().max(0) as u32,
             edge_margin: self.edge_margin.value_as_int().max(0) as u32,
             animation: self.animation.is_active(),
+            extend_to_edges: self.extend_to_edges.is_active(),
+            content_alignment: dropdown_selected(&self.content_alignment, CONTENT_ALIGNMENTS)
+                .to_string(),
             show_running: self.show_running.is_active(),
+            running_apps_position: dropdown_selected(
+                &self.running_apps_position,
+                RUNNING_APPS_POSITIONS,
+            )
+            .to_string(),
             show_trash: self.show_trash.is_active(),
             show_apps_button: self.show_apps_button.is_active(),
             fullscreen_hide: self.fullscreen_hide.is_active(),

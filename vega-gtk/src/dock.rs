@@ -15,7 +15,10 @@ pub struct DockSettings {
     pub icon_size: u32,
     pub edge_margin: u32,
     pub animation: bool,
+    pub extend_to_edges: bool,
+    pub content_alignment: String,
     pub show_running: bool,
+    pub running_apps_position: String,
     pub show_trash: bool,
     pub show_apps_button: bool,
     pub fullscreen_hide: bool,
@@ -84,7 +87,10 @@ pub fn current() -> Option<DockSettings> {
         icon_size: settings.uint("icon-size"),
         edge_margin: settings.uint("edge-margin"),
         animation: settings.boolean("animation"),
+        extend_to_edges: settings.boolean("extend-to-edges"),
+        content_alignment: settings.string("content-alignment").to_string(),
         show_running: settings.boolean("show-running"),
+        running_apps_position: settings.string("running-apps-position").to_string(),
         show_trash: settings.boolean("show-trash"),
         show_apps_button: settings.boolean("show-apps-button"),
         fullscreen_hide: settings.boolean("fullscreen-hide"),
@@ -103,7 +109,10 @@ pub fn apply(settings: &DockSettings) -> Result<(), DockError> {
     let _ = gsettings.set_uint("icon-size", settings.icon_size);
     let _ = gsettings.set_uint("edge-margin", settings.edge_margin);
     let _ = gsettings.set_boolean("animation", settings.animation);
+    let _ = gsettings.set_boolean("extend-to-edges", settings.extend_to_edges);
+    let _ = gsettings.set_string("content-alignment", &settings.content_alignment);
     let _ = gsettings.set_boolean("show-running", settings.show_running);
+    let _ = gsettings.set_string("running-apps-position", &settings.running_apps_position);
     let _ = gsettings.set_boolean("show-trash", settings.show_trash);
     let _ = gsettings.set_boolean("show-apps-button", settings.show_apps_button);
     let _ = gsettings.set_boolean("fullscreen-hide", settings.fullscreen_hide);
