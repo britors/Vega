@@ -45,7 +45,6 @@ pub struct SoftwarePage {
     pub results_area: gtk::Box,
     pub repository_panel: gtk::Box,
     pub repository_list: gtk::ListBox,
-    pub optimize_mirrors: gtk::Button,
     pub add_repo_name: gtk::Entry,
     pub add_repo_url: gtk::Entry,
     pub add_repo_button: gtk::Button,
@@ -160,9 +159,6 @@ impl SoftwarePage {
             .hexpand(true)
             .css_classes(["boxed-list"])
             .build();
-        let optimize_mirrors = gtk::Button::builder()
-            .label(gettext("Otimizar mirrors"))
-            .build();
         let repository_header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         repository_header.append(
             &gtk::Label::builder()
@@ -172,7 +168,6 @@ impl SoftwarePage {
                 .css_classes(["title-3"])
                 .build(),
         );
-        repository_header.append(&optimize_mirrors);
         let repository_panel = gtk::Box::new(gtk::Orientation::Vertical, 12);
         repository_panel.add_css_class("card");
         repository_panel.set_visible(false);
@@ -370,7 +365,6 @@ impl SoftwarePage {
             results_area,
             repository_panel,
             repository_list,
-            optimize_mirrors,
             add_repo_name,
             add_repo_url,
             add_repo_button,
