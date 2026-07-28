@@ -3093,7 +3093,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         let client = installed_dbus.software();
         glib::MainContext::default().spawn_local(async move {
             match client.list_installed().await {
-                Ok(packages) => page.show_results(packages),
+                Ok(packages) => page.show_results(packages, false),
                 Err(error) => page.show_error(&error.to_string()),
             }
             page.set_busy(false);
@@ -3112,7 +3112,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
         let client = updates_dbus.software();
         glib::MainContext::default().spawn_local(async move {
             match client.list_updates().await {
-                Ok(packages) => page.show_results(packages),
+                Ok(packages) => page.show_results(packages, true),
                 Err(error) => page.show_error(&error.to_string()),
             }
             page.set_busy(false);
@@ -3271,7 +3271,7 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
             .set_label(&gettext("Consultando as origens disponíveis…"));
         glib::MainContext::default().spawn_local(async move {
             match client.search(&query).await {
-                Ok(packages) => page.show_results(packages),
+                Ok(packages) => page.show_results(packages, false),
                 Err(error) => page.show_error(&error.to_string()),
             }
             page.set_busy(false);
@@ -3374,6 +3374,15 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
                         if progress.transaction_id == transaction_id =>
                     {
                         page.show_transaction_progress(progress.percent, &progress.message);
+                    }
+                    Ok(SoftwareEvent::PackageProgress(progress))
+                        if progress.transaction_id == transaction_id =>
+                    {
+                        page.show_package_progress(
+                            &progress.package,
+                            &progress.phase,
+                            progress.percent,
+                        );
                     }
                     Ok(SoftwareEvent::Finished(finished))
                         if finished.transaction_id == transaction_id =>
@@ -3683,6 +3692,11 @@ async fn monitor_software_transaction(
             Ok(SoftwareEvent::Progress(progress)) if progress.transaction_id == transaction_id => {
                 page.update_transaction(progress.percent, &progress.message);
             }
+            Ok(SoftwareEvent::PackageProgress(progress))
+                if progress.transaction_id == transaction_id =>
+            {
+                page.show_package_progress(&progress.package, &progress.phase, progress.percent);
+            }
             Ok(SoftwareEvent::Finished(finished)) if finished.transaction_id == transaction_id => {
                 page.finish_transaction(finished.success, &finished.message);
                 if finished.success {
@@ -3710,12 +3724,12 @@ async fn refresh_current_software_page(
     page.set_busy(true);
     if page.installed_tab.is_active() {
         match client.list_installed().await {
-            Ok(packages) => page.show_results(packages),
+            Ok(packages) => page.show_results(packages, false),
             Err(error) => page.show_error(&error.to_string()),
         }
     } else if page.updates_tab.is_active() {
         match client.list_updates().await {
-            Ok(packages) => page.show_results(packages),
+            Ok(packages) => page.show_results(packages, true),
             Err(error) => page.show_error(&error.to_string()),
         }
     } else if page.repositories_tab.is_active() {
@@ -3727,7 +3741,7 @@ async fn refresh_current_software_page(
         let query = page.query.text().trim().to_owned();
         if query.chars().count() >= 2 {
             match client.search(&query).await {
-                Ok(packages) => page.show_results(packages),
+                Ok(packages) => page.show_results(packages, false),
                 Err(error) => page.show_error(&error.to_string()),
             }
         }

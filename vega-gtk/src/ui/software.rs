@@ -1,6 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     rc::Rc,
 };
 
@@ -54,6 +54,7 @@ pub struct SoftwarePage {
     pub transaction_label: gtk::Label,
     pub transaction_progress: gtk::ProgressBar,
     package_groups: Rc<RefCell<Vec<PackageGroup>>>,
+    package_progress_bars: Rc<RefCell<HashMap<String, gtk::ProgressBar>>>,
     selected_group: Rc<Cell<Option<usize>>>,
     selection_handlers: SelectionHandlers,
     repository_toggle_handlers: RepositoryToggleHandlers,
@@ -378,6 +379,7 @@ impl SoftwarePage {
             transaction_label,
             transaction_progress,
             package_groups: Rc::new(RefCell::new(Vec::new())),
+            package_progress_bars: Rc::new(RefCell::new(HashMap::new())),
             selected_group,
             selection_handlers,
             repository_toggle_handlers,
@@ -395,19 +397,30 @@ impl SoftwarePage {
         });
     }
 
-    pub fn show_results(&self, packages: Vec<PackageRef>) {
+    /// group_by_repository groups the list by each package's source
+    /// repository (with section headers), in the order the backend already
+    /// returned them — used for the Updates tab, where "Atualizar tudo" now
+    /// runs repo by repo in that same order. Search/Installed pass false
+    /// and keep the existing alphabetical-by-name grouping.
+    pub fn show_results(&self, packages: Vec<PackageRef>, group_by_repository: bool) {
         self.clear_results();
-        let groups = group_packages(packages);
+        let groups = if group_by_repository {
+            group_packages_preserving_order(packages)
+        } else {
+            group_packages(packages)
+        };
         *self.package_groups.borrow_mut() = groups.clone();
         self.status.set_label(&if groups.is_empty() {
             gettext("Nenhum resultado encontrado")
         } else {
             gettext("Escolha a origem antes de instalar")
         });
+        let mut repositories = Vec::with_capacity(groups.len());
         for (group_index, group) in groups.into_iter().enumerate() {
             let Some(package) = group.selected() else {
                 continue;
             };
+            repositories.push(package.repository.clone());
             let safe_name = gtk::glib::markup_escape_text(&package.name);
             let safe_description = gtk::glib::markup_escape_text(&package.description);
             let row = adw::ActionRow::builder()
@@ -429,6 +442,16 @@ impl SoftwarePage {
                 &self.selection_handlers,
             );
             row.add_suffix(&origins);
+            let progress = gtk::ProgressBar::builder()
+                .valign(gtk::Align::Center)
+                .width_request(96)
+                .show_text(true)
+                .visible(false)
+                .build();
+            row.add_suffix(&progress);
+            self.package_progress_bars
+                .borrow_mut()
+                .insert(package.name.clone(), progress);
             self.results.append(&row);
 
             let card = gtk::Box::new(gtk::Orientation::Vertical, 10);
@@ -463,6 +486,38 @@ impl SoftwarePage {
                 &self.selection_handlers,
             ));
             self.cards.insert(&card, -1);
+        }
+
+        if group_by_repository {
+            self.results.set_header_func(move |row, _before| {
+                let index = row.index();
+                if index < 0 {
+                    row.set_header(None::<&gtk::Widget>);
+                    return;
+                }
+                let index = index as usize;
+                let current = repositories.get(index).map(String::as_str).unwrap_or("");
+                let previous = index
+                    .checked_sub(1)
+                    .and_then(|i| repositories.get(i))
+                    .map(String::as_str);
+                if previous == Some(current) {
+                    row.set_header(None::<&gtk::Widget>);
+                    return;
+                }
+                let label = gtk::Label::builder()
+                    .label(if current.is_empty() {
+                        gettext("Outros")
+                    } else {
+                        current.to_string()
+                    })
+                    .xalign(0.0)
+                    .css_classes(["heading"])
+                    .build();
+                row.set_header(Some(&label));
+            });
+        } else {
+            self.results.unset_header_func();
         }
     }
 
@@ -525,6 +580,24 @@ impl SoftwarePage {
             .set_label(&gettext("Detalhes indisponíveis"));
         self.detail_body.set_label(message);
         self.action.set_sensitive(false);
+        present_error_alert(&self.detail_dialog, message);
+    }
+
+    /// Updates the per-row progress bar for `package` (matched by name —
+    /// see PackageRef.repository/Id conventions for the "official" origin),
+    /// revealing it on first use. Rows for packages the current transaction
+    /// never touches (a different origin, or simply not in this list) just
+    /// keep their bar hidden — see show_results, which pre-creates one bar
+    /// per row regardless of whether it'll ever be driven.
+    pub fn show_package_progress(&self, package: &str, phase: &str, percent: u32) {
+        let bars = self.package_progress_bars.borrow();
+        let Some(bar) = bars.get(package) else {
+            return;
+        };
+        let percent = percent.min(100);
+        bar.set_visible(true);
+        bar.set_fraction(f64::from(percent) / 100.0);
+        bar.set_text(Some(&format!("{} {percent}%", phase_label(phase))));
     }
 
     pub fn show_transaction_progress(&self, percent: u32, message: &str) {
@@ -557,6 +630,9 @@ impl SoftwarePage {
             gettext("Falha: {message}").replace("{message}", message)
         };
         self.status.set_label(&status);
+        if !success {
+            present_error_alert(&self.root, &status);
+        }
     }
 
     pub fn select_search(&self) {
@@ -662,6 +738,7 @@ impl SoftwarePage {
             self.cards.remove(&child);
         }
         self.package_groups.borrow_mut().clear();
+        self.package_progress_bars.borrow_mut().clear();
         self.selected_group.set(None);
         self.action.set_sensitive(false);
         if self.detail_dialog.parent().is_some() {
@@ -799,6 +876,31 @@ fn origin_label(origin: &str) -> String {
     }
 }
 
+/// Wire-value ("download"/"install") to display label for a per-package
+/// progress bar's text — see SoftwarePackageProgress::phase.
+fn phase_label(phase: &str) -> String {
+    if phase == "download" {
+        gettext("Baixando")
+    } else {
+        gettext("Instalando")
+    }
+}
+
+/// Presents a one-button alert with `message` — the shared "something
+/// failed" path for every software transaction, so the user (who only
+/// knows Vega, not whatever package manager runs underneath it) always
+/// gets a visible dialog instead of a status label they might not notice.
+fn present_error_alert(parent: &impl IsA<gtk::Widget>, message: &str) {
+    let dialog = adw::AlertDialog::new(
+        Some(&gettext("Não foi possível concluir a operação")),
+        Some(message),
+    );
+    dialog.add_responses(&[("ok", &gettext("OK"))]);
+    dialog.set_default_response(Some("ok"));
+    dialog.set_close_response("ok");
+    dialog.present(Some(parent));
+}
+
 fn group_packages(packages: Vec<PackageRef>) -> Vec<PackageGroup> {
     let mut grouped = BTreeMap::<String, Vec<PackageRef>>::new();
     for package in packages {
@@ -807,6 +909,34 @@ fn group_packages(packages: Vec<PackageRef>) -> Vec<PackageGroup> {
     }
     grouped
         .into_values()
+        .map(|mut packages| {
+            packages.sort_by_key(|package| origin_rank(&package.origin));
+            PackageGroup {
+                packages,
+                selected: 0,
+            }
+        })
+        .collect()
+}
+
+/// Same de-dup-by-name grouping as group_packages, but preserves the
+/// backend's own ordering instead of re-sorting alphabetically — used for
+/// the Updates tab, whose packages already arrive grouped/ordered by
+/// source repository (see zypperGroupedUpdates on the Go side), an order
+/// that must survive into the section headers show_results draws.
+fn group_packages_preserving_order(packages: Vec<PackageRef>) -> Vec<PackageGroup> {
+    let mut order = Vec::new();
+    let mut grouped = HashMap::<String, Vec<PackageRef>>::new();
+    for package in packages {
+        let key = package.name.trim().to_lowercase();
+        if !grouped.contains_key(&key) {
+            order.push(key.clone());
+        }
+        grouped.entry(key).or_default().push(package);
+    }
+    order
+        .into_iter()
+        .filter_map(|key| grouped.remove(&key))
         .map(|mut packages| {
             packages.sort_by_key(|package| origin_rank(&package.origin));
             PackageGroup {
@@ -829,6 +959,7 @@ mod tests {
             description: String::new(),
             installed: false,
             icon: String::new(),
+            repository: String::new(),
         }
     }
 
@@ -855,6 +986,18 @@ mod tests {
         let result = group_packages(vec![package("official", "example"), duplicate, second]);
         assert_eq!(result.len(), 2);
         assert_eq!(result[1].packages.len(), 2);
+    }
+
+    #[test]
+    fn preserving_order_grouping_keeps_arrival_order_not_alphabetical() {
+        let mut zeta = package("official", "zeta");
+        zeta.name = "Zeta".into();
+        let mut alpha = package("official", "alpha");
+        alpha.name = "Alpha".into();
+        let result = group_packages_preserving_order(vec![zeta, alpha]);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].selected().unwrap().name, "Zeta");
+        assert_eq!(result[1].selected().unwrap().name, "Alpha");
     }
 
     #[test]
