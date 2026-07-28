@@ -3143,51 +3143,6 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
     connect_repository_toggle(&page, &dbus);
     connect_add_repo(&page, &dbus, &dashboard_updates);
 
-    let mirrors_page = page.clone();
-    let mirrors_dbus = dbus.clone();
-    let mirrors_dashboard_updates = dashboard_updates.clone();
-    page.optimize_mirrors.connect_clicked(move |_| {
-        let dialog = adw::AlertDialog::new(
-            Some(&gettext("Otimizar mirrors?")),
-            Some(&gettext(
-                "O gerenciador de pacotes testará e reorganizará os mirrors quando a distribuição oferecer esse recurso.",
-            )),
-        );
-        dialog.add_responses(&[
-            ("cancel", &gettext("Cancelar")),
-            ("confirm", &gettext("Otimizar")),
-        ]);
-        dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
-        dialog.set_default_response(Some("cancel"));
-        dialog.set_close_response("cancel");
-        let page = mirrors_page.clone();
-        let client = mirrors_dbus.software();
-        let dashboard_updates = mirrors_dashboard_updates.clone();
-        glib::MainContext::default().spawn_local(async move {
-            if !confirm_dialog(&dialog, "confirm").await {
-                return;
-            }
-            page.optimize_mirrors.set_sensitive(false);
-            page.begin_transaction(&gettext("Otimizando mirrors…"));
-            let mut events = match client.subscribe().await {
-                Ok(events) => events,
-                Err(error) => {
-                    page.finish_transaction(false, &error.to_string());
-                    page.optimize_mirrors.set_sensitive(true);
-                    return;
-                }
-            };
-            match client.optimize_mirrors().await {
-                Ok(id) => {
-                    monitor_software_transaction(&page, &client, &mut events, id, &dashboard_updates)
-                        .await
-                }
-                Err(error) => page.finish_transaction(false, &error.to_string()),
-            }
-            page.optimize_mirrors.set_sensitive(true);
-        });
-    });
-
     let global_page = page.clone();
     let global_dbus = dbus.clone();
     let global_dashboard_updates = dashboard_updates.clone();

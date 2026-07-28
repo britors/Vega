@@ -43,8 +43,8 @@
   com markup do libadwaita.
 - Instalações AUR exigem carregar, exibir e confirmar explicitamente o
   PKGBUILD. Falha ao carregar o arquivo bloqueia a instalação.
-- Software lista repositórios e oferece ativação, desativação e otimização de
-  mirrors com confirmação explícita e retorno de erro do backend.
+- Software lista repositórios e oferece ativação e desativação com confirmação
+  explícita e retorno de erro do backend.
 - Hardware com inventário, firmware e confirmação para troca de driver.
 - Kernel possui cliente D-Bus tipado e página inicial com kernels instalados,
   disponíveis, status do bootloader e entradas de boot.

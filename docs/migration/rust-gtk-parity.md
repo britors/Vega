@@ -13,7 +13,7 @@ manual da issue #74. Um desvio precisa apontar para a decisão que o aprovou.
 | #66 | Painel | saúde, atalhos, navegação e estados parciais | implementado |
 | #66 | Hardware | inventário, firmware e troca de driver confirmada | implementado |
 | #66 | Sobre | versões da UI/backend, distro e conexão | implementado |
-| #67 | Software | busca, detalhes, instalados, atualizações, repositórios, AUR, cache e mirrors | implementado |
+| #67 | Software | busca, detalhes, instalados, atualizações, repositórios, AUR e cache | implementado |
 | #68 | Backup | configurações, execução, progresso, snapshots e restauração parcial | implementado |
 | #68 | Pontos de Restauração | listar, criar, comparar, excluir, aplicar e retenção | implementado |
 | #69 | Kernel | instalados, disponíveis, instalar, remover e bootloader | implementado |

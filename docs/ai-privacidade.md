@@ -60,7 +60,7 @@ Cada provedor tem sua própria política de retenção e uso de dados enviados v
 
 Todas seguem o mesmo fluxo: o modelo só propõe, você confirma no diálogo (vendo o nome da ação e os parâmetros reais), e só então a ação real é executada.
 
-- **Software**: instalar/remover pacote, limpar cache, atualizar tudo, otimizar mirrors
+- **Software**: instalar/remover pacote, limpar cache e atualizar tudo
 - **Snapshots**: criar, reverter (`rollback` — ação de alto risco, o diálogo avisa explicitamente), apagar, definir política de retenção
 - **Serviços**: habilitar/desabilitar no boot, iniciar/parar, reiniciar — o diálogo não impede desabilitar um serviço essencial (ex. rede, ssh); a confirmação humana é a única barreira, então preste atenção no nome do serviço antes de confirmar
 - **Armazenamento**: montar/desmontar volume — desmontar um volume em uso pode causar perda de dados; o Vega não verifica processos abertos antes de propor, então confirme com cuidado
