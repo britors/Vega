@@ -3142,6 +3142,8 @@ fn configure_software(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: 
 
     connect_repository_toggle(&page, &dbus);
     connect_add_repo(&page, &dbus, &dashboard_updates);
+    connect_update_package(&page, &dbus, &dashboard_updates);
+    connect_install_queue(&page, &dbus, &dashboard_updates);
 
     let global_page = page.clone();
     let global_dbus = dbus.clone();
@@ -3456,6 +3458,176 @@ fn connect_add_repo(
                 Err(error) => page.finish_transaction(false, &error.to_string()),
             }
             page.add_repo_button.set_sensitive(true);
+        });
+    });
+}
+
+/// Wires the per-row/card "Atualizar" button shown on the Updates tab (see
+/// SoftwarePage::connect_update_package) to a single-package UpdatePackage
+/// transaction — the same confirm/subscribe/monitor shape as the main
+/// action button, just scoped to one package instead of the whole system.
+fn connect_update_package(
+    page: &crate::ui::SoftwarePage,
+    dbus: &VegaDbus,
+    dashboard_updates: &gtk::Label,
+) {
+    let page = page.clone();
+    let dbus = dbus.clone();
+    let dashboard_updates = dashboard_updates.clone();
+    page.clone().connect_update_package(move |package| {
+        let page = page.clone();
+        let client = dbus.software();
+        let dashboard_updates = dashboard_updates.clone();
+        glib::MainContext::default().spawn_local(async move {
+            if !confirm_package_action(&package.name, &gettext("Atualizar"), false).await {
+                return;
+            }
+            page.set_update_actions_sensitive(false);
+            page.begin_transaction(
+                &gettext("Atualizando {name}…").replace("{name}", &package.name),
+            );
+            let mut events = match client.subscribe().await {
+                Ok(events) => events,
+                Err(error) => {
+                    page.finish_transaction(false, &error.to_string());
+                    page.set_update_actions_sensitive(true);
+                    return;
+                }
+            };
+            match client.update_package(&package.origin, &package.id).await {
+                Ok(id) => {
+                    monitor_software_transaction(
+                        &page,
+                        &client,
+                        &mut events,
+                        id,
+                        &dashboard_updates,
+                    )
+                    .await
+                }
+                Err(error) => page.finish_transaction(false, &error.to_string()),
+            }
+            page.set_update_actions_sensitive(true);
+        });
+    });
+}
+
+/// Wires the top "Instalar" button (see SoftwarePage::install_queue_button)
+/// to install every package queued via the per-row "add to install queue"
+/// toggle, one at a time — each queued package still runs through Install
+/// as its own transaction (same as a single manual install), so mixed
+/// origins in the same queue just work. A failure partway through doesn't
+/// stop the rest, mirroring UpdateAll's per-repo failure tolerance; every
+/// failure is collected into one final status message.
+fn connect_install_queue(
+    page: &crate::ui::SoftwarePage,
+    dbus: &VegaDbus,
+    dashboard_updates: &gtk::Label,
+) {
+    let page = page.clone();
+    let dbus = dbus.clone();
+    let dashboard_updates = dashboard_updates.clone();
+    page.install_queue_button.clone().connect_clicked(move |_| {
+        let page = page.clone();
+        let client = dbus.software();
+        let dashboard_updates = dashboard_updates.clone();
+        glib::MainContext::default().spawn_local(async move {
+            let queue = page.install_queue();
+            if queue.is_empty() {
+                return;
+            }
+            let heading =
+                gettext("Instalar {count} pacote(s)?").replace("{count}", &queue.len().to_string());
+            let dialog = adw::AlertDialog::new(
+                Some(&heading),
+                Some(&gettext(
+                    "Cada pacote será instalado em sua própria transação, autorizada pelo polkit.",
+                )),
+            );
+            dialog.add_responses(&[
+                ("cancel", &gettext("Cancelar")),
+                ("confirm", &gettext("Instalar")),
+            ]);
+            dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
+            dialog.set_default_response(Some("cancel"));
+            dialog.set_close_response("cancel");
+            if !confirm_dialog(&dialog, "confirm").await {
+                return;
+            }
+
+            page.set_queue_actions_sensitive(false);
+            let mut events = match client.subscribe().await {
+                Ok(events) => events,
+                Err(error) => {
+                    page.finish_transaction(false, &error.to_string());
+                    page.set_queue_actions_sensitive(true);
+                    return;
+                }
+            };
+
+            let total = queue.len();
+            let mut failures = Vec::new();
+            for (index, package) in queue.iter().enumerate() {
+                page.begin_transaction(
+                    &gettext("Instalando {name} ({current}/{total})…")
+                        .replace("{name}", &package.name)
+                        .replace("{current}", &(index + 1).to_string())
+                        .replace("{total}", &total.to_string()),
+                );
+                let transaction_id = match client.install(&package.origin, &package.id).await {
+                    Ok(id) => id,
+                    Err(error) => {
+                        failures.push(format!("{}: {}", package.name, error));
+                        continue;
+                    }
+                };
+                loop {
+                    match events.next().await {
+                        Ok(SoftwareEvent::Progress(progress))
+                            if progress.transaction_id == transaction_id =>
+                        {
+                            page.update_transaction(progress.percent, &progress.message);
+                        }
+                        Ok(SoftwareEvent::PackageProgress(progress))
+                            if progress.transaction_id == transaction_id =>
+                        {
+                            page.show_package_progress(
+                                &progress.package,
+                                &progress.phase,
+                                progress.percent,
+                            );
+                        }
+                        Ok(SoftwareEvent::Finished(finished))
+                            if finished.transaction_id == transaction_id =>
+                        {
+                            if !finished.success {
+                                failures.push(format!("{}: {}", package.name, finished.message));
+                            }
+                            break;
+                        }
+                        Ok(_) => {}
+                        Err(error) => {
+                            failures.push(format!("{}: {}", package.name, error));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            page.clear_install_queue();
+            let success = failures.is_empty();
+            let message = if success {
+                gettext("{count} pacote(s) instalado(s) com sucesso")
+                    .replace("{count}", &total.to_string())
+            } else {
+                gettext("Falha ao instalar {failed} de {total} pacote(s): {details}")
+                    .replace("{failed}", &failures.len().to_string())
+                    .replace("{total}", &total.to_string())
+                    .replace("{details}", &failures.join("; "))
+            };
+            page.finish_transaction(success, &message);
+            refresh_current_software_page(&page, &client, &dashboard_updates).await;
+            page.set_queue_actions_sensitive(true);
         });
     });
 }

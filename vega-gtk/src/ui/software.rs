@@ -12,6 +12,7 @@ use lyra_vega_dbus::{PackageRef, RepositoryRef};
 type SelectionHandlers = Rc<RefCell<Vec<Rc<dyn Fn()>>>>;
 type RepositoryToggleHandlers = Rc<RefCell<Vec<Rc<dyn Fn(RepositoryRef)>>>>;
 type AddRepoHandlers = Rc<RefCell<Vec<Rc<dyn Fn(String, String)>>>>;
+type UpdatePackageHandlers = Rc<RefCell<Vec<Rc<dyn Fn(PackageRef)>>>>;
 
 #[derive(Clone, Debug)]
 struct PackageGroup {
@@ -58,6 +59,11 @@ pub struct SoftwarePage {
     selection_handlers: SelectionHandlers,
     repository_toggle_handlers: RepositoryToggleHandlers,
     add_repo_handlers: AddRepoHandlers,
+    update_handlers: UpdatePackageHandlers,
+    update_buttons: Rc<RefCell<Vec<gtk::Button>>>,
+    install_queue: Rc<RefCell<Vec<PackageRef>>>,
+    install_queue_toggles: Rc<RefCell<Vec<gtk::ToggleButton>>>,
+    pub install_queue_button: gtk::Button,
 }
 
 impl SoftwarePage {
@@ -93,6 +99,11 @@ impl SoftwarePage {
             .halign(gtk::Align::End)
             .hexpand(true)
             .build();
+        let install_queue_button = gtk::Button::builder()
+            .label(gettext("Instalar"))
+            .css_classes(["suggested-action"])
+            .visible(false)
+            .build();
         let list_view = gtk::ToggleButton::builder()
             .icon_name("view-list-symbolic")
             .tooltip_text(gettext("Visualização em lista"))
@@ -108,6 +119,7 @@ impl SoftwarePage {
         tabs.append(&list_view);
         tabs.append(&card_view);
         tabs.append(&global_action);
+        tabs.append(&install_queue_button);
         let transaction_label = gtk::Label::builder()
             .label(gettext("Preparando transação…"))
             .xalign(0.0)
@@ -318,6 +330,7 @@ impl SoftwarePage {
         });
 
         let add_repo_handlers: AddRepoHandlers = Rc::new(RefCell::new(Vec::new()));
+        let update_handlers: UpdatePackageHandlers = Rc::new(RefCell::new(Vec::new()));
         let sensitivity_button = add_repo_button.clone();
         let sensitivity_url = add_repo_url.clone();
         add_repo_name.connect_changed(move |entry| {
@@ -378,6 +391,11 @@ impl SoftwarePage {
             selection_handlers,
             repository_toggle_handlers,
             add_repo_handlers,
+            update_handlers,
+            update_buttons: Rc::new(RefCell::new(Vec::new())),
+            install_queue: Rc::new(RefCell::new(Vec::new())),
+            install_queue_toggles: Rc::new(RefCell::new(Vec::new())),
+            install_queue_button,
         }
     }
 
@@ -446,6 +464,23 @@ impl SoftwarePage {
             self.package_progress_bars
                 .borrow_mut()
                 .insert(package.name.clone(), progress);
+            if group_by_repository {
+                let button =
+                    update_button(group_index, &self.package_groups, &self.update_handlers);
+                self.update_buttons.borrow_mut().push(button.clone());
+                row.add_suffix(&button);
+            } else if !package.installed {
+                let queued = self.is_queued(package);
+                let toggle = install_queue_toggle(
+                    group_index,
+                    &self.package_groups,
+                    &self.install_queue,
+                    &self.install_queue_button,
+                    queued,
+                );
+                self.install_queue_toggles.borrow_mut().push(toggle.clone());
+                row.add_suffix(&toggle);
+            }
             self.results.append(&row);
 
             let card = gtk::Box::new(gtk::Orientation::Vertical, 10);
@@ -479,6 +514,23 @@ impl SoftwarePage {
                 &self.selected_group,
                 &self.selection_handlers,
             ));
+            if group_by_repository {
+                let button =
+                    update_button(group_index, &self.package_groups, &self.update_handlers);
+                self.update_buttons.borrow_mut().push(button.clone());
+                card.append(&button);
+            } else if !package.installed {
+                let queued = self.is_queued(package);
+                let toggle = install_queue_toggle(
+                    group_index,
+                    &self.package_groups,
+                    &self.install_queue,
+                    &self.install_queue_button,
+                    queued,
+                );
+                self.install_queue_toggles.borrow_mut().push(toggle.clone());
+                card.append(&toggle);
+            }
             self.cards.insert(&card, -1);
         }
 
@@ -638,6 +690,10 @@ impl SoftwarePage {
         self.global_action.set_label(&gettext("Limpar cache"));
         self.status
             .set_label(&gettext("Digite ao menos dois caracteres para buscar"));
+        update_install_queue_button(
+            &self.install_queue_button,
+            self.install_queue.borrow().len(),
+        );
     }
 
     pub fn select_installed(&self) {
@@ -646,6 +702,7 @@ impl SoftwarePage {
         self.results_area.set_visible(true);
         self.repository_panel.set_visible(false);
         self.global_action.set_visible(false);
+        self.install_queue_button.set_visible(false);
         self.status
             .set_label(&gettext("Carregando pacotes instalados…"));
     }
@@ -657,6 +714,7 @@ impl SoftwarePage {
         self.repository_panel.set_visible(false);
         self.global_action.set_visible(true);
         self.global_action.set_label(&gettext("Atualizar tudo"));
+        self.install_queue_button.set_visible(false);
         self.status.set_label(&gettext("Verificando atualizações…"));
     }
 
@@ -666,6 +724,7 @@ impl SoftwarePage {
         self.results_area.set_visible(false);
         self.repository_panel.set_visible(true);
         self.global_action.set_visible(false);
+        self.install_queue_button.set_visible(false);
     }
 
     pub fn show_repositories(&self, repositories: &[RepositoryRef]) {
@@ -715,6 +774,57 @@ impl SoftwarePage {
         self.add_repo_handlers.borrow_mut().push(Rc::new(callback));
     }
 
+    /// callback receives the package a per-row "Atualizar" button (Updates
+    /// tab only — see show_results' group_by_repository branch) was clicked
+    /// for, already resolved to whichever origin pill is selected.
+    pub fn connect_update_package(&self, callback: impl Fn(PackageRef) + 'static) {
+        self.update_handlers.borrow_mut().push(Rc::new(callback));
+    }
+
+    /// Disables every per-row "Atualizar" button and "Atualizar tudo" while
+    /// one such transaction is running — zypper can't run two transactions
+    /// at once (see zypperGroupedUpdates' concurrency note on the Go side).
+    pub fn set_update_actions_sensitive(&self, sensitive: bool) {
+        self.global_action.set_sensitive(sensitive);
+        for button in self.update_buttons.borrow().iter() {
+            button.set_sensitive(sensitive);
+        }
+    }
+
+    fn is_queued(&self, package: &PackageRef) -> bool {
+        self.install_queue
+            .borrow()
+            .iter()
+            .any(|queued| queued.origin == package.origin && queued.id == package.id)
+    }
+
+    /// Snapshot of the packages queued via the per-row "add to install
+    /// queue" toggle (Search tab only) — read by the top "Instalar" button's
+    /// click handler to run the batch install.
+    pub fn install_queue(&self) -> Vec<PackageRef> {
+        self.install_queue.borrow().clone()
+    }
+
+    /// Empties the install queue and resets every toggle button still on
+    /// screen back to its unqueued state — called once a batch install
+    /// finishes (whether or not every package in it actually succeeded).
+    pub fn clear_install_queue(&self) {
+        self.install_queue.borrow_mut().clear();
+        for toggle in self.install_queue_toggles.borrow().iter() {
+            toggle.set_active(false);
+        }
+        update_install_queue_button(&self.install_queue_button, 0);
+    }
+
+    /// Disables the top "Instalar" button and every per-row queue toggle
+    /// while a batch install is running.
+    pub fn set_queue_actions_sensitive(&self, sensitive: bool) {
+        self.install_queue_button.set_sensitive(sensitive);
+        for toggle in self.install_queue_toggles.borrow().iter() {
+            toggle.set_sensitive(sensitive);
+        }
+    }
+
     /// Clears the "Novo repositório" form — called after AddRepo starts (a
     /// successful transaction shouldn't leave stale text behind, and a
     /// failed one is cheap enough for the user to just retype).
@@ -733,6 +843,8 @@ impl SoftwarePage {
         }
         self.package_groups.borrow_mut().clear();
         self.package_progress_bars.borrow_mut().clear();
+        self.update_buttons.borrow_mut().clear();
+        self.install_queue_toggles.borrow_mut().clear();
         self.selected_group.set(None);
         self.action.set_sensitive(false);
         if self.detail_dialog.parent().is_some() {
@@ -839,6 +951,103 @@ fn origin_pills(
         origins.append(&button);
     }
     origins
+}
+
+/// Builds the per-row/card "Atualizar" button shown for the Updates tab
+/// (show_results' group_by_repository branch). Resolves the package to
+/// update from package_groups at click time — not a captured clone — so a
+/// pill switch after the row is built still updates whichever origin is
+/// selected then.
+fn update_button(
+    group_index: usize,
+    package_groups: &Rc<RefCell<Vec<PackageGroup>>>,
+    handlers: &UpdatePackageHandlers,
+) -> gtk::Button {
+    let button = gtk::Button::builder()
+        .label(gettext("Atualizar"))
+        .valign(gtk::Align::Center)
+        .css_classes(["suggested-action"])
+        .build();
+    let package_groups = package_groups.clone();
+    let handlers = handlers.clone();
+    button.connect_clicked(move |_| {
+        let package = package_groups
+            .borrow()
+            .get(group_index)
+            .and_then(PackageGroup::selected)
+            .cloned();
+        let Some(package) = package else {
+            return;
+        };
+        for handler in handlers.borrow().iter() {
+            handler(package.clone());
+        }
+    });
+    button
+}
+
+/// Builds the per-row/card "add to install queue" toggle shown for
+/// not-yet-installed Search results (show_results' non-group_by_repository,
+/// non-installed branch) — lets the user queue several packages across
+/// different searches before installing them all at once via the top
+/// "Instalar" button.
+fn install_queue_toggle(
+    group_index: usize,
+    package_groups: &Rc<RefCell<Vec<PackageGroup>>>,
+    queue: &Rc<RefCell<Vec<PackageRef>>>,
+    queue_button: &gtk::Button,
+    initially_queued: bool,
+) -> gtk::ToggleButton {
+    let toggle = gtk::ToggleButton::builder()
+        .icon_name(if initially_queued {
+            "object-select-symbolic"
+        } else {
+            "list-add-symbolic"
+        })
+        .tooltip_text(gettext("Adicionar à fila de instalação"))
+        .valign(gtk::Align::Center)
+        .css_classes(["flat"])
+        .active(initially_queued)
+        .build();
+    let package_groups = package_groups.clone();
+    let queue = queue.clone();
+    let queue_button = queue_button.clone();
+    toggle.connect_toggled(move |button| {
+        let package = package_groups
+            .borrow()
+            .get(group_index)
+            .and_then(PackageGroup::selected)
+            .cloned();
+        let Some(package) = package else {
+            return;
+        };
+        button.set_icon_name(if button.is_active() {
+            "object-select-symbolic"
+        } else {
+            "list-add-symbolic"
+        });
+        let mut queue = queue.borrow_mut();
+        if button.is_active() {
+            if !queue
+                .iter()
+                .any(|queued| queued.origin == package.origin && queued.id == package.id)
+            {
+                queue.push(package);
+            }
+        } else {
+            queue.retain(|queued| !(queued.origin == package.origin && queued.id == package.id));
+        }
+        update_install_queue_button(&queue_button, queue.len());
+    });
+    toggle
+}
+
+/// Refreshes the top "Instalar" button's label/visibility to match how many
+/// packages are currently queued — hidden entirely at zero, matching the
+/// rest of the tab-scoped top-bar actions (e.g. global_action).
+fn update_install_queue_button(button: &gtk::Button, count: usize) {
+    button.set_visible(count > 0);
+    button.set_label(&gettext("Instalar ({count})").replace("{count}", &count.to_string()));
 }
 
 fn tab_button(label: &str) -> gtk::ToggleButton {
