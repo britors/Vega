@@ -45,6 +45,7 @@ pub struct MenuPage {
     pub show_applications_menu: gtk::Switch,
     pub show_places_menu: gtk::Switch,
     pub show_system_menu: gtk::Switch,
+    pub show_search_menu: gtk::Switch,
     pub hide_workspace_button: gtk::Switch,
     pub panel_menu_position: gtk::DropDown,
     pub show_application_icons: gtk::Switch,
@@ -68,6 +69,7 @@ impl MenuPage {
         let show_applications_menu = switch();
         let show_places_menu = switch();
         let show_system_menu = switch();
+        let show_search_menu = switch();
         let hide_workspace_button = switch();
         let panel_menu_position =
             id_dropdown(PANEL_MENU_POSITIONS, panel_menu_position_label, "left");
@@ -86,6 +88,7 @@ impl MenuPage {
         ));
         panel_group.add(&property_row(&gettext("Menu Locais"), &show_places_menu));
         panel_group.add(&property_row(&gettext("Menu Sistema"), &show_system_menu));
+        panel_group.add(&property_row(&gettext("Menu Busca"), &show_search_menu));
         panel_group.add(&property_row(
             &gettext("Ocultar botão de áreas de trabalho"),
             &hide_workspace_button,
@@ -136,6 +139,7 @@ impl MenuPage {
             show_applications_menu,
             show_places_menu,
             show_system_menu,
+            show_search_menu,
             hide_workspace_button,
             panel_menu_position,
             show_application_icons,
@@ -178,6 +182,9 @@ impl MenuPage {
         self.show_system_menu
             .connect_active_notify(move |_| page.emit_changed());
         let page = self.clone();
+        self.show_search_menu
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
         self.hide_workspace_button
             .connect_active_notify(move |_| page.emit_changed());
         let page = self.clone();
@@ -206,6 +213,7 @@ impl MenuPage {
             .set_active(settings.show_applications_menu);
         self.show_places_menu.set_active(settings.show_places_menu);
         self.show_system_menu.set_active(settings.show_system_menu);
+        self.show_search_menu.set_active(settings.show_search_menu);
         self.hide_workspace_button
             .set_active(settings.hide_workspace_button);
         self.panel_menu_position.set_selected(
@@ -234,6 +242,7 @@ impl MenuPage {
             show_applications_menu: self.show_applications_menu.is_active(),
             show_places_menu: self.show_places_menu.is_active(),
             show_system_menu: self.show_system_menu.is_active(),
+            show_search_menu: self.show_search_menu.is_active(),
             hide_workspace_button: self.hide_workspace_button.is_active(),
             panel_menu_position: dropdown_selected(&self.panel_menu_position, PANEL_MENU_POSITIONS)
                 .to_string(),

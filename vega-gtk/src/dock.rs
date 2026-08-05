@@ -32,6 +32,7 @@ pub struct MenuSettings {
     pub show_applications_menu: bool,
     pub show_places_menu: bool,
     pub show_system_menu: bool,
+    pub show_search_menu: bool,
     pub hide_workspace_button: bool,
     pub panel_menu_position: String,
     pub show_application_icons: bool,
@@ -155,6 +156,7 @@ pub fn current_menu() -> Option<MenuSettings> {
         show_applications_menu: boolean_or(&settings, "show-applications-menu", true),
         show_places_menu: boolean_or(&settings, "show-places-menu", true),
         show_system_menu: boolean_or(&settings, "show-system-menu", true),
+        show_search_menu: boolean_or(&settings, "show-search-menu", true),
         hide_workspace_button: boolean_or(&settings, "hide-workspace-button", true),
         panel_menu_position: string_or(&settings, "panel-menu-position", "left"),
         show_application_icons: boolean_or(&settings, "show-application-icons", true),
@@ -209,6 +211,7 @@ pub fn apply_menu(settings: &MenuSettings) -> Result<(), DockError> {
     );
     set_boolean_if_present(&gsettings, "show-places-menu", settings.show_places_menu);
     set_boolean_if_present(&gsettings, "show-system-menu", settings.show_system_menu);
+    set_boolean_if_present(&gsettings, "show-search-menu", settings.show_search_menu);
     set_boolean_if_present(
         &gsettings,
         "hide-workspace-button",
