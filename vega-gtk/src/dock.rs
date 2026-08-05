@@ -131,7 +131,7 @@ pub fn current() -> Option<DockSettings> {
         icon_size: settings.uint("icon-size"),
         edge_margin: settings.uint("edge-margin"),
         animation: settings.boolean("animation"),
-        minimize_animation: string_or(&settings, "minimize-animation", "magic-lamp"),
+        minimize_animation: string_or(&settings, "minimize-animation", "zoom"),
         extend_to_edges: settings.boolean("extend-to-edges"),
         content_alignment: settings.string("content-alignment").to_string(),
         show_running: settings.boolean("show-running"),

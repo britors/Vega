@@ -12,7 +12,7 @@ type ChangeHandler = Rc<dyn Fn(DockSettings)>;
 
 const POSITIONS: &[&str] = &["bottom", "top", "left", "right"];
 const HIDE_MODES: &[&str] = &["intelligent", "autohide", "always"];
-const MINIMIZE_ANIMATIONS: &[&str] = &["magic-lamp", "zoom", "fade", "none"];
+const MINIMIZE_ANIMATIONS: &[&str] = &["zoom", "fade", "none"];
 const CONTENT_ALIGNMENTS: &[&str] = &["start", "center", "end"];
 const RUNNING_APPS_POSITIONS: &[&str] = &["start", "end"];
 const PANEL_MENU_POSITIONS: &[&str] = &["left", "center", "right"];
@@ -36,10 +36,9 @@ fn hide_mode_label(id: &str) -> String {
 
 fn minimize_animation_label(id: &str) -> String {
     match id {
-        "zoom" => gettext("Zoom ao ícone"),
         "fade" => gettext("Desvanecer"),
         "none" => gettext("Sem animação"),
-        _ => gettext("Lâmpada mágica"),
+        _ => gettext("Zoom ao ícone"),
     }
 }
 
@@ -130,8 +129,7 @@ impl DockPage {
         let edge_margin = gtk::SpinButton::with_range(0.0, 48.0, 1.0);
         let hide_delay = gtk::SpinButton::with_range(100.0, 3000.0, 100.0);
         let animation = switch();
-        let minimize_animation =
-            id_dropdown(MINIMIZE_ANIMATIONS, minimize_animation_label, "magic-lamp");
+        let minimize_animation = id_dropdown(MINIMIZE_ANIMATIONS, minimize_animation_label, "zoom");
         let extend_to_edges = switch();
         let content_alignment = id_dropdown(CONTENT_ALIGNMENTS, content_alignment_label, "center");
         let show_running = switch();
