@@ -23,8 +23,15 @@ pub struct DockSettings {
     pub show_trash: bool,
     pub show_apps_button: bool,
     pub fullscreen_hide: bool,
+}
+
+/// Menus da barra superior (Aplicativos/Locais) e seu conteúdo — mesma
+/// extensão Sheliak do dock, mas editados na aba "Menu" da Personalização.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MenuSettings {
     pub show_applications_menu: bool,
     pub show_places_menu: bool,
+    pub show_system_menu: bool,
     pub hide_workspace_button: bool,
     pub panel_menu_position: String,
     pub show_application_icons: bool,
@@ -139,8 +146,15 @@ pub fn current() -> Option<DockSettings> {
         show_trash: settings.boolean("show-trash"),
         show_apps_button: settings.boolean("show-apps-button"),
         fullscreen_hide: settings.boolean("fullscreen-hide"),
+    })
+}
+
+pub fn current_menu() -> Option<MenuSettings> {
+    let settings = open_settings()?;
+    Some(MenuSettings {
         show_applications_menu: boolean_or(&settings, "show-applications-menu", true),
         show_places_menu: boolean_or(&settings, "show-places-menu", true),
+        show_system_menu: boolean_or(&settings, "show-system-menu", true),
         hide_workspace_button: boolean_or(&settings, "hide-workspace-button", true),
         panel_menu_position: string_or(&settings, "panel-menu-position", "left"),
         show_application_icons: boolean_or(&settings, "show-application-icons", true),
@@ -179,12 +193,22 @@ pub fn apply(settings: &DockSettings) -> Result<(), DockError> {
     let _ = gsettings.set_boolean("show-trash", settings.show_trash);
     let _ = gsettings.set_boolean("show-apps-button", settings.show_apps_button);
     let _ = gsettings.set_boolean("fullscreen-hide", settings.fullscreen_hide);
+    Ok(())
+}
+
+pub fn apply_menu(settings: &MenuSettings) -> Result<(), DockError> {
+    let gsettings = open_settings().ok_or_else(|| {
+        DockError(gettext(
+            "A extensão Sheliak não está instalada ou não pôde ser encontrada.",
+        ))
+    })?;
     set_boolean_if_present(
         &gsettings,
         "show-applications-menu",
         settings.show_applications_menu,
     );
     set_boolean_if_present(&gsettings, "show-places-menu", settings.show_places_menu);
+    set_boolean_if_present(&gsettings, "show-system-menu", settings.show_system_menu);
     set_boolean_if_present(
         &gsettings,
         "hide-workspace-button",
