@@ -12,8 +12,10 @@ type ChangeHandler = Rc<dyn Fn(DockSettings)>;
 
 const POSITIONS: &[&str] = &["bottom", "top", "left", "right"];
 const HIDE_MODES: &[&str] = &["intelligent", "autohide", "always"];
+const MINIMIZE_ANIMATIONS: &[&str] = &["magic-lamp", "zoom", "fade", "none"];
 const CONTENT_ALIGNMENTS: &[&str] = &["start", "center", "end"];
 const RUNNING_APPS_POSITIONS: &[&str] = &["start", "end"];
+const PANEL_MENU_POSITIONS: &[&str] = &["left", "center", "right"];
 
 fn position_label(id: &str) -> String {
     match id {
@@ -32,6 +34,15 @@ fn hide_mode_label(id: &str) -> String {
     }
 }
 
+fn minimize_animation_label(id: &str) -> String {
+    match id {
+        "zoom" => gettext("Zoom ao ícone"),
+        "fade" => gettext("Desvanecer"),
+        "none" => gettext("Sem animação"),
+        _ => gettext("Lâmpada mágica"),
+    }
+}
+
 fn content_alignment_label(id: &str) -> String {
     match id {
         "start" => gettext("Início"),
@@ -44,6 +55,14 @@ fn running_apps_position_label(id: &str) -> String {
     match id {
         "start" => gettext("Início"),
         _ => gettext("Fim"),
+    }
+}
+
+fn panel_menu_position_label(id: &str) -> String {
+    match id {
+        "center" => gettext("Centro"),
+        "right" => gettext("Direita"),
+        _ => gettext("Esquerda"),
     }
 }
 
@@ -75,6 +94,7 @@ pub struct DockPage {
     pub edge_margin: gtk::SpinButton,
     pub hide_delay: gtk::SpinButton,
     pub animation: gtk::Switch,
+    pub minimize_animation: gtk::DropDown,
     pub extend_to_edges: gtk::Switch,
     pub content_alignment: gtk::DropDown,
     pub show_running: gtk::Switch,
@@ -82,6 +102,15 @@ pub struct DockPage {
     pub show_trash: gtk::Switch,
     pub show_apps_button: gtk::Switch,
     pub fullscreen_hide: gtk::Switch,
+    pub show_applications_menu: gtk::Switch,
+    pub show_places_menu: gtk::Switch,
+    pub hide_workspace_button: gtk::Switch,
+    pub panel_menu_position: gtk::DropDown,
+    pub show_application_icons: gtk::Switch,
+    pub sort_applications_menu: gtk::Switch,
+    pub open_application_submenus_sideways: gtk::Switch,
+    pub show_place_bookmarks: gtk::Switch,
+    pub show_place_volumes: gtk::Switch,
     suppress: Rc<Cell<bool>>,
     change_handlers: Rc<RefCell<Vec<ChangeHandler>>>,
 }
@@ -101,6 +130,8 @@ impl DockPage {
         let edge_margin = gtk::SpinButton::with_range(0.0, 48.0, 1.0);
         let hide_delay = gtk::SpinButton::with_range(100.0, 3000.0, 100.0);
         let animation = switch();
+        let minimize_animation =
+            id_dropdown(MINIMIZE_ANIMATIONS, minimize_animation_label, "magic-lamp");
         let extend_to_edges = switch();
         let content_alignment = id_dropdown(CONTENT_ALIGNMENTS, content_alignment_label, "center");
         let show_running = switch();
@@ -109,6 +140,16 @@ impl DockPage {
         let show_trash = switch();
         let show_apps_button = switch();
         let fullscreen_hide = switch();
+        let show_applications_menu = switch();
+        let show_places_menu = switch();
+        let hide_workspace_button = switch();
+        let panel_menu_position =
+            id_dropdown(PANEL_MENU_POSITIONS, panel_menu_position_label, "left");
+        let show_application_icons = switch();
+        let sort_applications_menu = switch();
+        let open_application_submenus_sideways = switch();
+        let show_place_bookmarks = switch();
+        let show_place_volumes = switch();
 
         let appearance_group = adw::PreferencesGroup::builder()
             .title(gettext("Aparência"))
@@ -117,6 +158,10 @@ impl DockPage {
         appearance_group.add(&property_row(&gettext("Tamanho dos ícones"), &icon_size));
         appearance_group.add(&property_row(&gettext("Margem da borda"), &edge_margin));
         appearance_group.add(&property_row(&gettext("Animações"), &animation));
+        appearance_group.add(&property_row(
+            &gettext("Animação ao minimizar"),
+            &minimize_animation,
+        ));
         appearance_group.add(&property_row(
             &gettext("Estender até as bordas"),
             &extend_to_edges,
@@ -153,11 +198,54 @@ impl DockPage {
             &show_apps_button,
         ));
 
+        let panel_group = adw::PreferencesGroup::builder()
+            .title(gettext("Menus da barra superior"))
+            .build();
+        panel_group.add(&property_row(
+            &gettext("Menu Aplicativos"),
+            &show_applications_menu,
+        ));
+        panel_group.add(&property_row(&gettext("Menu Locais"), &show_places_menu));
+        panel_group.add(&property_row(
+            &gettext("Ocultar botão de áreas de trabalho"),
+            &hide_workspace_button,
+        ));
+        panel_group.add(&property_row(
+            &gettext("Posição na barra"),
+            &panel_menu_position,
+        ));
+
+        let panel_content_group = adw::PreferencesGroup::builder()
+            .title(gettext("Conteúdo dos menus"))
+            .build();
+        panel_content_group.add(&property_row(
+            &gettext("Ícones dos aplicativos"),
+            &show_application_icons,
+        ));
+        panel_content_group.add(&property_row(
+            &gettext("Ordem alfabética"),
+            &sort_applications_menu,
+        ));
+        panel_content_group.add(&property_row(
+            &gettext("Submenus laterais"),
+            &open_application_submenus_sideways,
+        ));
+        panel_content_group.add(&property_row(
+            &gettext("Marcadores em Locais"),
+            &show_place_bookmarks,
+        ));
+        panel_content_group.add(&property_row(
+            &gettext("Dispositivos em Locais"),
+            &show_place_volumes,
+        ));
+
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         content.append(&status);
         content.append(&appearance_group);
         content.append(&behavior_group);
         content.append(&content_group);
+        content.append(&panel_group);
+        content.append(&panel_content_group);
 
         let root = gtk::ScrolledWindow::builder()
             .child(&content)
@@ -174,6 +262,7 @@ impl DockPage {
             edge_margin,
             hide_delay,
             animation,
+            minimize_animation,
             extend_to_edges,
             content_alignment,
             show_running,
@@ -181,6 +270,15 @@ impl DockPage {
             show_trash,
             show_apps_button,
             fullscreen_hide,
+            show_applications_menu,
+            show_places_menu,
+            hide_workspace_button,
+            panel_menu_position,
+            show_application_icons,
+            sort_applications_menu,
+            open_application_submenus_sideways,
+            show_place_bookmarks,
+            show_place_volumes,
             suppress: Rc::new(Cell::new(false)),
             change_handlers: Rc::new(RefCell::new(Vec::new())),
         };
@@ -225,6 +323,9 @@ impl DockPage {
         self.animation
             .connect_active_notify(move |_| page.emit_changed());
         let page = self.clone();
+        self.minimize_animation
+            .connect_selected_notify(move |_| page.emit_changed());
+        let page = self.clone();
         self.extend_to_edges
             .connect_active_notify(move |_| page.emit_changed());
         let page = self.clone();
@@ -244,6 +345,33 @@ impl DockPage {
             .connect_active_notify(move |_| page.emit_changed());
         let page = self.clone();
         self.fullscreen_hide
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.show_applications_menu
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.show_places_menu
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.hide_workspace_button
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.panel_menu_position
+            .connect_selected_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.show_application_icons
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.sort_applications_menu
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.open_application_submenus_sideways
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.show_place_bookmarks
+            .connect_active_notify(move |_| page.emit_changed());
+        let page = self.clone();
+        self.show_place_volumes
             .connect_active_notify(move |_| page.emit_changed());
     }
 
@@ -265,6 +393,12 @@ impl DockPage {
         self.edge_margin.set_value(f64::from(settings.edge_margin));
         self.hide_delay.set_value(f64::from(settings.hide_delay_ms));
         self.animation.set_active(settings.animation);
+        self.minimize_animation.set_selected(
+            MINIMIZE_ANIMATIONS
+                .iter()
+                .position(|&id| id == settings.minimize_animation)
+                .unwrap_or(0) as u32,
+        );
         self.extend_to_edges.set_active(settings.extend_to_edges);
         self.content_alignment.set_selected(
             CONTENT_ALIGNMENTS
@@ -282,6 +416,27 @@ impl DockPage {
         self.show_trash.set_active(settings.show_trash);
         self.show_apps_button.set_active(settings.show_apps_button);
         self.fullscreen_hide.set_active(settings.fullscreen_hide);
+        self.show_applications_menu
+            .set_active(settings.show_applications_menu);
+        self.show_places_menu.set_active(settings.show_places_menu);
+        self.hide_workspace_button
+            .set_active(settings.hide_workspace_button);
+        self.panel_menu_position.set_selected(
+            PANEL_MENU_POSITIONS
+                .iter()
+                .position(|&id| id == settings.panel_menu_position)
+                .unwrap_or(0) as u32,
+        );
+        self.show_application_icons
+            .set_active(settings.show_application_icons);
+        self.sort_applications_menu
+            .set_active(settings.sort_applications_menu);
+        self.open_application_submenus_sideways
+            .set_active(settings.open_application_submenus_sideways);
+        self.show_place_bookmarks
+            .set_active(settings.show_place_bookmarks);
+        self.show_place_volumes
+            .set_active(settings.show_place_volumes);
         self.suppress.set(false);
         self.status
             .set_label(&gettext("Configuração atual carregada"));
@@ -295,6 +450,8 @@ impl DockPage {
             icon_size: self.icon_size.value_as_int().max(0) as u32,
             edge_margin: self.edge_margin.value_as_int().max(0) as u32,
             animation: self.animation.is_active(),
+            minimize_animation: dropdown_selected(&self.minimize_animation, MINIMIZE_ANIMATIONS)
+                .to_string(),
             extend_to_edges: self.extend_to_edges.is_active(),
             content_alignment: dropdown_selected(&self.content_alignment, CONTENT_ALIGNMENTS)
                 .to_string(),
@@ -307,6 +464,16 @@ impl DockPage {
             show_trash: self.show_trash.is_active(),
             show_apps_button: self.show_apps_button.is_active(),
             fullscreen_hide: self.fullscreen_hide.is_active(),
+            show_applications_menu: self.show_applications_menu.is_active(),
+            show_places_menu: self.show_places_menu.is_active(),
+            hide_workspace_button: self.hide_workspace_button.is_active(),
+            panel_menu_position: dropdown_selected(&self.panel_menu_position, PANEL_MENU_POSITIONS)
+                .to_string(),
+            show_application_icons: self.show_application_icons.is_active(),
+            sort_applications_menu: self.sort_applications_menu.is_active(),
+            open_application_submenus_sideways: self.open_application_submenus_sideways.is_active(),
+            show_place_bookmarks: self.show_place_bookmarks.is_active(),
+            show_place_volumes: self.show_place_volumes.is_active(),
         }
     }
 }

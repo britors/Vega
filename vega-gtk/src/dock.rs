@@ -15,6 +15,7 @@ pub struct DockSettings {
     pub icon_size: u32,
     pub edge_margin: u32,
     pub animation: bool,
+    pub minimize_animation: String,
     pub extend_to_edges: bool,
     pub content_alignment: String,
     pub show_running: bool,
@@ -22,6 +23,15 @@ pub struct DockSettings {
     pub show_trash: bool,
     pub show_apps_button: bool,
     pub fullscreen_hide: bool,
+    pub show_applications_menu: bool,
+    pub show_places_menu: bool,
+    pub hide_workspace_button: bool,
+    pub panel_menu_position: String,
+    pub show_application_icons: bool,
+    pub sort_applications_menu: bool,
+    pub open_application_submenus_sideways: bool,
+    pub show_place_bookmarks: bool,
+    pub show_place_volumes: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -78,6 +88,40 @@ fn open_settings() -> Option<gio::Settings> {
     ))
 }
 
+fn has_key(settings: &gio::Settings, key: &str) -> bool {
+    settings
+        .settings_schema()
+        .is_some_and(|schema| schema.has_key(key))
+}
+
+fn string_or(settings: &gio::Settings, key: &str, fallback: &str) -> String {
+    if has_key(settings, key) {
+        settings.string(key).to_string()
+    } else {
+        fallback.to_string()
+    }
+}
+
+fn boolean_or(settings: &gio::Settings, key: &str, fallback: bool) -> bool {
+    if has_key(settings, key) {
+        settings.boolean(key)
+    } else {
+        fallback
+    }
+}
+
+fn set_string_if_present(settings: &gio::Settings, key: &str, value: &str) {
+    if has_key(settings, key) {
+        let _ = settings.set_string(key, value);
+    }
+}
+
+fn set_boolean_if_present(settings: &gio::Settings, key: &str, value: bool) {
+    if has_key(settings, key) {
+        let _ = settings.set_boolean(key, value);
+    }
+}
+
 pub fn current() -> Option<DockSettings> {
     let settings = open_settings()?;
     Some(DockSettings {
@@ -87,6 +131,7 @@ pub fn current() -> Option<DockSettings> {
         icon_size: settings.uint("icon-size"),
         edge_margin: settings.uint("edge-margin"),
         animation: settings.boolean("animation"),
+        minimize_animation: string_or(&settings, "minimize-animation", "magic-lamp"),
         extend_to_edges: settings.boolean("extend-to-edges"),
         content_alignment: settings.string("content-alignment").to_string(),
         show_running: settings.boolean("show-running"),
@@ -94,6 +139,19 @@ pub fn current() -> Option<DockSettings> {
         show_trash: settings.boolean("show-trash"),
         show_apps_button: settings.boolean("show-apps-button"),
         fullscreen_hide: settings.boolean("fullscreen-hide"),
+        show_applications_menu: boolean_or(&settings, "show-applications-menu", true),
+        show_places_menu: boolean_or(&settings, "show-places-menu", true),
+        hide_workspace_button: boolean_or(&settings, "hide-workspace-button", true),
+        panel_menu_position: string_or(&settings, "panel-menu-position", "left"),
+        show_application_icons: boolean_or(&settings, "show-application-icons", true),
+        sort_applications_menu: boolean_or(&settings, "sort-applications-menu", true),
+        open_application_submenus_sideways: boolean_or(
+            &settings,
+            "open-application-submenus-sideways",
+            true,
+        ),
+        show_place_bookmarks: boolean_or(&settings, "show-place-bookmarks", true),
+        show_place_volumes: boolean_or(&settings, "show-place-volumes", true),
     })
 }
 
@@ -109,6 +167,11 @@ pub fn apply(settings: &DockSettings) -> Result<(), DockError> {
     let _ = gsettings.set_uint("icon-size", settings.icon_size);
     let _ = gsettings.set_uint("edge-margin", settings.edge_margin);
     let _ = gsettings.set_boolean("animation", settings.animation);
+    set_string_if_present(
+        &gsettings,
+        "minimize-animation",
+        &settings.minimize_animation,
+    );
     let _ = gsettings.set_boolean("extend-to-edges", settings.extend_to_edges);
     let _ = gsettings.set_string("content-alignment", &settings.content_alignment);
     let _ = gsettings.set_boolean("show-running", settings.show_running);
@@ -116,5 +179,46 @@ pub fn apply(settings: &DockSettings) -> Result<(), DockError> {
     let _ = gsettings.set_boolean("show-trash", settings.show_trash);
     let _ = gsettings.set_boolean("show-apps-button", settings.show_apps_button);
     let _ = gsettings.set_boolean("fullscreen-hide", settings.fullscreen_hide);
+    set_boolean_if_present(
+        &gsettings,
+        "show-applications-menu",
+        settings.show_applications_menu,
+    );
+    set_boolean_if_present(&gsettings, "show-places-menu", settings.show_places_menu);
+    set_boolean_if_present(
+        &gsettings,
+        "hide-workspace-button",
+        settings.hide_workspace_button,
+    );
+    set_string_if_present(
+        &gsettings,
+        "panel-menu-position",
+        &settings.panel_menu_position,
+    );
+    set_boolean_if_present(
+        &gsettings,
+        "show-application-icons",
+        settings.show_application_icons,
+    );
+    set_boolean_if_present(
+        &gsettings,
+        "sort-applications-menu",
+        settings.sort_applications_menu,
+    );
+    set_boolean_if_present(
+        &gsettings,
+        "open-application-submenus-sideways",
+        settings.open_application_submenus_sideways,
+    );
+    set_boolean_if_present(
+        &gsettings,
+        "show-place-bookmarks",
+        settings.show_place_bookmarks,
+    );
+    set_boolean_if_present(
+        &gsettings,
+        "show-place-volumes",
+        settings.show_place_volumes,
+    );
     Ok(())
 }
