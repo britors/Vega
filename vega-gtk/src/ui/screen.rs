@@ -1,18 +1,17 @@
 use adw::prelude::*;
 use gettextrs::gettext;
 
-use super::{DockPage, MenuPage, ScreensaverPage, TopBarPage, WallpaperPage};
+use super::{DockPage, MenuPage, ScreensaverPage, WallpaperPage};
 use crate::appearance::{AccentColor, Theme};
 
 /// Reúne tudo relacionado a "tela": aparência, bloqueio de tela, papel de
-/// parede, o menu da barra superior e o dock do Sheliak (quando instalado) —
+/// parede, o menu e o dock do Sheliak (quando instalado) —
 /// uma única entrada de navegação com abas internas, como o módulo Software.
 #[derive(Clone)]
 pub struct ScreenPage {
     pub root: gtk::Widget,
     pub screensaver: ScreensaverPage,
     pub wallpaper: WallpaperPage,
-    pub topbar: TopBarPage,
     pub menu: MenuPage,
     pub dock: DockPage,
 }
@@ -21,7 +20,6 @@ impl ScreenPage {
     pub fn new() -> Self {
         let screensaver = ScreensaverPage::new();
         let wallpaper = WallpaperPage::new();
-        let topbar = TopBarPage::new();
         let menu = MenuPage::new();
         let dock = DockPage::new();
         let appearance = appearance_page();
@@ -29,20 +27,17 @@ impl ScreenPage {
         let appearance_tab = tab_button(&gettext("Aparência"));
         let wallpaper_tab = tab_button(&gettext("Papel de Parede"));
         let screensaver_tab = tab_button(&gettext("Proteção de Tela"));
-        let topbar_tab = tab_button(&gettext("Topbar"));
         let menu_tab = tab_button(&gettext("Menu"));
         let dock_tab = tab_button(&gettext("Dock"));
         appearance_tab.set_active(true);
         wallpaper_tab.set_group(Some(&appearance_tab));
         screensaver_tab.set_group(Some(&appearance_tab));
-        topbar_tab.set_group(Some(&appearance_tab));
         menu_tab.set_group(Some(&appearance_tab));
         dock_tab.set_group(Some(&appearance_tab));
-        // Topbar, Menu e Dock são partes da extensão Sheliak: as abas só aparecem
+        // Menu e Dock são partes da extensão Sheliak: as abas só aparecem
         // quando a extensão está instalada, seguindo o mesmo padrão de
         // disponibilidade condicional usado pelo resto do Vega (ex.:
         // schema_available()).
-        topbar_tab.set_visible(crate::dock::is_installed());
         menu_tab.set_visible(crate::dock::is_installed());
         dock_tab.set_visible(crate::dock::is_installed());
 
@@ -51,7 +46,6 @@ impl ScreenPage {
         tabs.append(&appearance_tab);
         tabs.append(&wallpaper_tab);
         tabs.append(&screensaver_tab);
-        tabs.append(&topbar_tab);
         tabs.append(&menu_tab);
         tabs.append(&dock_tab);
 
@@ -62,7 +56,6 @@ impl ScreenPage {
         stack.add_named(&appearance, Some("appearance"));
         stack.add_named(&wallpaper.root, Some("wallpaper"));
         stack.add_named(&screensaver.root, Some("screensaver"));
-        stack.add_named(&topbar.root, Some("topbar"));
         stack.add_named(&menu.root, Some("menu"));
         stack.add_named(&dock.root, Some("dock"));
         stack.set_visible_child_name("appearance");
@@ -83,12 +76,6 @@ impl ScreenPage {
         wallpaper_tab.connect_clicked(move |button| {
             if button.is_active() {
                 wallpaper_stack.set_visible_child_name("wallpaper");
-            }
-        });
-        let topbar_stack = stack.clone();
-        topbar_tab.connect_clicked(move |button| {
-            if button.is_active() {
-                topbar_stack.set_visible_child_name("topbar");
             }
         });
         let menu_stack = stack.clone();
@@ -127,7 +114,6 @@ impl ScreenPage {
             root: content.upcast(),
             screensaver,
             wallpaper,
-            topbar,
             menu,
             dock,
         }

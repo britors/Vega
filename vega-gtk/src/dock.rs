@@ -42,15 +42,6 @@ pub struct MenuSettings {
     pub show_place_volumes: bool,
 }
 
-/// Aparência e conteúdo nativo da barra superior do GNOME, controlados pela
-/// extensão Sheliak porque o Shell não expõe essas opções em GSettings.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TopBarSettings {
-    pub height: u32,
-    pub show_clock: bool,
-    pub show_indicators: bool,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DockError(String);
 
@@ -127,14 +118,6 @@ fn boolean_or(settings: &gio::Settings, key: &str, fallback: bool) -> bool {
     }
 }
 
-fn uint_or(settings: &gio::Settings, key: &str, fallback: u32) -> u32 {
-    if has_key(settings, key) {
-        settings.uint(key)
-    } else {
-        fallback
-    }
-}
-
 fn set_string_if_present(settings: &gio::Settings, key: &str, value: &str) {
     if has_key(settings, key) {
         let _ = settings.set_string(key, value);
@@ -185,26 +168,6 @@ pub fn current_menu() -> Option<MenuSettings> {
         ),
         show_place_bookmarks: boolean_or(&settings, "show-place-bookmarks", true),
         show_place_volumes: boolean_or(&settings, "show-place-volumes", true),
-    })
-}
-
-pub fn top_bar_supported() -> bool {
-    open_settings().is_some_and(|settings| {
-        ["panel-height", "show-clock", "show-panel-indicators"]
-            .iter()
-            .all(|key| has_key(&settings, key))
-    })
-}
-
-pub fn current_top_bar() -> Option<TopBarSettings> {
-    let settings = open_settings()?;
-    if !top_bar_supported() {
-        return None;
-    }
-    Some(TopBarSettings {
-        height: uint_or(&settings, "panel-height", 32),
-        show_clock: boolean_or(&settings, "show-clock", true),
-        show_indicators: boolean_or(&settings, "show-panel-indicators", true),
     })
 }
 
@@ -284,25 +247,5 @@ pub fn apply_menu(settings: &MenuSettings) -> Result<(), DockError> {
         "show-place-volumes",
         settings.show_place_volumes,
     );
-    Ok(())
-}
-
-pub fn apply_top_bar(settings: &TopBarSettings) -> Result<(), DockError> {
-    let gsettings = open_settings().ok_or_else(|| {
-        DockError(gettext(
-            "A extensão Sheliak não está instalada ou não pôde ser encontrada.",
-        ))
-    })?;
-    if !["panel-height", "show-clock", "show-panel-indicators"]
-        .iter()
-        .all(|key| has_key(&gsettings, key))
-    {
-        return Err(DockError(gettext(
-            "Atualize a extensão Sheliak para configurar a barra superior.",
-        )));
-    }
-    let _ = gsettings.set_uint("panel-height", settings.height);
-    let _ = gsettings.set_boolean("show-clock", settings.show_clock);
-    let _ = gsettings.set_boolean("show-panel-indicators", settings.show_indicators);
     Ok(())
 }
