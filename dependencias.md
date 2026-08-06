@@ -6,8 +6,9 @@ openSUSE Leap. As dependências abaixo são as necessárias nessa distro.
 
 ## openSUSE Leap
 
-Os RPMs são publicados em cada GitHub Release e também podem ser compilados
-localmente pelos specs em `packaging/opensuse/`. O backend Zypper/hardware NVIDIA
+Os RPMs são publicados manualmente no OBS e, quando necessário, em uma GitHub
+Release. Também podem ser compilados localmente pelos specs em
+`packaging/opensuse/`. O backend Zypper/hardware NVIDIA
 (`vegad/internal/distro/zypper.go`, `hardware_opensuse.go`) ainda não foi
 validado ponta a ponta num Leap real — trate os nomes de pacote abaixo como
 ponto de partida, não garantia.

@@ -24,17 +24,12 @@ echo "[6/7] Native-package guard"
 package_files=(
   "$repo_root/packaging/opensuse/vega.spec"
   "$repo_root/packaging/obs"/*.spec
-  "$repo_root/.github/workflows/release-opensuse.yml"
 )
 if grep -Ei '(electron|node_modules|npm (ci|install|run)|nodejs)' "${package_files[@]}"; then
   echo "Erro: referência ao runtime legado no pacote GTK" >&2
   exit 1
 fi
-# openSUSE usa o rust/cargo do próprio zypper direto, sem
-# dtolnay/rust-toolchain — já foi tentado (release v4.0.0) e quebrou com
-# `exec: "bash": executable file not found in $PATH` dentro do container
-# opensuse/leap, incompatibilidade real confirmada em CI, não teórica. Não
-# reintroduzir essa action no workflow do openSUSE.
+# O empacotamento openSUSE usa o rust/cargo fornecido pelo próprio zypper.
 
 echo "[7/7] Identidade GTK"
 grep -q 'vega-gtk' "$repo_root/vega-gtk/Cargo.toml"

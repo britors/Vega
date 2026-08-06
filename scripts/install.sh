@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Instalador de conveniência: baixa os pacotes RPM pré-compilados da release
-# mais recente do Vega (via .github/workflows/release-opensuse.yml) e
-# instala com zypper. Cobre só openSUSE Leap.
+# Instalador de conveniência: baixa os pacotes RPM publicados manualmente na
+# release mais recente do Vega e instala com zypper. Cobre só openSUSE Leap.
 #
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/britors/Vega/main/scripts/install.sh | sudo bash
@@ -55,7 +54,7 @@ download_release_assets() {
 
   if [ "${#urls[@]}" -eq 0 ]; then
     echo "Erro: nenhum asset '*${suffix}' encontrado na release '$release_tag'." >&2
-    echo "Confira se o workflow de release já rodou para essa tag:" >&2
+    echo "Confira se os RPMs foram publicados manualmente para essa tag:" >&2
     echo "  https://github.com/$REPO/releases" >&2
     exit 1
   fi

@@ -21,9 +21,8 @@
     <!-- Tag vem como "v4.0.17"; %{version} no .spec não deve levar o "v". -->
     <param name="versionrewrite-pattern">v(.*)</param>
     <param name="versionrewrite-replacement">\1</param>
-    <!-- Mesmos excludes do tar czf em .github/workflows/release-opensuse.yml
-         — sem histórico do git nem build artifacts do Rust no tarball de
-         fontes. -->
+    <!-- Sem histórico do git nem artefatos de build do Rust no tarball de
+         fontes, igual ao empacotamento local. -->
     <param name="exclude">.git</param>
     <param name="exclude">vega-gtk/target</param>
     <param name="filename">vega-src</param>

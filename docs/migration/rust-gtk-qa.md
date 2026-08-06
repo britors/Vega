@@ -8,9 +8,9 @@
 | Daemon e contrato privilegiado | `go test ./...` e XMLs D-Bus no smoke | Automatizado |
 | Formatação e lint | `cargo fmt --check` e Clippy com warnings como erro | Automatizado |
 | Build otimizado | `cargo build --release --locked` | Automatizado |
-| Ubuntu/Debian | workflow de DEB em Ubuntu 24.04 | Por release |
-| Fedora | workflow de RPM em Fedora atual | Por release |
-| openSUSE | workflow de RPM em Leap 16 | Por release |
+| Ubuntu/Debian | sem empacotamento mantido atualmente | N/A |
+| Fedora | sem empacotamento mantido atualmente | N/A |
+| openSUSE | build local e publicação manual no OBS | Por release |
 | Arch Linux | PKGBUILD validado por `makepkg --printsrcinfo` quando disponível | Smoke/Arch |
 | Wayland | abertura e fechamento automatizados; navegação e diálogos | Medido + manual por release |
 | X11 | mesma sequência, usando `GDK_BACKEND=x11` | Manual por release |
