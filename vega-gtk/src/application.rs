@@ -1985,7 +1985,6 @@ async fn refresh_storage_page(page: &crate::ui::StoragePage, dbus: &VegaDbus) {
 fn configure_screen(shell: &VegaShell, dbus: VegaDbus) {
     configure_wallpaper_tab(&shell.screen.wallpaper);
     configure_screensaver_tab(&shell.screen.screensaver);
-    configure_top_bar_tab(&shell.screen.topbar);
     configure_menu_tab(&shell.screen.menu);
     configure_dock_tab(&shell.screen.dock);
     configure_monitor_tab(&shell.monitor, dbus);
@@ -2065,31 +2064,6 @@ fn configure_dock_tab(page: &crate::ui::DockPage) {
             .set_label(&gettext("Configuração aplicada.")),
         Err(error) => apply_page.status.set_label(&error.to_string()),
     });
-}
-
-fn configure_top_bar_tab(page: &crate::ui::TopBarPage) {
-    match crate::dock::current_top_bar() {
-        Some(settings) => page.show(&settings),
-        None => {
-            page.set_controls_sensitive(false);
-            page.status
-                .set_label(&gettext(if crate::dock::is_installed() {
-                    "Atualize a extensão Sheliak para configurar a barra superior."
-                } else {
-                    "A extensão Sheliak não está instalada."
-                }));
-        }
-    }
-
-    let apply_page = page.clone();
-    page.connect_changed(
-        move |settings| match crate::dock::apply_top_bar(&settings) {
-            Ok(()) => apply_page
-                .status
-                .set_label(&gettext("Configuração aplicada.")),
-            Err(error) => apply_page.status.set_label(&error.to_string()),
-        },
-    );
 }
 
 fn configure_menu_tab(page: &crate::ui::MenuPage) {
