@@ -94,7 +94,6 @@ fn update_content(shell: VegaShell, window: adw::ApplicationWindow) {
         configure_users(&shell, dbus.clone());
         configure_logs(&shell, dbus.clone());
         configure_assistant(&shell, &window, dbus.clone());
-        configure_driver_action(&shell, &window, dbus.clone());
 
         refresh_dashboard_summary(&shell, &dbus).await;
         schedule_dashboard_refresh(shell, dbus);
@@ -1986,6 +1985,7 @@ async fn refresh_storage_page(page: &crate::ui::StoragePage, dbus: &VegaDbus) {
 fn configure_screen(shell: &VegaShell, dbus: VegaDbus) {
     configure_wallpaper_tab(&shell.screen.wallpaper);
     configure_screensaver_tab(&shell.screen.screensaver);
+    configure_top_bar_tab(&shell.screen.topbar);
     configure_menu_tab(&shell.screen.menu);
     configure_dock_tab(&shell.screen.dock);
     configure_monitor_tab(&shell.monitor, dbus);
@@ -2065,6 +2065,31 @@ fn configure_dock_tab(page: &crate::ui::DockPage) {
             .set_label(&gettext("Configuração aplicada.")),
         Err(error) => apply_page.status.set_label(&error.to_string()),
     });
+}
+
+fn configure_top_bar_tab(page: &crate::ui::TopBarPage) {
+    match crate::dock::current_top_bar() {
+        Some(settings) => page.show(&settings),
+        None => {
+            page.set_controls_sensitive(false);
+            page.status
+                .set_label(&gettext(if crate::dock::is_installed() {
+                    "Atualize a extensão Sheliak para configurar a barra superior."
+                } else {
+                    "A extensão Sheliak não está instalada."
+                }));
+        }
+    }
+
+    let apply_page = page.clone();
+    page.connect_changed(
+        move |settings| match crate::dock::apply_top_bar(&settings) {
+            Ok(()) => apply_page
+                .status
+                .set_label(&gettext("Configuração aplicada.")),
+            Err(error) => apply_page.status.set_label(&error.to_string()),
+        },
+    );
 }
 
 fn configure_menu_tab(page: &crate::ui::MenuPage) {
@@ -3895,52 +3920,6 @@ async fn refresh_current_software_page(
     refresh_dashboard_updates(dashboard_updates, client).await;
 }
 
-fn configure_driver_action(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
-    let dropdown = shell.driver_dropdown.clone();
-    let button = shell.driver_apply.clone();
-    let window = window.clone();
-    button.clone().connect_clicked(move |_| {
-        let Some(item) = dropdown.selected_item().and_downcast::<gtk::StringObject>() else {
-            return;
-        };
-        let driver = item.string().to_string();
-        let dialog = adw::AlertDialog::new(
-            Some(&gettext("Trocar driver NVIDIA?")),
-            Some(
-                &gettext("Aplicar {driver}? O sistema criará um snapshot antes da troca.")
-                    .replace("{driver}", &driver),
-            ),
-        );
-        dialog.add_responses(&[
-            ("cancel", &gettext("Cancelar")),
-            ("apply", &gettext("Aplicar")),
-        ]);
-        dialog.set_response_appearance("apply", adw::ResponseAppearance::Suggested);
-        dialog.set_default_response(Some("cancel"));
-        dialog.set_close_response("cancel");
-
-        let client = dbus.hardware();
-        let button = button.clone();
-        let window = window.clone();
-        glib::MainContext::default().spawn_local(async move {
-            if crate::preferences::confirmations_enabled()
-                && dialog.choose_future(Some(&window)).await != "apply"
-            {
-                return;
-            }
-            button.set_sensitive(false);
-            button.set_label(&gettext("Aplicando…"));
-            let result = client.switch_nvidia_driver(&driver).await;
-            button.set_sensitive(true);
-            button.set_label(&if result.is_ok() {
-                gettext("Aplicado")
-            } else {
-                gettext("Falhou")
-            });
-        });
-    });
-}
-
 /// Limpa a contagem de pacotes pendentes e busca novamente junto ao vegad,
 /// exibindo o resultado apenas se houver atualizações disponíveis.
 async fn refresh_dashboard_updates(dashboard_updates: &gtk::Label, client: &impl SoftwareClient) {
@@ -3997,7 +3976,6 @@ fn set_unavailable(shell: &VegaShell, message: &str) {
     shell.hardware_gpu.set_label("—");
     shell.hardware_ram.set_label("—");
     shell.hardware_firmware.set_label("—");
-    shell.driver_apply.set_sensitive(false);
 }
 
 fn send_notification(title: &str, body: &str, id: &str) {

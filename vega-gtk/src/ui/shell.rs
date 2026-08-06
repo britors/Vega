@@ -22,8 +22,6 @@ pub struct VegaShell {
     pub hardware_gpu: gtk::Label,
     pub hardware_ram: gtk::Label,
     pub hardware_firmware: gtk::Label,
-    pub driver_dropdown: gtk::DropDown,
-    pub driver_apply: gtk::Button,
     pub software: SoftwarePage,
     pub backup: BackupPage,
     pub snapshots: SnapshotsPage,
@@ -54,12 +52,6 @@ impl VegaShell {
         let hardware_gpu = value_label(&gettext("Carregando…"));
         let hardware_ram = value_label(&gettext("Carregando…"));
         let hardware_firmware = value_label(&gettext("Carregando…"));
-        let driver_dropdown =
-            gtk::DropDown::from_strings(&["nvidia-open-dkms", "nvidia-580xx-dkms", "nouveau"]);
-        let driver_apply = gtk::Button::builder()
-            .label(gettext("Aplicar"))
-            .css_classes(["suggested-action"])
-            .build();
         let software = SoftwarePage::new();
         let backup = BackupPage::new();
         let snapshots = SnapshotsPage::new();
@@ -146,8 +138,6 @@ impl VegaShell {
                             &hardware_gpu,
                             &hardware_ram,
                             &hardware_firmware,
-                            &driver_dropdown,
-                            &driver_apply,
                         ),
                     ),
                     (gettext("Kernel"), kernel.root.clone()),
@@ -308,8 +298,6 @@ impl VegaShell {
             hardware_gpu,
             hardware_ram,
             hardware_firmware,
-            driver_dropdown,
-            driver_apply,
             software,
             backup,
             snapshots,
@@ -713,8 +701,6 @@ fn hardware_page(
     gpu: &gtk::Label,
     ram: &gtk::Label,
     firmware: &gtk::Label,
-    driver_dropdown: &gtk::DropDown,
-    driver_apply: &gtk::Button,
 ) -> gtk::Widget {
     let content = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
@@ -722,9 +708,6 @@ fn hardware_page(
         .build();
     content.add_css_class("content-page");
     content.add_css_class("compact-page");
-    driver_dropdown.set_size_request(260, -1);
-    driver_dropdown.set_valign(gtk::Align::Center);
-    driver_apply.set_valign(gtk::Align::Center);
     let group = adw::PreferencesGroup::builder()
         .title(gettext("Componentes"))
         .build();
@@ -733,16 +716,6 @@ fn hardware_page(
     group.add(&property_row(&gettext("Memória"), ram));
     group.add(&property_row(&gettext("Firmware"), firmware));
     content.append(&group);
-
-    let drivers = adw::PreferencesGroup::builder()
-        .title(gettext("Troca de driver NVIDIA"))
-        .description(gettext("Um snapshot será criado antes da alteração"))
-        .build();
-    let driver_row = adw::ActionRow::builder().title(gettext("Driver")).build();
-    driver_row.add_suffix(driver_dropdown);
-    driver_row.add_suffix(driver_apply);
-    drivers.add(&driver_row);
-    content.append(&drivers);
     scrolled(content)
 }
 
