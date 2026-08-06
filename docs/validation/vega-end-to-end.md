@@ -95,7 +95,6 @@ Falha esperada:
 Verificar:
 
 - Hardware mostra CPU/GPU/RAM e firmware
-- troca de driver NVIDIA pede confirmação
 - Kernel não permite remover o kernel em execução
 - Firewall pede confirmação para abrir/fechar serviço
 - Usuários pede confirmação para criar/remover conta

@@ -10,7 +10,7 @@ use crate::dock::DockSettings;
 
 type ChangeHandler = Rc<dyn Fn(DockSettings)>;
 
-const POSITIONS: &[&str] = &["bottom", "top", "left", "right"];
+const POSITIONS: &[&str] = &["bottom", "left", "right"];
 const HIDE_MODES: &[&str] = &["intelligent", "autohide", "always"];
 const MINIMIZE_ANIMATIONS: &[&str] = &["zoom", "fade", "none"];
 const CONTENT_ALIGNMENTS: &[&str] = &["start", "center", "end"];
@@ -18,7 +18,6 @@ const RUNNING_APPS_POSITIONS: &[&str] = &["start", "end"];
 
 fn position_label(id: &str) -> String {
     match id {
-        "top" => gettext("Superior"),
         "left" => gettext("Esquerda"),
         "right" => gettext("Direita"),
         _ => gettext("Inferior"),

@@ -16,6 +16,7 @@ mod snapshots;
 mod software;
 mod sparkline;
 mod storage;
+mod topbar;
 mod users;
 mod wallpaper;
 
@@ -36,5 +37,6 @@ pub use shell::VegaShell;
 pub use snapshots::SnapshotsPage;
 pub use software::SoftwarePage;
 pub use storage::StoragePage;
+pub use topbar::TopBarPage;
 pub use users::UsersPage;
 pub use wallpaper::WallpaperPage;
