@@ -2,7 +2,9 @@ use std::{cell::RefCell, rc::Rc};
 
 use adw::prelude::*;
 use gettextrs::gettext;
-use lyra_vega_dbus::{FirewallService, FirewallStatus, NetworkInterface, ProxyConfig, WifiNetwork};
+use lyra_vega_dbus::{
+    FirewallPort, FirewallService, FirewallStatus, NetworkInterface, ProxyConfig, WifiNetwork,
+};
 
 type WifiActionHandler = Rc<dyn Fn(WifiNetwork)>;
 
@@ -24,9 +26,15 @@ pub struct NetworkPage {
     pub firewall_status: gtk::Label,
     pub firewall_services: gtk::ListBox,
     pub firewall_action: gtk::Button,
+    pub firewall_ports: gtk::ListBox,
+    pub firewall_port_remove: gtk::Button,
+    pub firewall_port_entry: gtk::Entry,
+    pub firewall_protocol: gtk::DropDown,
+    pub firewall_port_add: gtk::Button,
     interface_items: Rc<RefCell<Vec<NetworkInterface>>>,
     wifi_action_handlers: Rc<RefCell<Vec<WifiActionHandler>>>,
     firewall_items: Rc<RefCell<Vec<FirewallService>>>,
+    firewall_port_items: Rc<RefCell<Vec<FirewallPort>>>,
 }
 impl NetworkPage {
     pub fn new() -> Self {
@@ -114,6 +122,29 @@ impl NetworkPage {
             .halign(gtk::Align::Start)
             .sensitive(false)
             .build();
+        let firewall_ports = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::Single)
+            .css_classes(["boxed-list"])
+            .build();
+        firewall_ports.add_css_class("firewall-ports");
+        let firewall_port_remove = gtk::Button::builder()
+            .label(gettext("Remover regra"))
+            .halign(gtk::Align::Start)
+            .sensitive(false)
+            .build();
+        let firewall_port_entry = gtk::Entry::builder()
+            .placeholder_text(gettext("porta ou intervalo, ex.: 8080 ou 9000-9010"))
+            .hexpand(true)
+            .build();
+        let firewall_protocol = gtk::DropDown::from_strings(&["tcp", "udp"]);
+        let firewall_port_add = gtk::Button::builder()
+            .label(gettext("Adicionar regra"))
+            .css_classes(["suggested-action"])
+            .build();
+        let firewall_port_form = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        firewall_port_form.append(&firewall_port_entry);
+        firewall_port_form.append(&firewall_protocol);
+        firewall_port_form.append(&firewall_port_add);
         let interfaces_tab_content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         interfaces_tab_content.append(&status);
         interfaces_tab_content.append(&interfaces);
@@ -135,6 +166,16 @@ impl NetworkPage {
         firewall_tab_content.append(&firewall_status);
         firewall_tab_content.append(&firewall_services);
         firewall_tab_content.append(&firewall_action);
+        firewall_tab_content.append(
+            &gtk::Label::builder()
+                .label(gettext("Regras de porta personalizadas"))
+                .xalign(0.0)
+                .css_classes(["heading"])
+                .build(),
+        );
+        firewall_tab_content.append(&firewall_ports);
+        firewall_tab_content.append(&firewall_port_remove);
+        firewall_tab_content.append(&firewall_port_form);
 
         let tabs = gtk::Box::new(gtk::Orientation::Horizontal, 4);
         tabs.add_css_class("module-tabs");
@@ -208,9 +249,15 @@ impl NetworkPage {
             firewall_status,
             firewall_services,
             firewall_action,
+            firewall_ports,
+            firewall_port_remove,
+            firewall_port_entry,
+            firewall_protocol,
+            firewall_port_add,
             interface_items: Rc::new(RefCell::new(Vec::new())),
             wifi_action_handlers: Rc::new(RefCell::new(Vec::new())),
             firewall_items: Rc::new(RefCell::new(Vec::new())),
+            firewall_port_items: Rc::new(RefCell::new(Vec::new())),
         };
         let interface_page = page.clone();
         page.interfaces
@@ -218,6 +265,9 @@ impl NetworkPage {
         let selection_page = page.clone();
         page.firewall_services
             .connect_row_selected(move |_, _| selection_page.update_firewall_action());
+        let port_selection_page = page.clone();
+        page.firewall_ports
+            .connect_row_selected(move |_, _| port_selection_page.update_firewall_port_remove());
         page
     }
     pub fn show_interfaces(&self, items: &[NetworkInterface]) {
@@ -364,6 +414,53 @@ impl NetworkPage {
     pub fn selected_firewall_service(&self) -> Option<FirewallService> {
         let index = self.firewall_services.selected_row()?.index() as usize;
         self.firewall_items.borrow().get(index).cloned()
+    }
+
+    pub fn show_firewall_ports(&self, ports: &[FirewallPort]) {
+        clear(&self.firewall_ports);
+        for port in ports {
+            let row = adw::ActionRow::builder()
+                .title(gtk::glib::markup_escape_text(&format!(
+                    "{}/{}",
+                    port.port, port.protocol
+                )))
+                .build();
+            self.firewall_ports.append(&row);
+        }
+        if ports.is_empty() {
+            empty(
+                &self.firewall_ports,
+                &gettext("Nenhuma regra de porta personalizada"),
+            );
+        }
+        *self.firewall_port_items.borrow_mut() = ports.to_vec();
+        self.update_firewall_port_remove();
+    }
+
+    pub fn selected_firewall_port(&self) -> Option<FirewallPort> {
+        let index = self.firewall_ports.selected_row()?.index() as usize;
+        self.firewall_port_items.borrow().get(index).cloned()
+    }
+
+    /// (porta, protocolo) atualmente digitados no formulário de nova regra.
+    pub fn firewall_port_input(&self) -> (String, String) {
+        let port = self.firewall_port_entry.text().trim().to_owned();
+        let protocol = self
+            .firewall_protocol
+            .selected_item()
+            .and_downcast::<gtk::StringObject>()
+            .map(|item| item.string().to_string())
+            .unwrap_or_else(|| "tcp".to_owned());
+        (port, protocol)
+    }
+
+    pub fn clear_firewall_port_entry(&self) {
+        self.firewall_port_entry.set_text("");
+    }
+
+    fn update_firewall_port_remove(&self) {
+        self.firewall_port_remove
+            .set_sensitive(self.selected_firewall_port().is_some());
     }
 
     pub fn connect_wifi_action(&self, handler: impl Fn(WifiNetwork) + 'static) {

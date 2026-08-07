@@ -125,7 +125,11 @@ pub fn apply_accent_color(color: AccentColor) {
 /// Tema de ícones padrão da Vega — reaplicado sempre que o usuário troca o
 /// card de tema, pra não ficar com um tema de ícones genérico depois de
 /// mexer só na claridade da interface.
-const ICON_THEME_NAME: &str = "Lyra-Enterprise-Icons";
+///
+/// O pacote de ícones se chamava "Lyra-Enterprise-Icons" antes do rename pra
+/// "Lyra OS" (Lyra-Theme@47d0ff4). Mantenha este nome em sincronia com
+/// `Name=` em `Lyra-OS-Icons/index.theme` nesse repositório.
+const ICON_THEME_NAME: &str = "Lyra-OS-Icons";
 
 pub fn apply_icon_theme() {
     if !schema_available() {

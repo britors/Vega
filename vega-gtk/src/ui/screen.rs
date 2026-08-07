@@ -243,14 +243,20 @@ fn appearance_page() -> gtk::Widget {
         .upcast()
 }
 
-/// Ao trocar o card de tema, também força o papel de parede "Lyra
-/// Enterprise" (variantes `enterprise-light`/`enterprise`) — o GNOME já troca
-/// sozinho entre elas depois disso, via `picture-uri-dark`, então basta
-/// garantir que as duas URIs estejam apontando pra esse par.
+/// Ao trocar o card de tema, também força o papel de parede padrão do
+/// Lyra OS (par `os.png`/`os-light.png`, entrada "Lyra OS" no XML de
+/// gnome-background-properties) — o GNOME já troca sozinho entre eles depois
+/// disso, via `picture-uri-dark`, então basta garantir que as duas URIs
+/// estejam apontando pra esse par.
+///
+/// O nome mudou de "Lyra Enterprise" pra "Lyra OS" quando o Lyra-Theme foi
+/// renomeado (Lyra-Theme@47d0ff4); a busca exata evita casar com as
+/// variantes de humor adicionais ("Lyra OS — Nebula" etc.) que o Lyra-Theme
+/// também registra.
 fn apply_enterprise_wallpaper() {
     if let Some(entry) = crate::wallpaper::list_wallpapers()
         .into_iter()
-        .find(|entry| entry.name.eq_ignore_ascii_case("Lyra Enterprise"))
+        .find(|entry| entry.name.eq_ignore_ascii_case("Lyra OS"))
     {
         let _ = crate::wallpaper::apply(&entry);
     }
