@@ -1800,9 +1800,11 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
         chooser.show();
     });
 
+    let firewall_page = page.clone();
+    let firewall_dbus = dbus.clone();
     let firewall_action = page.firewall_action.clone();
     firewall_action.connect_clicked(move |_| {
-        let Some(service) = page.selected_firewall_service() else {
+        let Some(service) = firewall_page.selected_firewall_service() else {
             return;
         };
         let enable = !service.enabled;
@@ -1836,8 +1838,8 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
         );
         dialog.set_default_response(Some("cancel"));
         dialog.set_close_response("cancel");
-        let action_page = page.clone();
-        let action_dbus = dbus.clone();
+        let action_page = firewall_page.clone();
+        let action_dbus = firewall_dbus.clone();
         glib::MainContext::default().spawn_local(async move {
             if !confirm_dialog(&dialog, "confirm").await {
                 return;
@@ -1855,6 +1857,97 @@ fn configure_network(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: V
             {
                 Ok(()) => refresh_firewall_page(&action_page, &action_dbus).await,
                 Err(error) => action_page.firewall_status.set_label(&error.to_string()),
+            }
+        });
+    });
+
+    let firewall_port_add_page = page.clone();
+    let firewall_port_add_dbus = dbus.clone();
+    let firewall_port_add = page.firewall_port_add.clone();
+    firewall_port_add.connect_clicked(move |_| {
+        let (port, protocol) = firewall_port_add_page.firewall_port_input();
+        if port.is_empty() {
+            firewall_port_add_page
+                .firewall_status
+                .set_label(&gettext("Informe a porta ou intervalo antes de adicionar."));
+            return;
+        }
+        let dialog = adw::AlertDialog::new(
+            Some(&gettext("Adicionar regra de firewall?")),
+            Some(
+                &gettext("A porta {port}/{protocol} passará a aceitar conexões de entrada.")
+                    .replace("{port}", &port)
+                    .replace("{protocol}", &protocol),
+            ),
+        );
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("confirm", &gettext("Adicionar")),
+        ]);
+        dialog.set_response_appearance("confirm", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("cancel"));
+        dialog.set_close_response("cancel");
+        let action_page = firewall_port_add_page.clone();
+        let action_dbus = firewall_port_add_dbus.clone();
+        glib::MainContext::default().spawn_local(async move {
+            if !confirm_dialog(&dialog, "confirm").await {
+                return;
+            }
+            action_page.firewall_port_add.set_sensitive(false);
+            action_page
+                .firewall_status
+                .set_label(&gettext("Adicionando regra de firewall…"));
+            match action_dbus.firewall().add_port(&port, &protocol).await {
+                Ok(()) => {
+                    action_page.clear_firewall_port_entry();
+                    refresh_firewall_page(&action_page, &action_dbus).await;
+                }
+                Err(error) => action_page.firewall_status.set_label(&error.to_string()),
+            }
+            action_page.firewall_port_add.set_sensitive(true);
+        });
+    });
+
+    let firewall_port_remove = page.firewall_port_remove.clone();
+    firewall_port_remove.connect_clicked(move |_| {
+        let Some(rule) = page.selected_firewall_port() else {
+            return;
+        };
+        let dialog = adw::AlertDialog::new(
+            Some(&gettext("Remover regra de firewall?")),
+            Some(
+                &gettext("A porta {port}/{protocol} deixará de aceitar conexões de entrada.")
+                    .replace("{port}", &rule.port)
+                    .replace("{protocol}", &rule.protocol),
+            ),
+        );
+        dialog.add_responses(&[
+            ("cancel", &gettext("Cancelar")),
+            ("confirm", &gettext("Remover")),
+        ]);
+        dialog.set_response_appearance("confirm", adw::ResponseAppearance::Destructive);
+        dialog.set_default_response(Some("cancel"));
+        dialog.set_close_response("cancel");
+        let action_page = page.clone();
+        let action_dbus = dbus.clone();
+        glib::MainContext::default().spawn_local(async move {
+            if !confirm_dialog(&dialog, "confirm").await {
+                return;
+            }
+            action_page.firewall_port_remove.set_sensitive(false);
+            action_page
+                .firewall_status
+                .set_label(&gettext("Removendo regra de firewall…"));
+            match action_dbus
+                .firewall()
+                .remove_port(&rule.port, &rule.protocol)
+                .await
+            {
+                Ok(()) => refresh_firewall_page(&action_page, &action_dbus).await,
+                Err(error) => {
+                    action_page.firewall_status.set_label(&error.to_string());
+                    action_page.firewall_port_remove.set_sensitive(true);
+                }
             }
         });
     });
@@ -1905,6 +1998,10 @@ async fn refresh_firewall_page(page: &crate::ui::NetworkPage, dbus: &VegaDbus) {
             page.firewall_status.set_label(&error.to_string());
             page.firewall_action.set_sensitive(false);
         }
+    }
+    match dbus.firewall().ports().await {
+        Ok(ports) => page.show_firewall_ports(&ports),
+        Err(error) => page.firewall_status.set_label(&error.to_string()),
     }
 }
 
