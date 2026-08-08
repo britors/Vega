@@ -29,15 +29,15 @@ pub struct MonitorPage {
     disk_graph: Sparkline,
     network_graph: Sparkline,
     cpu_cores_flow: gtk::FlowBox,
-    core_graphs: Rc<RefCell<Vec<CoreGraph>>>,
+    core_graphs: Rc<RefCell<Vec<MiniGraph>>>,
+    gpu_devices_flow: gtk::FlowBox,
+    gpu_device_graphs: Rc<RefCell<Vec<MiniGraph>>>,
     kill_handlers: KillHandlers,
 }
 
-/// One core's own little card inside the CPU card — label with its number
-/// and current percentage, plus its own sparkline, so each core reads as a
-/// separate thing rather than an unlabeled cluster of bars.
+/// One CPU core or GPU device card: numbered percentage plus its own history.
 #[derive(Clone)]
-struct CoreGraph {
+struct MiniGraph {
     label: gtk::Label,
     graph: Sparkline,
 }
@@ -82,6 +82,14 @@ impl MonitorPage {
             .selection_mode(gtk::SelectionMode::None)
             .homogeneous(true)
             .build();
+        let gpu_devices_flow = gtk::FlowBox::builder()
+            .column_spacing(4)
+            .row_spacing(4)
+            .min_children_per_line(4)
+            .max_children_per_line(16)
+            .selection_mode(gtk::SelectionMode::None)
+            .homogeneous(true)
+            .build();
 
         let cpu_card = new_card(&gettext("CPU"));
         cpu_card.append(&cpu);
@@ -91,6 +99,7 @@ impl MonitorPage {
         let gpu_card = new_card(&gettext("GPU"));
         gpu_card.append(&gpu);
         gpu_card.append(&gpu_graph.widget);
+        gpu_card.append(&gpu_devices_flow);
 
         let memory_card = new_card(&gettext("Memória"));
         memory_card.append(&memory);
@@ -232,6 +241,8 @@ impl MonitorPage {
             network_graph,
             cpu_cores_flow,
             core_graphs: Rc::new(RefCell::new(Vec::new())),
+            gpu_devices_flow,
+            gpu_device_graphs: Rc::new(RefCell::new(Vec::new())),
             kill_handlers: KillHandlers::default(),
         }
     }
@@ -251,6 +262,7 @@ impl MonitorPage {
         } else {
             self.gpu.set_label(&gettext("Uso indisponível"));
         }
+        self.update_gpu_graphs(&metrics.gpu_per_device);
 
         self.memory.set_label(
             &gettext("{used} de {total}")
@@ -317,7 +329,7 @@ impl MonitorPage {
                 cell.append(&graph.widget);
                 self.cpu_cores_flow.insert(&cell, -1);
 
-                graphs.push(CoreGraph { label, graph });
+                graphs.push(MiniGraph { label, graph });
             }
         }
         for (index, (core, value)) in graphs.iter().zip(cores.iter()).enumerate() {
@@ -327,6 +339,48 @@ impl MonitorPage {
                     .replace("{percent}", &format!("{value:.0}")),
             );
             core.graph.push(*value);
+        }
+    }
+
+    /// Espelha a grade de núcleos da CPU: cada GPU física recebe seu próprio
+    /// percentual e histórico, além do resumo agregado no topo do card.
+    fn update_gpu_graphs(&self, devices: &[f64]) {
+        let mut graphs = self.gpu_device_graphs.borrow_mut();
+        if graphs.len() != devices.len() {
+            while let Some(child) = self.gpu_devices_flow.first_child() {
+                self.gpu_devices_flow.remove(&child);
+            }
+            graphs.clear();
+            for _ in devices {
+                let label = gtk::Label::builder()
+                    .xalign(0.0)
+                    .css_classes(["dim-label", "card-title"])
+                    .build();
+                let graph = Sparkline::new(HISTORY_CAPACITY, Some(100.0));
+                graph.widget.set_size_request(56, 24);
+
+                let cell = gtk::Box::new(gtk::Orientation::Vertical, 2);
+                cell.add_css_class("card");
+                cell.append(&label);
+                cell.append(&graph.widget);
+                self.gpu_devices_flow.insert(&cell, -1);
+
+                graphs.push(MiniGraph { label, graph });
+            }
+        }
+        for (index, (device, value)) in graphs.iter().zip(devices.iter()).enumerate() {
+            if *value >= 0.0 {
+                device.label.set_label(
+                    &gettext("GPU {n}: {percent}%")
+                        .replace("{n}", &index.to_string())
+                        .replace("{percent}", &format!("{value:.0}")),
+                );
+                device.graph.push(*value);
+            } else {
+                device.label.set_label(
+                    &gettext("GPU {n}: indisponível").replace("{n}", &index.to_string()),
+                );
+            }
         }
     }
 
