@@ -86,7 +86,7 @@ fn update_content(shell: VegaShell, window: adw::ApplicationWindow) {
         configure_snapshots(&shell, dbus.clone());
         configure_kernel(&shell, dbus.clone());
         configure_datetime(&shell, dbus.clone());
-        configure_screen(&shell, dbus.clone());
+        configure_screen(&shell, &window, dbus.clone());
         configure_storage(&shell, dbus.clone());
         configure_network(&shell, &window, dbus.clone());
         configure_bluetooth(&shell, &window, dbus.clone());
@@ -2079,15 +2079,15 @@ async fn refresh_storage_page(page: &crate::ui::StoragePage, dbus: &VegaDbus) {
     }
 }
 
-fn configure_screen(shell: &VegaShell, dbus: VegaDbus) {
-    configure_wallpaper_tab(&shell.screen.wallpaper);
+fn configure_screen(shell: &VegaShell, window: &adw::ApplicationWindow, dbus: VegaDbus) {
+    configure_wallpaper_tab(&shell.screen.wallpaper, window);
     configure_screensaver_tab(&shell.screen.screensaver);
     configure_menu_tab(&shell.screen.menu);
     configure_dock_tab(&shell.screen.dock);
     configure_monitor_tab(&shell.monitor, dbus);
 }
 
-fn configure_wallpaper_tab(page: &crate::ui::WallpaperPage) {
+fn configure_wallpaper_tab(page: &crate::ui::WallpaperPage, window: &adw::ApplicationWindow) {
     let load_page = page.clone();
     glib::MainContext::default().spawn_local(async move {
         refresh_wallpaper_page(&load_page).await;
@@ -2105,6 +2105,58 @@ fn configure_wallpaper_tab(page: &crate::ui::WallpaperPage) {
             });
         }
         Err(error) => apply_page.status.set_label(&error.to_string()),
+    });
+
+    let add_page = page.clone();
+    let add_window = window.clone();
+    page.add.connect_clicked(move |button| {
+        let filter = gtk::FileFilter::new();
+        filter.set_name(Some(&gettext("Imagens")));
+        filter.add_mime_type("image/*");
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&filter);
+        let dialog = gtk::FileDialog::builder()
+            .title(gettext("Adicionar wallpaper"))
+            .accept_label(gettext("Adicionar"))
+            .filters(&filters)
+            .default_filter(&filter)
+            .modal(true)
+            .build();
+        let page = add_page.clone();
+        let window = add_window.clone();
+        let button = button.clone();
+        glib::MainContext::default().spawn_local(async move {
+            let Ok(file) = dialog.open_future(Some(&window)).await else {
+                return;
+            };
+            let Some(path) = file.path() else {
+                page.status
+                    .set_label(&gettext("Selecione um arquivo de imagem local."));
+                return;
+            };
+
+            button.set_sensitive(false);
+            page.status.set_label(&gettext("Adicionando wallpaper…"));
+            let result = gio::spawn_blocking(move || crate::wallpaper::import(&path)).await;
+            match result {
+                Ok(Ok(entry)) => {
+                    let apply_result = crate::wallpaper::apply(&entry);
+                    refresh_wallpaper_page(&page).await;
+                    match apply_result {
+                        Ok(()) => page.status.set_label(
+                            &gettext("{name} adicionado e aplicado.")
+                                .replace("{name}", &entry.name),
+                        ),
+                        Err(error) => page.status.set_label(&error.to_string()),
+                    }
+                }
+                Ok(Err(error)) => page.status.set_label(&error.to_string()),
+                Err(_) => page
+                    .status
+                    .set_label(&gettext("Falha interna ao adicionar o wallpaper.")),
+            }
+            button.set_sensitive(true);
+        });
     });
 }
 
