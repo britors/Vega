@@ -117,11 +117,11 @@ impl MonitorPage {
         network_card.append(&network);
         network_card.append(&network_graph.widget);
 
-        // CPU+GPU emparelhados (CPU é mais alto por causa da grade de núcleos);
-        // memória+swap emparelhados, disco+rede emparelhados — cada par
-        // dividindo a largura da linha. Altura fixa (não vexpand): sem
-        // isso os cards esticavam até preencher qualquer altura que o
-        // Stack desse à aba, inclusive por engano (ver vhomogeneous acima).
+        // CPU e GPU ficam empilhados; memória+swap e disco+rede seguem
+        // emparelhados, dividindo a largura da linha. Altura fixa (não
+        // vexpand): sem isso os cards esticavam até preencher qualquer
+        // altura que o Stack desse à aba, inclusive por engano (ver
+        // vhomogeneous acima).
         for card in [&cpu_card, &gpu_card] {
             card.set_size_request(-1, 220);
             card.set_hexpand(true);
@@ -130,13 +130,12 @@ impl MonitorPage {
             card.set_size_request(-1, 160);
             card.set_hexpand(true);
         }
-        let cpu_gpu_row = gtk::Box::builder()
-            .orientation(gtk::Orientation::Horizontal)
+        let cpu_gpu_column = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
             .spacing(12)
-            .homogeneous(true)
             .build();
-        cpu_gpu_row.append(&cpu_card);
-        cpu_gpu_row.append(&gpu_card);
+        cpu_gpu_column.append(&cpu_card);
+        cpu_gpu_column.append(&gpu_card);
         let memory_swap_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
         memory_swap_row.append(&memory_card);
         memory_swap_row.append(&swap_card);
@@ -145,7 +144,7 @@ impl MonitorPage {
         disk_network_row.append(&network_card);
 
         let metrics_flow = gtk::Box::new(gtk::Orientation::Vertical, 12);
-        metrics_flow.append(&cpu_gpu_row);
+        metrics_flow.append(&cpu_gpu_column);
         metrics_flow.append(&memory_swap_row);
         metrics_flow.append(&disk_network_row);
 
