@@ -16,12 +16,14 @@ pub struct MonitorPage {
     pub status: gtk::Label,
     pub processes_status: gtk::Label,
     pub cpu: gtk::Label,
+    pub gpu: gtk::Label,
     pub memory: gtk::Label,
     pub swap: gtk::Label,
     pub disk: gtk::Label,
     pub network: gtk::Label,
     pub list: gtk::ListBox,
     cpu_graph: Sparkline,
+    gpu_graph: Sparkline,
     memory_graph: Sparkline,
     swap_graph: Sparkline,
     disk_graph: Sparkline,
@@ -54,6 +56,7 @@ impl MonitorPage {
             .build();
 
         let cpu = value_label();
+        let gpu = value_label();
         let memory = value_label();
         let swap = value_label();
         let disk = value_label();
@@ -62,6 +65,7 @@ impl MonitorPage {
         // taxas sem teto natural, então a escala do gráfico se ajusta ao
         // pico recente da própria série.
         let cpu_graph = Sparkline::new(HISTORY_CAPACITY, Some(100.0));
+        let gpu_graph = Sparkline::new(HISTORY_CAPACITY, Some(100.0));
         let memory_graph = Sparkline::new(HISTORY_CAPACITY, Some(100.0));
         let swap_graph = Sparkline::new(HISTORY_CAPACITY, Some(100.0));
         let disk_graph = Sparkline::new(HISTORY_CAPACITY, None);
@@ -84,6 +88,10 @@ impl MonitorPage {
         cpu_card.append(&cpu_graph.widget);
         cpu_card.append(&cpu_cores_flow);
 
+        let gpu_card = new_card(&gettext("GPU"));
+        gpu_card.append(&gpu);
+        gpu_card.append(&gpu_graph.widget);
+
         let memory_card = new_card(&gettext("Memória"));
         memory_card.append(&memory);
         memory_card.append(&memory_graph.widget);
@@ -100,17 +108,26 @@ impl MonitorPage {
         network_card.append(&network);
         network_card.append(&network_graph.widget);
 
-        // CPU sozinho (é o mais alto, por causa da grade de núcleos);
+        // CPU+GPU emparelhados (CPU é mais alto por causa da grade de núcleos);
         // memória+swap emparelhados, disco+rede emparelhados — cada par
         // dividindo a largura da linha. Altura fixa (não vexpand): sem
         // isso os cards esticavam até preencher qualquer altura que o
         // Stack desse à aba, inclusive por engano (ver vhomogeneous acima).
-        cpu_card.set_size_request(-1, 220);
+        for card in [&cpu_card, &gpu_card] {
+            card.set_size_request(-1, 220);
+            card.set_hexpand(true);
+        }
         for card in [&memory_card, &swap_card, &disk_card, &network_card] {
             card.set_size_request(-1, 160);
             card.set_hexpand(true);
         }
-        cpu_card.set_hexpand(true);
+        let cpu_gpu_row = gtk::Box::builder()
+            .orientation(gtk::Orientation::Horizontal)
+            .spacing(12)
+            .homogeneous(true)
+            .build();
+        cpu_gpu_row.append(&cpu_card);
+        cpu_gpu_row.append(&gpu_card);
         let memory_swap_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
         memory_swap_row.append(&memory_card);
         memory_swap_row.append(&swap_card);
@@ -119,7 +136,7 @@ impl MonitorPage {
         disk_network_row.append(&network_card);
 
         let metrics_flow = gtk::Box::new(gtk::Orientation::Vertical, 12);
-        metrics_flow.append(&cpu_card);
+        metrics_flow.append(&cpu_gpu_row);
         metrics_flow.append(&memory_swap_row);
         metrics_flow.append(&disk_network_row);
 
@@ -201,12 +218,14 @@ impl MonitorPage {
             status,
             processes_status,
             cpu,
+            gpu,
             memory,
             swap,
             disk,
             network,
             list,
             cpu_graph,
+            gpu_graph,
             memory_graph,
             swap_graph,
             disk_graph,
@@ -223,6 +242,15 @@ impl MonitorPage {
         );
         self.cpu_graph.push(metrics.cpu_percent);
         self.update_core_graphs(&metrics.cpu_per_core);
+
+        if metrics.gpu_percent >= 0.0 {
+            self.gpu.set_label(
+                &gettext("{percent}%").replace("{percent}", &format!("{:.1}", metrics.gpu_percent)),
+            );
+            self.gpu_graph.push(metrics.gpu_percent);
+        } else {
+            self.gpu.set_label(&gettext("Uso indisponível"));
+        }
 
         self.memory.set_label(
             &gettext("{used} de {total}")
