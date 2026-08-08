@@ -11,6 +11,7 @@ type ApplyHandler = Rc<dyn Fn(WallpaperEntry)>;
 pub struct WallpaperPage {
     pub root: gtk::Widget,
     pub status: gtk::Label,
+    pub add: gtk::Button,
     grid: gtk::FlowBox,
     apply_handlers: Rc<RefCell<Vec<ApplyHandler>>>,
 }
@@ -20,9 +21,22 @@ impl WallpaperPage {
         let status = gtk::Label::builder()
             .label(gettext("Carregando papéis de parede…"))
             .xalign(0.0)
+            .hexpand(true)
             .wrap(true)
             .css_classes(["dim-label"])
             .build();
+        let add_content = adw::ButtonContent::builder()
+            .icon_name("list-add-symbolic")
+            .label(gettext("Adicionar wallpaper…"))
+            .build();
+        let add = gtk::Button::builder()
+            .child(&add_content)
+            .css_classes(["suggested-action"])
+            .tooltip_text(gettext("Adicionar uma imagem do seu computador"))
+            .build();
+        let header = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        header.append(&status);
+        header.append(&add);
         let grid = gtk::FlowBox::builder()
             .column_spacing(12)
             .row_spacing(12)
@@ -34,7 +48,7 @@ impl WallpaperPage {
 
         let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
         content.add_css_class("content-page");
-        content.append(&status);
+        content.append(&header);
         content.append(&grid);
 
         let root = gtk::ScrolledWindow::builder()
@@ -46,6 +60,7 @@ impl WallpaperPage {
         Self {
             root,
             status,
+            add,
             grid,
             apply_handlers: Rc::new(RefCell::new(Vec::new())),
         }

@@ -1,5 +1,7 @@
 use std::{
     collections::BTreeMap,
+    fs,
+    io::{BufReader, Read},
     path::{Path, PathBuf},
 };
 
@@ -66,8 +68,10 @@ pub fn list_wallpapers() -> Vec<WallpaperEntry> {
             .or_insert(entry);
     }
 
-    for dir in IMAGE_DIRS {
-        for path in scan_image_files(Path::new(dir)) {
+    let mut image_dirs = IMAGE_DIRS.iter().map(PathBuf::from).collect::<Vec<_>>();
+    image_dirs.push(user_wallpaper_dir());
+    for dir in image_dirs {
+        for path in scan_image_files(&dir) {
             if known_dark_paths.contains(&path) || by_light_path.contains_key(&path) {
                 continue;
             }
@@ -84,6 +88,104 @@ pub fn list_wallpapers() -> Vec<WallpaperEntry> {
     let mut wallpapers = by_light_path.into_values().collect::<Vec<_>>();
     wallpapers.sort_by_key(|entry| entry.name.to_lowercase());
     wallpapers
+}
+
+fn user_wallpaper_dir() -> PathBuf {
+    glib::user_data_dir().join("backgrounds")
+}
+
+/// Copia uma imagem escolhida pelo usuário para uma pasta persistente e
+/// gerenciada pela própria sessão. Isso evita que o papel de parede pare de
+/// funcionar quando a origem era um pendrive, um download temporário ou um
+/// arquivo disponibilizado pelo portal de documentos.
+pub fn import(source: &Path) -> Result<WallpaperEntry, WallpaperError> {
+    import_to_dir(source, &user_wallpaper_dir())
+}
+
+fn import_to_dir(source: &Path, destination_dir: &Path) -> Result<WallpaperEntry, WallpaperError> {
+    if !source.is_file() {
+        return Err(WallpaperError(gettext(
+            "Selecione um arquivo de imagem local.",
+        )));
+    }
+
+    let extension = source
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(str::to_ascii_lowercase)
+        .filter(|extension| IMAGE_EXTENSIONS.contains(&extension.as_str()))
+        .ok_or_else(|| WallpaperError(gettext("Formato de imagem não compatível.")))?;
+    if gtk::gdk_pixbuf::Pixbuf::file_info(source).is_none() {
+        return Err(WallpaperError(gettext(
+            "O arquivo selecionado não é uma imagem válida.",
+        )));
+    }
+
+    fs::create_dir_all(destination_dir).map_err(|error| {
+        WallpaperError(
+            gettext("Não foi possível criar a pasta de wallpapers: {error}")
+                .replace("{error}", &error.to_string()),
+        )
+    })?;
+
+    let stem = source
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .filter(|stem| !stem.is_empty())
+        .unwrap_or("wallpaper");
+    let mut suffix = 1_u32;
+    loop {
+        let filename = if suffix == 1 {
+            format!("{stem}.{extension}")
+        } else {
+            format!("{stem}-{suffix}.{extension}")
+        };
+        let destination = destination_dir.join(filename);
+        if destination.is_file() {
+            if files_have_same_contents(source, &destination).unwrap_or(false) {
+                return Ok(entry_from_path(destination));
+            }
+            suffix += 1;
+            continue;
+        }
+
+        fs::copy(source, &destination).map_err(|error| {
+            WallpaperError(
+                gettext("Não foi possível adicionar o wallpaper: {error}")
+                    .replace("{error}", &error.to_string()),
+            )
+        })?;
+        return Ok(entry_from_path(destination));
+    }
+}
+
+fn entry_from_path(path: PathBuf) -> WallpaperEntry {
+    WallpaperEntry {
+        name: display_name_from_path(&path),
+        light_path: path,
+        dark_path: None,
+    }
+}
+
+fn files_have_same_contents(first: &Path, second: &Path) -> std::io::Result<bool> {
+    if fs::metadata(first)?.len() != fs::metadata(second)?.len() {
+        return Ok(false);
+    }
+
+    let mut first = BufReader::new(fs::File::open(first)?);
+    let mut second = BufReader::new(fs::File::open(second)?);
+    let mut first_buffer = [0_u8; 8192];
+    let mut second_buffer = [0_u8; 8192];
+    loop {
+        let first_read = first.read(&mut first_buffer)?;
+        let second_read = second.read(&mut second_buffer)?;
+        if first_read != second_read || first_buffer[..first_read] != second_buffer[..second_read] {
+            return Ok(false);
+        }
+        if first_read == 0 {
+            return Ok(true);
+        }
+    }
 }
 
 const THUMBNAIL_WIDTH: i32 = 160;
@@ -371,5 +473,50 @@ mod tests {
             display_name_from_path(Path::new("/tmp/futurecity_dark.webp")),
             "Futurecity Dark"
         );
+    }
+
+    #[test]
+    fn imports_a_valid_image_without_duplicating_it() {
+        let root =
+            std::env::temp_dir().join(format!("vega-wallpaper-import-test-{}", std::process::id()));
+        let source_dir = root.join("source");
+        let destination_dir = root.join("destination");
+        std::fs::create_dir_all(&source_dir).unwrap();
+        let source = source_dir.join("minha-paisagem.png");
+        let pixbuf =
+            gtk::gdk_pixbuf::Pixbuf::new(gtk::gdk_pixbuf::Colorspace::Rgb, false, 8, 2, 2).unwrap();
+        pixbuf.fill(0x3584_e4ff);
+        pixbuf.savev(&source, "png", &[]).unwrap();
+
+        let imported = import_to_dir(&source, &destination_dir).unwrap();
+        assert_eq!(imported.name, "Minha Paisagem");
+        assert_eq!(
+            imported.light_path,
+            destination_dir.join("minha-paisagem.png")
+        );
+        assert!(imported.light_path.is_file());
+
+        let imported_again = import_to_dir(&source, &destination_dir).unwrap();
+        assert_eq!(imported_again.light_path, imported.light_path);
+        assert!(!destination_dir.join("minha-paisagem-2.png").exists());
+
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_file_that_is_not_an_image() {
+        let root = std::env::temp_dir().join(format!(
+            "vega-wallpaper-invalid-test-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let source = root.join("not-an-image.png");
+        std::fs::write(&source, b"not really a PNG").unwrap();
+
+        let result = import_to_dir(&source, &root.join("destination"));
+        assert!(result.is_err());
+        assert!(!root.join("destination").exists());
+
+        std::fs::remove_dir_all(&root).unwrap();
     }
 }
