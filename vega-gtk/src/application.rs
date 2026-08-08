@@ -2803,7 +2803,7 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
             Some(&gettext("Alterar política de retenção?")),
             Some(
                 &gettext(
-                    "O sistema manterá os {keep} snapshots mais recentes. Os excedentes poderão ser removidos pelo backend.",
+                    "O sistema manterá os {keep} snapshots mais recentes e removerá imediatamente os mais antigos.",
                 )
                 .replace("{keep}", &keep.to_string()),
             ),
@@ -2823,9 +2823,16 @@ fn configure_snapshots(shell: &VegaShell, dbus: VegaDbus) {
             }
             page.apply_retention.set_sensitive(false);
             match client.set_retention(keep).await {
-                Ok(()) => page
-                    .status
-                    .set_label(&gettext("Política de retenção atualizada.")),
+                Ok(()) => match client.list().await {
+                    Ok(snapshots) => {
+                        page.show_snapshots(snapshots);
+                        page.status.set_label(
+                            &gettext("Retenção aplicada: mantendo os {keep} snapshots mais recentes.")
+                                .replace("{keep}", &keep.to_string()),
+                        );
+                    }
+                    Err(error) => page.status.set_label(&error.to_string()),
+                },
                 Err(error) => page.status.set_label(&error.to_string()),
             }
             page.apply_retention.set_sensitive(true);
